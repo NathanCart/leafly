@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { Chrome as Home, Leaf, Camera, Calendar, User } from 'lucide-react-native';
-import { useColorScheme } from 'react-native';
+import { useColorScheme, View, StyleSheet, Platform } from 'react-native';
 
 // Colors
 const COLORS = {
@@ -20,6 +20,15 @@ export default function TabLayout() {
         tabBarInactiveTintColor: COLORS.tabBarInactive,
         tabBarStyle: {
           backgroundColor: colorScheme === 'dark' ? '#1A1A1A' : '#FFFFFF',
+          height: Platform.OS === 'ios' ? 88 : 68,
+          paddingBottom: Platform.OS === 'ios' ? 30 : 12,
+          paddingTop: 12,
+          borderTopWidth: 0,
+          elevation: 8,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 4,
         },
         headerStyle: {
           backgroundColor: colorScheme === 'dark' ? '#1A1A1A' : '#FFFFFF',
@@ -34,17 +43,24 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="identify"
-        options={{
-          title: 'Identify',
-          tabBarIcon: ({ color, size }) => <Camera color={color} size={size} />,
-        }}
-      />
-      <Tabs.Screen
         name="collection"
         options={{
           title: 'My Plants',
           tabBarIcon: ({ color, size }) => <Leaf color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="identify"
+        options={{
+          title: '',
+          tabBarIcon: ({ color }) => (
+            <View style={[
+              styles.cameraButton,
+              { backgroundColor: COLORS.primary }
+            ]}>
+              <Camera color="white" size={28} />
+            </View>
+          ),
         }}
       />
       <Tabs.Screen
@@ -64,3 +80,20 @@ export default function TabLayout() {
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  cameraButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: -28,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+});

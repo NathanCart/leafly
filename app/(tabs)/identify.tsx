@@ -11,43 +11,67 @@ import {
   useColorScheme,
 } from 'react-native';
 import { router } from 'expo-router';
-import { Camera as CameraIcon, X, Image as ImageIcon, Upload, Leaf, Sun, Droplet } from 'lucide-react-native';
+import { ChevronLeft, Info, Sun, Droplet, Wind, Camera as CameraIcon, Upload, Image as ImageIcon } from 'lucide-react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { LinearGradient } from 'expo-linear-gradient';
+import { usePlantIdentification } from '@/hooks/usePlantIdentification';
 
 export default function IdentifyScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [cameraType, setCameraType] = useState<CameraType>('back');
   const [isCapturing, setIsCapturing] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
-  const [identifying, setIdentifying] = useState(false);
   const [identifiedPlant, setIdentifiedPlant] = useState<any>(null);
   const cameraRef = useRef(null);
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
+  
+  const { identifying, error, identifyPlant, saveIdentifiedPlant } = usePlantIdentification();
 
   if (!permission) {
-    // Camera permissions are still loading
     return (
       <View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#F5F5F5' }]}>
-        <ActivityIndicator color="#3A8349" size="large" />
+        <View style={styles.permissionContainer}>
+          <View style={[styles.permissionIconContainer, { backgroundColor: isDark ? '#2A3A30' : '#E6F2E8' }]}>
+            <CameraIcon color="#3A8349" size={40} />
+          </View>
+          <Text style={[styles.permissionTitle, { color: isDark ? '#E0E0E0' : '#283618' }]}>
+            Initializing Camera...
+          </Text>
+          <ActivityIndicator color="#3A8349" size="large" style={styles.permissionLoader} />
+        </View>
       </View>
     );
   }
 
   if (!permission.granted) {
-    // Camera permissions are not granted yet
     return (
       <View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#F5F5F5' }]}>
-        <Text style={[styles.permissionText, { color: isDark ? '#E0E0E0' : '#283618' }]}>
-          We need your permission to use the camera
-        </Text>
-        <TouchableOpacity 
-          style={[styles.permissionButton, { backgroundColor: '#3A8349' }]}
-          onPress={requestPermission}
-        >
-          <Text style={styles.permissionButtonText}>Grant Permission</Text>
-        </TouchableOpacity>
+        <View style={styles.permissionContainer}>
+          <View style={[styles.permissionIconContainer, { backgroundColor: isDark ? '#2A3A30' : '#E6F2E8' }]}>
+            <CameraIcon color="#3A8349" size={40} />
+          </View>
+          <Text style={[styles.permissionTitle, { color: isDark ? '#E0E0E0' : '#283618' }]}>
+            Camera Access Required
+          </Text>
+          <Text style={[styles.permissionText, { color: isDark ? '#BBBBBB' : '#555555' }]}>
+            We need camera access to help you identify plants. Your privacy is important to us - photos are only used for plant identification and aren't stored without your permission.
+          </Text>
+          <TouchableOpacity 
+            style={[styles.permissionButton, { backgroundColor: '#3A8349' }]}
+            onPress={requestPermission}
+          >
+            <CameraIcon color="white" size={20} style={styles.permissionButtonIcon} />
+            <Text style={styles.permissionButtonText}>Enable Camera Access</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.secondaryButton, { backgroundColor: isDark ? '#2A3A30' : '#E6F2E8' }]}
+            onPress={() => router.back()}
+          >
+            <Text style={[styles.secondaryButtonText, { color: '#3A8349' }]}>Not Now</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
@@ -66,25 +90,27 @@ export default function IdentifyScreen() {
     }
   };
 
-  const identifyPlant = async () => {
+  const startIdentification = async () => {
     if (!capturedImage) return;
     
-    setIdentifying(true);
+    try {
+      const result = await identifyPlant(capturedImage);
+      setIdentifiedPlant(result);
+    } catch (error) {
+      // Error is handled by the hook and displayed in the UI
+      console.error('Identification error:', error);
+    }
+  };
+
+  const addToCollection = async () => {
+    if (!identifiedPlant) return;
     
-    // Simulate API call delay
-    setTimeout(() => {
-      // Mock identification result
-      setIdentifiedPlant({
-        name: 'Monstera Deliciosa',
-        scientificName: 'Monstera deliciosa',
-        confidence: 95,
-        careLevel: 'Easy',
-        lightNeeds: 'Bright indirect light',
-        waterNeeds: 'Allow soil to dry between waterings',
-        image: capturedImage,
-      });
-      setIdentifying(false);
-    }, 2000);
+    try {
+      await saveIdentifiedPlant(identifiedPlant);
+      router.push('/(tabs)/collection');
+    } catch (error) {
+      console.error('Error saving plant:', error);
+    }
   };
 
   const resetCamera = () => {
@@ -102,9 +128,11 @@ export default function IdentifyScreen() {
       <ScrollView style={[styles.container, { backgroundColor: isDark ? '#121212' : '#F5F5F5' }]}>
         <View style={styles.identifiedContainer}>
           <View style={styles.imageContainer}>
-            <Image source={{ uri: identifiedPlant.image }} style={styles.identifiedImage} />
+            <Image source={{ uri: capturedImage }} style={styles.identifiedImage} />
             <View style={styles.confidenceBadge}>
-              <Text style={styles.confidenceText}>{identifiedPlant.confidence}% Match</Text>
+              <Text style={styles.confidenceText}>
+                {Math.round(identifiedPlant.confidence * 100)}% Match
+              </Text>
             </View>
           </View>
           
@@ -113,71 +141,28 @@ export default function IdentifyScreen() {
               {identifiedPlant.name}
             </Text>
             <Text style={[styles.scientificName, { color: isDark ? '#BBBBBB' : '#555555' }]}>
-              {identifiedPlant.scientificName}
+              {identifiedPlant.commonNames?.[0]}
             </Text>
             
             <View style={styles.divider} />
             
-            <View style={styles.careInfoContainer}>
-              <View style={styles.careInfoItem}>
-                <View style={[styles.careInfoIcon, { backgroundColor: isDark ? '#2A3A30' : '#E6F2E8' }]}>
-                  <Leaf color="#3A8349" size={20} />
-                </View>
-                <View>
-                  <Text style={[styles.careInfoLabel, { color: isDark ? '#BBBBBB' : '#555555' }]}>Care Level</Text>
-                  <Text style={[styles.careInfoValue, { color: isDark ? '#E0E0E0' : '#283618' }]}>{identifiedPlant.careLevel}</Text>
-                </View>
-              </View>
-              
-              <View style={styles.careInfoItem}>
-                <View style={[styles.careInfoIcon, { backgroundColor: isDark ? '#2A3A30' : '#E6F2E8' }]}>
-                  <Sun color="#3A8349" size={20} />
-                </View>
-                <View>
-                  <Text style={[styles.careInfoLabel, { color: isDark ? '#BBBBBB' : '#555555' }]}>Light</Text>
-                  <Text style={[styles.careInfoValue, { color: isDark ? '#E0E0E0' : '#283618' }]}>{identifiedPlant.lightNeeds}</Text>
-                </View>
-              </View>
-              
-              <View style={styles.careInfoItem}>
-                <View style={[styles.careInfoIcon, { backgroundColor: isDark ? '#2A3A30' : '#E6F2E8' }]}>
-                  <Droplet color="#3A8349" size={20} />
-                </View>
-                <View>
-                  <Text style={[styles.careInfoLabel, { color: isDark ? '#BBBBBB' : '#555555' }]}>Water</Text>
-                  <Text style={[styles.careInfoValue, { color: isDark ? '#E0E0E0' : '#283618' }]}>{identifiedPlant.waterNeeds}</Text>
-                </View>
-              </View>
-            </View>
+            <Text style={[styles.description, { color: isDark ? '#BBBBBB' : '#555555' }]}>
+              {identifiedPlant.description}
+            </Text>
             
             <View style={styles.buttonContainer}>
               <TouchableOpacity 
                 style={[styles.primaryButton, { backgroundColor: '#3A8349' }]}
-                onPress={() => {
-                  router.push({
-                    pathname: '/plantDetail',
-                    params: { name: identifiedPlant.name }
-                  });
-                }}
+                onPress={addToCollection}
               >
-                <Text style={styles.primaryButtonText}>View Full Details</Text>
+                <Text style={styles.primaryButtonText}>Add to My Collection</Text>
               </TouchableOpacity>
               
               <TouchableOpacity 
                 style={[styles.secondaryButton, { backgroundColor: isDark ? '#2A3A30' : '#E6F2E8' }]}
-                onPress={() => {
-                  // Add to collection logic would go here
-                  router.push('/(tabs)/collection');
-                }}
-              >
-                <Text style={[styles.secondaryButtonText, { color: '#3A8349' }]}>Add to Collection</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[styles.textButton, { backgroundColor: 'transparent' }]}
                 onPress={resetCamera}
               >
-                <Text style={[styles.textButtonText, { color: isDark ? '#8EB69B' : '#3A8349' }]}>Identify Another Plant</Text>
+                <Text style={[styles.secondaryButtonText, { color: '#3A8349' }]}>Identify Another Plant</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -193,17 +178,28 @@ export default function IdentifyScreen() {
         <Image source={{ uri: capturedImage }} style={styles.previewImage} />
         
         <View style={styles.previewOverlay}>
+          {error && (
+            <View style={[styles.errorContainer, { backgroundColor: isDark ? '#2A2A2A' : '#FFE8E0' }]}>
+              <Text style={[styles.errorText, { color: isDark ? '#FFB4A1' : '#D27D4C' }]}>
+                {error}
+              </Text>
+            </View>
+          )}
+          
           <View style={styles.previewControls}>
             <TouchableOpacity
               style={styles.previewButton}
               onPress={resetCamera}
             >
-              <X color="white" size={24} />
+              <ChevronLeft color="white" size={24} />
             </TouchableOpacity>
             
             <TouchableOpacity
-              style={[styles.identifyButton, identifying && styles.identifyingButton]}
-              onPress={identifyPlant}
+              style={[
+                styles.identifyButton,
+                identifying && styles.identifyingButton
+              ]}
+              onPress={startIdentification}
               disabled={identifying}
             >
               {identifying ? (
@@ -286,6 +282,65 @@ export default function IdentifyScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  permissionContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  permissionIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  permissionTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  permissionText: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 32,
+    lineHeight: 24,
+  },
+  permissionLoader: {
+    marginTop: 24,
+  },
+  permissionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    width: '100%',
+    maxWidth: 300,
+  },
+  permissionButtonIcon: {
+    marginRight: 8,
+  },
+  permissionButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  secondaryButton: {
+    width: '100%',
+    maxWidth: 300,
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  secondaryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   camera: {
     flex: 1,
@@ -380,6 +435,15 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     padding: 20,
   },
+  errorContainer: {
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 20,
+  },
+  errorText: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
   previewControls: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -407,21 +471,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#2A5A35',
   },
   identifyButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  permissionText: {
-    textAlign: 'center',
-    marginBottom: 20,
-    fontSize: 16,
-  },
-  permissionButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  permissionButtonText: {
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
@@ -467,31 +516,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#E0E0E0',
     marginVertical: 20,
   },
-  careInfoContainer: {
-    gap: 16,
-  },
-  careInfoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  careInfoIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  careInfoLabel: {
-    fontSize: 14,
-  },
-  careInfoValue: {
+  description: {
     fontSize: 16,
-    fontWeight: '600',
-    marginTop: 2,
+    lineHeight: 24,
+    marginBottom: 24,
   },
   buttonContainer: {
-    marginTop: 30,
     gap: 12,
   },
   primaryButton: {
@@ -505,16 +535,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  secondaryButton: {
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  secondaryButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
   textButton: {
     height: 50,
     justifyContent: 'center',
@@ -523,5 +543,43 @@ const styles = StyleSheet.create({
   textButtonText: {
     fontSize: 16,
     fontWeight: '500',
+  },
+  offlineContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  offlineIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  offlineTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  offlineText: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 32,
+    lineHeight: 24,
+  },
+  offlineButton: {
+    width: '100%',
+    maxWidth: 300,
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  offlineButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

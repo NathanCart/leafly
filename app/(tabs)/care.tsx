@@ -7,10 +7,11 @@ import {
   TouchableOpacity,
   useColorScheme,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Calendar, Droplet, Sun, Wind, CircleArrowRight as ArrowRightCircle, Clipboard, Check } from 'lucide-react-native';
-import { careSchedule } from '@/data/careSchedule';
+import { useCareSchedules } from '@/data/careSchedule';
 
 export default function CareScreen() {
   const colorScheme = useColorScheme();
@@ -18,6 +19,7 @@ export default function CareScreen() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [activeTab, setActiveTab] = useState('today');
   const [completedTasks, setCompletedTasks] = useState([]);
+  const { careSchedule, loading, error } = useCareSchedules();
 
   const today = new Date();
   const tomorrow = new Date(today);
@@ -36,10 +38,11 @@ export default function CareScreen() {
 
   // Filter tasks based on the selected date
   const getTasksForDate = (date) => {
+    if (!careSchedule) return [];
+    
     const dateStr = date.toISOString().split('T')[0];
     return careSchedule.filter(task => {
-      // Compare dates without time
-      const taskDate = new Date(task.date).toISOString().split('T')[0];
+      const taskDate = new Date(task.scheduled_date).toISOString().split('T')[0];
       return taskDate === dateStr;
     });
   };
@@ -48,19 +51,18 @@ export default function CareScreen() {
   
   // Filter tasks for Today, Upcoming, and All
   const todayTasks = getTasksForDate(today);
-  const upcomingTasks = careSchedule.filter(task => {
-    const taskDate = new Date(task.date);
+  const upcomingTasks = careSchedule?.filter(task => {
+    const taskDate = new Date(task.scheduled_date);
     const todayDate = new Date(today);
-    // Clear time portion for accurate comparison
     todayDate.setHours(0, 0, 0, 0);
     taskDate.setHours(0, 0, 0, 0);
     return taskDate > todayDate;
-  });
+  }) || [];
   
   const displayTasks = 
     activeTab === 'today' ? todayTasks :
     activeTab === 'upcoming' ? upcomingTasks :
-    careSchedule;
+    careSchedule || [];
   
   const toggleTaskComplete = (taskId) => {
     setCompletedTasks(prev => {
@@ -85,6 +87,37 @@ export default function CareScreen() {
         return <Clipboard size={20} color="#3A8349" />;
     }
   };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#F5F5F5' }]}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#3A8349" />
+          <Text style={[styles.loadingText, { color: isDark ? '#E0E0E0' : '#283618' }]}>
+            Loading care schedule...
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#F5F5F5' }]}>
+        <View style={styles.errorContainer}>
+          <Text style={[styles.errorText, { color: isDark ? '#FFB4A1' : '#D27D4C' }]}>
+            {error.message}
+          </Text>
+          <TouchableOpacity
+            style={[styles.retryButton, { backgroundColor: '#3A8349' }]}
+            onPress={() => router.replace('/(tabs)/care')}
+          >
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#F5F5F5' }]}>
@@ -211,7 +244,7 @@ export default function CareScreen() {
         >
           {displayTasks.map((task, index) => {
             const isCompleted = completedTasks.includes(task.id);
-            const taskDate = new Date(task.date);
+            const taskDate = new Date(task.scheduled_date);
             const isToday = 
               taskDate.getDate() === today.getDate() && 
               taskDate.getMonth() === today.getMonth();
@@ -270,7 +303,7 @@ export default function CareScreen() {
                       styles.taskTime,
                       { color: isDark ? '#BBBBBB' : '#555555' }
                     ]}>
-                      {task.time || 'Anytime today'}
+                      {task.scheduled_time || 'Anytime today'}
                     </Text>
                   </View>
                   
@@ -312,6 +345,36 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingTop: 60,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
   header: {
     flexDirection: 'row',

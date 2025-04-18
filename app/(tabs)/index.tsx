@@ -9,18 +9,26 @@ import {
   useColorScheme,
   Platform,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Search, ArrowRight, CircleArrowRight as ArrowRightCircle, Sun, Droplet, CircleAlert as AlertCircle, Camera, Calendar } from 'lucide-react-native';
 import { PlantCard } from '@/components/PlantCard';
 import { RecentPlant } from '@/components/RecentPlant';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useMyPlants } from '@/data/plants';
+import { useCareSchedules } from '@/data/careSchedule';
+import { useAuth } from '@/contexts/AuthContext';
+import { useProfile } from '@/hooks/useProfile';
 
 export default function HomeScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const [greeting, setGreeting] = useState('');
-  const windowWidth = Dimensions.get('window').width;
+  const { session } = useAuth();
+  const { profile } = useProfile();
+  const { myPlants: plants, loading: plantsLoading } = useMyPlants();
+  const { careSchedule, loading: scheduleLoading } = useCareSchedules();
 
   useEffect(() => {
     const hour = new Date().getHours();
@@ -29,19 +37,65 @@ export default function HomeScreen() {
     else setGreeting('Good evening');
   }, []);
 
-  const upcomingCare = [
-    { id: '1', name: 'Snake Plant', action: 'Water', due: 'Today', image: 'https://images.pexels.com/photos/2123482/pexels-photo-2123482.jpeg?auto=compress&cs=tinysrgb&h=350' },
-    { id: '2', name: 'Monstera', action: 'Mist', due: 'Tomorrow', image: 'https://images.pexels.com/photos/3097770/pexels-photo-3097770.jpeg?auto=compress&cs=tinysrgb&h=350' },
-  ];
+  // Get today's and upcoming care tasks
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayStr = today.toISOString().split('T')[0];
 
-  const recentlyIdentified = [
-    { id: '1', name: 'Fiddle Leaf Fig', date: '2 days ago', image: 'https://images.pexels.com/photos/4751978/pexels-photo-4751978.jpeg?auto=compress&cs=tinysrgb&h=350' },
-    { id: '2', name: 'Pothos', date: '5 days ago', image: 'https://images.pexels.com/photos/1084199/pexels-photo-1084199.jpeg?auto=compress&cs=tinysrgb&h=350' },
-  ];
+  const upcomingCare = careSchedule
+    ?.filter(task => {
+      const taskDate = new Date(task.scheduled_date);
+      taskDate.setHours(0, 0, 0, 0);
+      return taskDate >= today && !task.completed;
+    })
+    .slice(0, 3)
+    .map(task => {
+      const plant = plants?.find(p => p.id === task.plant_id);
+      return {
+        id: task.id,
+        name: plant?.name || 'Unknown Plant',
+        action: task.action,
+        due: task.scheduled_date === todayStr ? 'Today' : 'Tomorrow',
+        image: plant?.image_url || 'https://images.pexels.com/photos/3097770/pexels-photo-3097770.jpeg?auto=compress&cs=tinysrgb&h=350'
+      };
+    });
 
-  const plantHealthAlerts = [
-    { id: '1', plant: 'Monstera', issue: 'Yellow leaves' },
-  ];
+  // Get recently added plants
+  const recentlyIdentified = plants
+    ?.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 2)
+    .map(plant => ({
+      id: plant.id,
+      name: plant.name,
+      date: new Date(plant.created_at).toLocaleDateString('en-US', { 
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric'
+      }),
+      image: plant.image_url || 'https://images.pexels.com/photos/4751978/pexels-photo-4751978.jpeg?auto=compress&cs=tinysrgb&h=350'
+    }));
+
+  // Get plants that need attention
+  const plantHealthAlerts = plants
+    ?.filter(plant => plant.health_status === 'Needs Attention' || plant.health_status === 'Unhealthy')
+    .map(plant => ({
+      id: plant.id,
+      plant: plant.name,
+      issue: plant.health_status
+    }));
+
+  if (plantsLoading || scheduleLoading) {
+    return (
+      <View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#F5F5F5' }]}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#3A8349" />
+          <Text style={[styles.loadingText, { color: isDark ? '#E0E0E0' : '#283618' }]}>
+            Loading your garden...
+          </Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <ScrollView 
@@ -55,7 +109,7 @@ export default function HomeScreen() {
         <View style={styles.header}>
           <View>
             <Text style={[styles.greeting, { color: isDark ? '#E0E0E0' : '#283618' }]}>
-              {greeting}, Plant Lover
+              {greeting}, {profile?.username || 'Plant Lover'}
             </Text>
             <Text style={[styles.subtitle, { color: isDark ? '#BBBBBB' : '#555555' }]}>
               Let's check on your green friends
@@ -101,7 +155,7 @@ export default function HomeScreen() {
       </View>
 
       {/* Upcoming Care */}
-      {upcomingCare.length > 0 && (
+      {upcomingCare && upcomingCare.length > 0 && (
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: isDark ? '#E0E0E0' : '#283618' }]}>
@@ -134,11 +188,11 @@ export default function HomeScreen() {
       )}
 
       {/* Recently Identified */}
-      {recentlyIdentified.length > 0 && (
+      {recentlyIdentified && recentlyIdentified.length > 0 && (
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: isDark ? '#E0E0E0' : '#283618' }]}>
-              Recently Identified
+              Recently Added
             </Text>
             <TouchableOpacity onPress={() => router.push('/(tabs)/collection')}>
               <Text style={[styles.seeAll, { color: isDark ? '#8EB69B' : '#3A8349' }]}>
@@ -171,7 +225,7 @@ export default function HomeScreen() {
       )}
 
       {/* Plant Health Alerts */}
-      {plantHealthAlerts.length > 0 && (
+      {plantHealthAlerts && plantHealthAlerts.length > 0 && (
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: isDark ? '#E0E0E0' : '#283618' }]}>
@@ -203,7 +257,7 @@ export default function HomeScreen() {
         </View>
       )}
 
-      {/* Bottom padding for scrolling */}
+      {/* Bottom padding */}
       <View style={styles.bottomPadding} />
     </ScrollView>
   );
@@ -212,6 +266,15 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
   },
   headerGradient: {
     paddingTop: Platform.OS === 'ios' ? 50 : 30,

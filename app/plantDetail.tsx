@@ -10,7 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { ChevronLeft, Heart, Sun, Droplet, Wind, Info, Calendar, Share2 } from 'lucide-react-native';
+import { ChevronLeft, Heart, Sun, Droplet, Wind, Info, Calendar, Share2, Thermometer } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 // Mock plant data - in a real app, this would come from your database

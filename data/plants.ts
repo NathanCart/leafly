@@ -1,99 +1,18 @@
-// Mock data for user's plant collection
-export const myPlants = [
-  {
-    id: '1',
-    name: 'Monstera Deliciosa',
-    nickname: 'Monty',
-    image: 'https://images.pexels.com/photos/3097770/pexels-photo-3097770.jpeg?auto=compress&cs=tinysrgb&h=350',
-    location: 'Indoor',
-    health: 'Healthy',
-    nextWatering: 'Tomorrow',
-    acquisitionDate: '2023-03-15',
-    notes: 'Growing new leaf!',
-    isFavorite: true,
-  },
-  {
-    id: '2',
-    name: 'Snake Plant',
-    nickname: 'Spike',
-    image: 'https://images.pexels.com/photos/2123482/pexels-photo-2123482.jpeg?auto=compress&cs=tinysrgb&h=350',
-    location: 'Indoor',
-    health: 'Healthy',
-    nextWatering: 'In 5 days',
-    acquisitionDate: '2023-01-10',
-    notes: 'Very low maintenance',
-    isFavorite: false,
-  },
-  {
-    id: '3',
-    name: 'Fiddle Leaf Fig',
-    nickname: 'Fiddy',
-    image: 'https://images.pexels.com/photos/4751978/pexels-photo-4751978.jpeg?auto=compress&cs=tinysrgb&h=350',
-    location: 'Indoor',
-    health: 'Needs Attention',
-    nextWatering: 'Today',
-    acquisitionDate: '2023-05-20',
-    notes: 'Leaves are getting brown spots',
-    isFavorite: true,
-  },
-  {
-    id: '4',
-    name: 'Pothos',
-    nickname: 'Vine',
-    image: 'https://images.pexels.com/photos/1084199/pexels-photo-1084199.jpeg?auto=compress&cs=tinysrgb&h=350',
-    location: 'Indoor',
-    health: 'Healthy',
-    nextWatering: 'In 3 days',
-    acquisitionDate: '2023-02-05',
-    notes: 'Growing well in hanging basket',
-    isFavorite: false,
-  },
-  {
-    id: '5',
-    name: 'Peace Lily',
-    nickname: 'Lily',
-    image: 'https://images.pexels.com/photos/1903965/pexels-photo-1903965.jpeg?auto=compress&cs=tinysrgb&h=350',
-    location: 'Indoor',
-    health: 'Healthy',
-    nextWatering: 'Tomorrow',
-    acquisitionDate: '2023-04-15',
-    notes: 'Recently bloomed',
-    isFavorite: true,
-  },
-  {
-    id: '6',
-    name: 'Aloe Vera',
-    nickname: 'Healer',
-    image: 'https://images.pexels.com/photos/4503751/pexels-photo-4503751.jpeg?auto=compress&cs=tinysrgb&h=350',
-    location: 'Indoor',
-    health: 'Healthy',
-    nextWatering: 'In 7 days',
-    acquisitionDate: '2023-03-01',
-    notes: 'Very low water needs',
-    isFavorite: false,
-  },
-  {
-    id: '7',
-    name: 'Basil',
-    nickname: 'Chef',
-    image: 'https://images.pexels.com/photos/3635967/pexels-photo-3635967.jpeg?auto=compress&cs=tinysrgb&h=350',
-    location: 'Outdoor',
-    health: 'Unhealthy',
-    nextWatering: 'Today',
-    acquisitionDate: '2023-05-01',
-    notes: 'Needs more sunlight',
-    isFavorite: false,
-  },
-  {
-    id: '8',
-    name: 'Rubber Plant',
-    nickname: 'Stretchy',
-    image: 'https://images.pexels.com/photos/2746103/pexels-photo-2746103.jpeg?auto=compress&cs=tinysrgb&h=350',
-    location: 'Indoor',
-    health: 'Healthy',
-    nextWatering: 'In 2 days',
-    acquisitionDate: '2023-01-20',
-    notes: 'New growth on top',
-    isFavorite: true,
-  },
-];
+import { usePlants } from '@/hooks/usePlants';
+import { Database } from '@/types/supabase';
+
+export type Plant = Database['public']['Tables']['plants']['Row'];
+
+export function useMyPlants() {
+  const { plants = [], loading, error, addPlant, updatePlant, deletePlant, isOnline } = usePlants();
+
+  return {
+    myPlants: plants,
+    loading,
+    error,
+    addPlant,
+    updatePlant,
+    deletePlant,
+    isOnline
+  };
+}

@@ -12,10 +12,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { Search, Plus, Leaf, Settings, Filter, Droplet } from 'lucide-react-native';
-
-
-// Import mock data
-import { myPlants } from '@/data/plants';
+import { useMyPlants } from '@/data/plants';
 
 export default function CollectionScreen() {
   const colorScheme = useColorScheme();
@@ -23,11 +20,12 @@ export default function CollectionScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
   
+  const { myPlants, loading } = useMyPlants();
   const filterOptions = ['All', 'Indoor', 'Outdoor', 'Favorites'];
   const screenWidth = Dimensions.get('window').width;
   
-  // Filter plants based on search query and active filter
-  const filteredPlants = myPlants.filter(plant => {
+  // Filter plants based on search query and active filter, ensuring myPlants is an array
+  const filteredPlants = (myPlants || []).filter(plant => {
     const matchesSearch = plant.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesFilter = 
       activeFilter === 'All' || 
@@ -106,6 +104,18 @@ export default function CollectionScreen() {
       default:
         return isDark ? '#2A5A35' : '#E6F2E8';
     }
+  }
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#F5F5F5' }]}>
+        <View style={styles.emptyContainer}>
+          <Text style={[styles.emptyText, { color: isDark ? '#BBBBBB' : '#555555' }]}>
+            Loading plants...
+          </Text>
+        </View>
+      </View>
+    );
   }
 
   return (
