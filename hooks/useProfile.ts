@@ -19,14 +19,33 @@ export function useProfile() {
 
     async function loadProfile() {
       try {
-        const { data, error } = await supabase
+        const { data: existingProfile, error: fetchError } = await supabase
           .from('profiles')
-          .select('*')
+          .select('id, username, updated_at')
           .eq('id', session.user.id)
-          .single();
+          .maybeSingle();
 
-        if (error) throw error;
-        setProfile(data);
+        if (fetchError && fetchError.code !== 'PGRST116') {
+          throw fetchError;
+        }
+
+        if (!existingProfile) {
+          // Create new profile if none exists
+          const { data: newProfile, error: createError } = await supabase
+            .from('profiles')
+            .insert([{
+              id: session.user.id,
+              username: null,
+              updated_at: new Date().toISOString()
+            }])
+            .select()
+            .single();
+
+          if (createError) throw createError;
+          setProfile(newProfile);
+        } else {
+          setProfile(existingProfile);
+        }
       } catch (e) {
         setError(e instanceof Error ? e : new Error('Failed to load profile'));
       } finally {
@@ -41,7 +60,10 @@ export function useProfile() {
     try {
       const { error } = await supabase
         .from('profiles')
-        .update(updates)
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', session?.user.id);
 
       if (error) throw error;

@@ -10,28 +10,32 @@ import {
   useColorScheme,
   Dimensions,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Search, Plus, Leaf, Settings, Filter, Droplet } from 'lucide-react-native';
 import { useMyPlants } from '@/data/plants';
+import { COLORS } from '@/app/constants/colors';
 
 export default function CollectionScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
+  const insets = useSafeAreaInsets();
   
   const { myPlants, loading } = useMyPlants();
   const filterOptions = ['All', 'Indoor', 'Outdoor', 'Favorites'];
   const screenWidth = Dimensions.get('window').width;
   
-  // Filter plants based on search query and active filter, ensuring myPlants is an array
+  // Filter plants based on search query and active filter
   const filteredPlants = (myPlants || []).filter(plant => {
-    const matchesSearch = plant.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = plant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         (plant.nickname && plant.nickname.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesFilter = 
       activeFilter === 'All' || 
       (activeFilter === 'Indoor' && plant.location === 'Indoor') ||
       (activeFilter === 'Outdoor' && plant.location === 'Outdoor') ||
-      (activeFilter === 'Favorites' && plant.isFavorite);
+      (activeFilter === 'Favorites' && plant.is_favorite);
     
     return matchesSearch && matchesFilter;
   });
@@ -45,10 +49,19 @@ export default function CollectionScreen() {
       ]}
       onPress={() => router.push({
         pathname: '/plantDetail',
-        params: { id: item.id, name: item.name }
+        params: { id: item.id }
       })}
     >
-      <Image source={{ uri: item.image }} style={styles.plantImage} />
+      {item.image_url ? (
+        <Image 
+          source={{ uri: item.image_url }} 
+          style={styles.plantImage}
+        />
+      ) : (
+        <View style={[styles.plantImagePlaceholder, { backgroundColor: isDark ? '#1A2A20' : '#E6F2E8' }]}>
+          <Leaf color={COLORS.tabBar.active} size={32} />
+        </View>
+      )}
       
       <View style={styles.plantCardContent}>
         <Text 
@@ -59,7 +72,7 @@ export default function CollectionScreen() {
         </Text>
         
         <Text 
-          style={[styles.plantSpecies, { color: isDark ? '#BBBBBB' : '#555555' }]}
+          style={[styles.plantSpecies, { color: COLORS.tabBar.inactive }]}
           numberOfLines={1}
         >
           {item.name}
@@ -68,12 +81,17 @@ export default function CollectionScreen() {
         <View style={styles.plantCardFooter}>
           <View style={[
             styles.healthIndicator,
-            { backgroundColor: getHealthColor(item.health, isDark) }
+            { backgroundColor: getHealthColor(item.health_status, isDark) }
           ]}>
-            <Text style={styles.healthText}>{item.health}</Text>
+            <Text style={[
+              styles.healthText,
+              { color: isDark ? '#E0E0E0' : '#283618' }
+            ]}>
+              {item.health_status || 'Healthy'}
+            </Text>
           </View>
           
-          {item.nextWatering && (
+          {item.next_watering && (
             <View style={[
               styles.waterIndicator,
               { backgroundColor: isDark ? '#2A4256' : '#E0F2FF' }
@@ -83,7 +101,7 @@ export default function CollectionScreen() {
                 styles.waterText,
                 { color: isDark ? '#88CCFF' : '#0080FF' }
               ]}>
-                {item.nextWatering}
+                {item.next_watering}
               </Text>
             </View>
           )}
@@ -93,13 +111,13 @@ export default function CollectionScreen() {
   );
 
   // Function to determine health indicator color
-  function getHealthColor(health, isDark) {
-    switch (health) {
-      case 'Healthy':
+  function getHealthColor(health: string | null, isDark: boolean) {
+    switch (health?.toLowerCase()) {
+      case 'healthy':
         return isDark ? '#2A5A35' : '#E6F2E8';
-      case 'Needs Attention':
+      case 'needs attention':
         return isDark ? '#5A4A2A' : '#FFF3E0';
-      case 'Unhealthy':
+      case 'unhealthy':
         return isDark ? '#5A2A2A' : '#FFE0E0';
       default:
         return isDark ? '#2A5A35' : '#E6F2E8';
@@ -108,9 +126,13 @@ export default function CollectionScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#F5F5F5' }]}>
+      <View style={[
+        styles.container,
+        { backgroundColor: isDark ? '#121212' : '#F5F5F5' },
+        { paddingTop: insets.top }
+      ]}>
         <View style={styles.emptyContainer}>
-          <Text style={[styles.emptyText, { color: isDark ? '#BBBBBB' : '#555555' }]}>
+          <Text style={[styles.emptyText, { color: COLORS.tabBar.inactive }]}>
             Loading plants...
           </Text>
         </View>
@@ -119,21 +141,18 @@ export default function CollectionScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#F5F5F5' }]}>
+    <View style={[
+      styles.container,
+      { backgroundColor: isDark ? '#121212' : '#F5F5F5' },
+      { paddingTop: insets.top }
+    ]}>
       <View style={styles.header}>
         <View style={styles.titleContainer}>
-          <Leaf color={isDark ? '#8EB69B' : '#3A8349'} size={24} />
+          <Leaf color={COLORS.tabBar.active} size={24} />
           <Text style={[styles.title, { color: isDark ? '#E0E0E0' : '#283618' }]}>
             My Plants
           </Text>
         </View>
-        
-        <TouchableOpacity 
-          style={styles.settingsButton}
-          onPress={() => router.push('/settings')}
-        >
-          <Settings color={isDark ? '#E0E0E0' : '#283618'} size={24} />
-        </TouchableOpacity>
       </View>
       
       <View style={styles.searchContainer}>
@@ -141,22 +160,16 @@ export default function CollectionScreen() {
           styles.searchInputContainer,
           { backgroundColor: isDark ? '#2A2A2A' : '#FFFFFF' }
         ]}>
-          <Search color={isDark ? '#BBBBBB' : '#999999'} size={20} />
+          <Search color={COLORS.tabBar.inactive} size={20} />
           <TextInput
             style={[styles.searchInput, { color: isDark ? '#E0E0E0' : '#283618' }]}
             placeholder="Search plants..."
-            placeholderTextColor={isDark ? '#BBBBBB' : '#999999'}
+            placeholderTextColor={COLORS.tabBar.inactive}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
         </View>
-        
-        <TouchableOpacity style={[
-          styles.filterButton,
-          { backgroundColor: isDark ? '#2A3A30' : '#E6F2E8' }
-        ]}>
-          <Filter color="#3A8349" size={20} />
-        </TouchableOpacity>
+      
       </View>
       
       <View style={styles.filterContainer}>
@@ -170,14 +183,14 @@ export default function CollectionScreen() {
               style={[
                 styles.filterOption,
                 activeFilter === item && styles.activeFilterOption,
-                activeFilter === item && { backgroundColor: isDark ? '#3A8349' : '#3A8349' }
+                activeFilter === item && { backgroundColor: COLORS.tabBar.active }
               ]}
               onPress={() => setActiveFilter(item)}
             >
               <Text style={[
                 styles.filterText,
                 activeFilter === item && styles.activeFilterText,
-                { color: activeFilter === item ? '#FFFFFF' : isDark ? '#BBBBBB' : '#555555' }
+                { color: activeFilter === item ? '#FFFFFF' : COLORS.tabBar.inactive }
               ]}>
                 {item}
               </Text>
@@ -197,19 +210,12 @@ export default function CollectionScreen() {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Leaf color={isDark ? '#555555' : '#CCCCCC'} size={40} />
-            <Text style={[styles.emptyText, { color: isDark ? '#BBBBBB' : '#555555' }]}>
+            <Text style={[styles.emptyText, { color: COLORS.tabBar.inactive }]}>
               {searchQuery ? 'No plants match your search' : 'No plants in this category'}
             </Text>
           </View>
         }
       />
-      
-      <TouchableOpacity
-        style={[styles.addButton, { backgroundColor: '#3A8349' }]}
-        onPress={() => router.push('/(tabs)/identify')}
-      >
-        <Plus color="white" size={24} />
-      </TouchableOpacity>
     </View>
   );
 }
@@ -217,7 +223,6 @@ export default function CollectionScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 60,
   },
   header: {
     flexDirection: 'row',
@@ -234,13 +239,6 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '700',
     marginLeft: 8,
-  },
-  settingsButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   searchContainer: {
     flexDirection: 'row',
@@ -282,7 +280,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   activeFilterOption: {
-    backgroundColor: '#3A8349',
+    backgroundColor: COLORS.tabBar.active,
   },
   filterText: {
     fontSize: 14,
@@ -293,7 +291,7 @@ const styles = StyleSheet.create({
   },
   plantList: {
     paddingHorizontal: 20,
-    paddingBottom: 100, // Extra space for the FAB
+    paddingBottom: 100,
   },
   plantCard: {
     borderRadius: 16,
@@ -309,6 +307,13 @@ const styles = StyleSheet.create({
   plantImage: {
     width: '100%',
     height: 120,
+    resizeMode: 'cover',
+  },
+  plantImagePlaceholder: {
+    width: '100%',
+    height: 120,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   plantCardContent: {
     padding: 12,
@@ -335,7 +340,6 @@ const styles = StyleSheet.create({
   healthText: {
     fontSize: 10,
     fontWeight: '500',
-    color: '#3A8349',
   },
   waterIndicator: {
     flexDirection: 'row',
@@ -348,21 +352,6 @@ const styles = StyleSheet.create({
   waterText: {
     fontSize: 10,
     fontWeight: '500',
-  },
-  addButton: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
   },
   emptyContainer: {
     alignItems: 'center',

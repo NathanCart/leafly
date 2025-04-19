@@ -3,16 +3,16 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
   StyleSheet,
   useColorScheme,
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Leaf, Mail, Lock } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/Button';
+import { COLORS } from '@/app/constants/colors';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -49,7 +49,7 @@ export default function LoginScreen() {
       <View style={styles.content}>
         <View style={styles.header}>
           <View style={[styles.logoContainer, { backgroundColor: isDark ? '#2A3A30' : '#E6F2E8' }]}>
-            <Leaf color="#3A8349" size={40} />
+            <Leaf color={COLORS.primary} size={40} />
           </View>
           <Text style={[styles.title, { color: isDark ? '#E0E0E0' : '#283618' }]}>
             Welcome Back
@@ -103,28 +103,28 @@ export default function LoginScreen() {
             </View>
           </View>
 
-          <TouchableOpacity
-            style={[styles.button, { opacity: loading ? 0.7 : 1 }]}
+          <Button
             onPress={handleLogin}
+            loading={loading}
             disabled={loading}
+            fullWidth
+            size="large"
           >
-            {loading ? (
-              <ActivityIndicator color="white" />
-            ) : (
-              <Text style={styles.buttonText}>Sign In</Text>
-            )}
-          </TouchableOpacity>
+            Sign In
+          </Button>
         </View>
 
         <View style={styles.footer}>
           <Text style={[styles.footerText, { color: isDark ? '#BBBBBB' : '#555555' }]}>
             Don't have an account?
           </Text>
-          <TouchableOpacity onPress={() => router.push('/register')}>
-            <Text style={[styles.footerLink, { color: '#3A8349' }]}>
-              Sign Up
-            </Text>
-          </TouchableOpacity>
+          <Button
+            variant="tertiary"
+            onPress={() => router.push('/register')}
+            size="small"
+          >
+            Sign Up
+          </Button>
         </View>
       </View>
     </KeyboardAvoidingView>
@@ -188,19 +188,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
   },
-  button: {
-    height: 50,
-    backgroundColor: '#3A8349',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  buttonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -210,9 +197,5 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 14,
-  },
-  footerLink: {
-    fontSize: 14,
-    fontWeight: '600',
   },
 });

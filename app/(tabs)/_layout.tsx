@@ -1,25 +1,20 @@
 import { Tabs } from 'expo-router';
-import { Chrome as Home, Leaf, Camera, Calendar, User } from 'lucide-react-native';
+import { LayoutGrid, LayoutGrid as LayoutGridIcon, Leaf, Leaf as LeafIcon, Plus, ClipboardList, ClipboardCheck, User, User as UserIcon } from 'lucide-react-native';
 import { useColorScheme, View, StyleSheet, Platform } from 'react-native';
-
-// Colors
-const COLORS = {
-  primary: '#3A8349',
-  background: '#E6F2E8',
-  text: '#283618',
-  tabBarInactive: '#A3B18A',
-};
+import { COLORS } from '../constants/colors';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
   
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: COLORS.primary,
-        tabBarInactiveTintColor: COLORS.tabBarInactive,
+        headerShown: false,
+        tabBarActiveTintColor: COLORS.tabBar.active,
+        tabBarInactiveTintColor: COLORS.tabBar.inactive,
         tabBarStyle: {
-          backgroundColor: colorScheme === 'dark' ? '#1A1A1A' : '#FFFFFF',
+          backgroundColor: isDark ? COLORS.tabBar.background.dark : COLORS.tabBar.background.light,
           height: Platform.OS === 'ios' ? 88 : 68,
           paddingBottom: Platform.OS === 'ios' ? 30 : 12,
           paddingTop: 12,
@@ -30,23 +25,21 @@ export default function TabLayout() {
           shadowOpacity: 0.1,
           shadowRadius: 4,
         },
-        headerStyle: {
-          backgroundColor: colorScheme === 'dark' ? '#1A1A1A' : '#FFFFFF',
-        },
-        headerTintColor: COLORS.primary,
       }}>
       <Tabs.Screen
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color, size }) => <Home color={color} size={size} />,
+          tabBarIcon: ({ color, focused }) => 
+            focused ? <LayoutGridIcon fill={color} color={color} size={24} /> : <LayoutGrid color={color} size={24} />,
         }}
       />
       <Tabs.Screen
         name="collection"
         options={{
           title: 'My Plants',
-          tabBarIcon: ({ color, size }) => <Leaf color={color} size={size} />,
+          tabBarIcon: ({ color, focused }) => 
+            focused ? <LeafIcon fill={color} color={color} size={24} /> : <Leaf color={color} size={24} />,
         }}
       />
       <Tabs.Screen
@@ -54,27 +47,29 @@ export default function TabLayout() {
         options={{
           title: '',
           tabBarIcon: ({ color }) => (
-            <View style={[
-              styles.cameraButton,
-              { backgroundColor: COLORS.primary }
-            ]}>
-              <Camera color="white" size={28} />
+            <View style={styles.plusButtonContainer}>
+              <View style={[styles.plusButton, { backgroundColor: COLORS.button.primary }]}>
+                <Plus color="white" size={32} />
+              </View>
             </View>
           ),
+          tabBarStyle: { display: 'none' }, // Hide tab bar on identify screen
         }}
       />
       <Tabs.Screen
         name="care"
         options={{
           title: 'Care',
-          tabBarIcon: ({ color, size }) => <Calendar color={color} size={size} />,
+          tabBarIcon: ({ color, focused }) => 
+            focused ? <ClipboardCheck fill={color} color={color} size={24} /> : <ClipboardList color={color} size={24} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color, size }) => <User color={color} size={size} />,
+          tabBarIcon: ({ color, focused }) => 
+            focused ? <UserIcon fill={color} color={color} size={24} /> : <User color={color} size={24} />,
         }}
       />
     </Tabs>
@@ -82,14 +77,20 @@ export default function TabLayout() {
 }
 
 const styles = StyleSheet.create({
-  cameraButton: {
+  plusButtonContainer: {
+    position: 'absolute',
+    top: -20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 70,
+    height: 70,
+  },
+  plusButton: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: -28,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,

@@ -8,14 +8,49 @@ interface PlantIdentificationResult {
   name: string;
   scientificName: string;
   confidence: number;
-  labels: Array<{ name: string; confidence: number }>;
   description: string;
   imageUri: string;
+  capturedImageUri?: string;
+  similarImages: string[];
+  family: string;
+  commonNames: string[];
+  location: 'Indoor' | 'Outdoor';
+  careInstructions?: {
+    light?: string;
+    water?: string;
+    soil?: string;
+    temperature?: string;
+    humidity?: string;
+  };
 }
+
+// Common indoor plant families
+const INDOOR_PLANT_FAMILIES = [
+  'araceae',        // Philodendrons, Pothos, Peace Lilies
+  'marantaceae',    // Prayer Plants
+  'asparagaceae',   // Snake Plants
+  'arecaceae',      // Indoor Palms
+  'moraceae',       // Ficus
+  'polypodiaceae',  // Ferns
+  'orchidaceae',    // Orchids
+  'begoniaceae',    // Begonias
+  'gesneriaceae',   // African Violets
+  'acanthaceae',    // Persian Shield
+];
+
+// Light requirement keywords that suggest indoor plants
+const INDOOR_LIGHT_KEYWORDS = [
+  'low light',
+  'shade',
+  'indirect light',
+  'filtered light',
+  'partial shade',
+];
 
 export function usePlantIdentification() {
   const [identifying, setIdentifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [results, setResults] = useState<PlantIdentificationResult[]>([]);
   const { addPlant } = usePlants();
   const { session } = useAuth();
   const { isOnline } = useOfflineSync();
@@ -26,171 +61,126 @@ export function usePlantIdentification() {
     }
   };
 
-  const resizeImage = async (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
+  const determineLocation = (
+    family: string,
+    description: string,
+    commonNames: string[],
+    lightRequirements?: string
+  ): 'Indoor' | 'Outdoor' => {
+    // Check if plant family is commonly grown indoors
+    const familyLower = family.toLowerCase();
+    if (INDOOR_PLANT_FAMILIES.some(f => familyLower.includes(f))) {
+      return 'Indoor';
+    }
 
-        if (width > 1024) {
-          height = Math.floor(height * (1024 / width));
-          width = 1024;
-        }
+    // Check description, common names, and light requirements for indoor indicators
+    const fullText = `${description} ${commonNames.join(' ')} ${lightRequirements || ''}`.toLowerCase();
+    
+    if (INDOOR_LIGHT_KEYWORDS.some(keyword => fullText.includes(keyword))) {
+      return 'Indoor';
+    }
 
-        canvas.width = width;
-        canvas.height = height;
+    // Check for specific indoor plant indicators in common names
+    const isCommonIndoorPlant = commonNames.some(name => 
+      name.toLowerCase().includes('houseplant') ||
+      name.toLowerCase().includes('indoor') ||
+      name.toLowerCase().includes('house plant')
+    );
 
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          reject(new Error('Failed to get canvas context'));
-          return;
-        }
+    if (isCommonIndoorPlant) {
+      return 'Indoor';
+    }
 
-        ctx.drawImage(img, 0, 0, width, height);
-        canvas.toBlob((blob) => {
-          if (blob) {
-            resolve(URL.createObjectURL(blob));
-          } else {
-            reject(new Error('Failed to create blob from canvas'));
-          }
-        }, 'image/jpeg', 0.8);
-      };
-
-      img.onerror = () => reject(new Error('Failed to load image'));
-      img.src = URL.createObjectURL(file);
-    });
+    // Default to outdoor if no indoor indicators are found
+    return 'Outdoor';
   };
 
-  const identifyPlant = async (imageUri: string): Promise<PlantIdentificationResult> => {
+  const identifyPlant = async (imageUri: string): Promise<PlantIdentificationResult[]> => {
     try {
       setIdentifying(true);
       setError(null);
       checkConnectivity();
 
-      const apiKey = process.env.EXPO_PUBLIC_GOOGLE_CLOUD_API_KEY;
-      if (!apiKey) {
-        throw new Error('Google Cloud API key is not configured');
-      }
-
-      let processedImageUri = imageUri;
-
-      if (Platform.OS === 'web') {
-        const response = await fetch(imageUri);
-        const blob = await response.blob();
-        const file = new File([blob], 'plant.jpg', { type: 'image/jpeg' });
-        processedImageUri = await resizeImage(file);
-      }
-
-      const response = await fetch(processedImageUri);
+      // Convert image to base64
+      const response = await fetch(imageUri);
       const blob = await response.blob();
-      const base64 = await new Promise<string>((resolve) => {
+      const base64Image = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
+        reader.onloadend = () => {
+          const base64 = reader.result as string;
+          resolve(base64.split(',')[1]);
+        };
+        reader.onerror = reject;
         reader.readAsDataURL(blob);
       });
 
-      const base64Data = base64.split(',')[1];
-
-      const visionResponse = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`, {
+      // Call Plant.id API
+      const identificationResult = await fetch('https://api.plant.id/v2/identify', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Api-Key': process.env.EXPO_PUBLIC_PLANT_ID_KEY!
         },
         body: JSON.stringify({
-          requests: [{
-            image: { content: base64Data },
-            features: [
-              { type: 'LABEL_DETECTION', maxResults: 15 },
-              { type: 'OBJECT_LOCALIZATION', maxResults: 5 },
-              { type: 'WEB_DETECTION', maxResults: 10 }
-            ]
-          }]
+          images: [base64Image],
+          modifiers: ["similar_images"],
+          plant_details: ["common_names", "url", "wiki_description", "taxonomy", "synonyms"],
+          plant_language: "en",
+          no_redirect: true
         })
       });
 
-      if (!visionResponse.ok) {
-        const errorData = await visionResponse.json();
-        console.error('Vision API Error:', errorData);
-        throw new Error(`Failed to analyze image: ${errorData?.error?.message || 'Unknown error'}`);
+      if (!identificationResult.ok) {
+        throw new Error('Failed to identify plant from image');
       }
 
-      const visionData = await visionResponse.json();
-      const labels = visionData.responses[0]?.labelAnnotations || [];
-      const webEntities = visionData.responses[0]?.webDetection?.webEntities || [];
-      const bestGuessLabel = visionData.responses[0]?.webDetection?.bestGuessLabels?.[0]?.label || '';
+      const data = await identificationResult.json();
 
-      const plantLabels = labels.filter(label => {
-        const desc = label.description.toLowerCase();
-        return (
-          desc.includes('plant') || desc.includes('flower') || desc.includes('tree') ||
-          desc.includes('succulent') || desc.includes('herb') || desc.includes('fern') ||
-          desc.includes('palm') || desc.includes('orchid') || desc.includes('cactus')
-        ) && !desc.includes('pot') && !desc.includes('vase');
-      });
-
-      const plantEntities = webEntities.filter(entity => {
-        const desc = entity.description?.toLowerCase() || '';
-        return (
-          desc.includes('plant') || desc.includes('flower') || desc.includes('tree') ||
-          desc.includes('succulent') || desc.includes('herb') || desc.includes('fern') ||
-          desc.includes('palm') || desc.includes('orchid') || desc.includes('cactus')
-        ) && !desc.includes('pot') && !desc.includes('vase');
-      });
-
-      if (plantLabels.length === 0 && plantEntities.length === 0 && !bestGuessLabel) {
-        throw new Error('No specific plant type detected in image');
+      if (!data.suggestions?.length) {
+        throw new Error('No plant matches found');
       }
 
-      const allDetections = [
-        ...plantLabels.map(l => ({ name: l.description, confidence: l.score })),
-        ...plantEntities.map(e => ({ name: e.description, confidence: e.score }))
-      ].sort((a, b) => b.confidence - a.confidence);
+      const plantResults = data.suggestions
+        .slice(0, 5)
+        .map(suggestion => {
+          const plantDetails = suggestion.plant_details;
+          const location = determineLocation(
+            plantDetails?.taxonomy?.family || '',
+            plantDetails?.wiki_description?.value || '',
+            plantDetails?.common_names || [],
+            suggestion.plant_details?.care_instructions?.light
+          );
+          
+          return {
+            name: suggestion.plant_name,
+            scientificName: plantDetails?.scientific_name || suggestion.plant_name,
+            confidence: suggestion.probability,
+            description: plantDetails?.wiki_description?.value || 'No description available',
+            imageUri: suggestion.similar_images?.[0]?.url || imageUri,
+            capturedImageUri: imageUri,
+            similarImages: (suggestion.similar_images || [])
+              .map(img => img.url)
+              .filter(url => 
+                url && 
+                url.startsWith('https://') && 
+                !url.includes('invalid') && 
+                !url.includes('placeholder')
+              ),
+            family: plantDetails?.taxonomy?.family || 'Unknown family',
+            commonNames: plantDetails?.common_names || [suggestion.plant_name],
+            location,
+            careInstructions: {
+              light: location === 'Indoor' ? 'Moderate to bright indirect light' : 'Full to partial sun',
+              water: 'Water when top inch of soil is dry',
+              soil: 'Well-draining potting mix',
+              temperature: location === 'Indoor' ? '65-80°F (18-27°C)' : '60-85°F (15-29°C)',
+              humidity: location === 'Indoor' ? 'Moderate to high' : 'Varies by climate'
+            }
+          };
+        });
 
-      const bestMatch = allDetections[0] || { name: bestGuessLabel, confidence: 0.6 };
-
-      let scientificName = '';
-      const scientificEntity = plantEntities.find(e => /\((.*?)\)/.test(e.description));
-      if (scientificEntity) {
-        scientificName = scientificEntity.description;
-      } else {
-        const wikiEntity = webEntities.find(e =>
-          e.description && e.entityId?.includes('/m/') && e.score > 0.6
-        );
-        if (wikiEntity) {
-          scientificName = wikiEntity.description;
-        } else {
-          scientificName = bestGuessLabel || bestMatch.name;
-        }
-      }
-
-      const relatedLabels = labels
-        .filter(label =>
-          label.description.toLowerCase() !== bestMatch.name.toLowerCase() &&
-          (label.description.toLowerCase().includes('leaf') ||
-            label.description.toLowerCase().includes('flower') ||
-            label.description.toLowerCase().includes('color'))
-        )
-        .slice(0, 3)
-        .map(label => ({
-          name: label.description,
-          confidence: label.score
-        }));
-
-      const description = `This looks like a ${bestMatch.name.toLowerCase()}${
-        scientificName && scientificName !== bestMatch.name ? `, also known as ${scientificName}` : ''
-      }. I'm ${Math.round(bestMatch.confidence * 100)}% confident about this. ` +
-        `The plant also shows features like ${relatedLabels.map(l => l.name.toLowerCase()).join(', ')}.`;
-
-      return {
-        name: bestMatch.name,
-        scientificName,
-        confidence: bestMatch.confidence,
-        labels: relatedLabels,
-        description,
-        imageUri: processedImageUri
-      };
+      setResults(plantResults);
+      return plantResults;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to identify plant';
       setError(errorMessage);
@@ -206,10 +196,16 @@ export function usePlantIdentification() {
         throw new Error('Invalid plant identification result');
       }
 
+      const imageToUse = identificationResult.capturedImageUri;
+      if (!imageToUse) {
+        throw new Error('No captured image available');
+      }
+
       const newPlant = await addPlant({
         name: identificationResult.scientificName || identificationResult.name,
         nickname: identificationResult.name,
-        image_url: identificationResult.imageUri,
+        image_url: imageToUse,
+        location: identificationResult.location,
         health_status: 'Healthy',
         notes: identificationResult.description,
         is_favorite: false
@@ -225,6 +221,7 @@ export function usePlantIdentification() {
   return {
     identifying,
     error,
+    results,
     identifyPlant,
     saveIdentifiedPlant
   };
