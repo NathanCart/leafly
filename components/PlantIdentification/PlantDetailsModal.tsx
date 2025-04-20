@@ -86,7 +86,7 @@ function ExpandableCard({ title, content, icon, isDark }: ExpandableCardProps) {
 				>
 					{content}
 				</Text>
-				{content.length > 120 && (
+				{content?.length > 120 && (
 					<TouchableOpacity style={styles.expandButton} onPress={toggleExpand}>
 						<Text style={[styles.expandButtonText, { color: COLORS.primary }]}>
 							{isExpanded ? 'Show Less' : 'Read More'}
@@ -316,25 +316,36 @@ export function PlantDetailsModal({ visible, onClose, plant, onConfirm, isDark }
 							</Text>
 
 							<View style={styles.careInstructions}>
-								<ExpandableCard
-									title="Water"
-									content={`${plant.details?.best_watering}`}
-									icon={<Droplet color="#33A1FF" size={24} />}
-									isDark={isDark}
-								/>
-								<ExpandableCard
-									title="Light"
-									content={plant?.details?.best_light_condition}
-									icon={<Sun color="#FFC43D" size={24} />}
-									isDark={isDark}
-								/>
+								{!!plant.details?.best_watering && (
+									<ExpandableCard
+										title="Water"
+										content={`${
+											plant.details?.best_watering || 'No watering info'
+										}`}
+										icon={<Droplet color="#33A1FF" size={24} />}
+										isDark={isDark}
+									/>
+								)}
 
-								<ExpandableCard
-									title="Soil"
-									content={plant?.details?.best_soil_type}
-									icon={<Leaf color="#4CAF50" size={24} />}
-									isDark={isDark}
-								/>
+								{!!plant?.details?.best_light_condition && (
+									<ExpandableCard
+										title="Light"
+										content={
+											plant?.details?.best_light_condition ?? 'No light info'
+										}
+										icon={<Sun color="#FFC43D" size={24} />}
+										isDark={isDark}
+									/>
+								)}
+
+								{!!plant?.details?.best_soil_type && (
+									<ExpandableCard
+										title="Soil"
+										content={plant?.details?.best_soil_type ?? 'No soil info'}
+										icon={<Leaf color="#4CAF50" size={24} />}
+										isDark={isDark}
+									/>
+								)}
 							</View>
 						</View>
 

@@ -18,9 +18,9 @@ import { Camera as CameraIcon, X } from 'lucide-react-native';
 import { CameraViewComponent } from '@/components/PlantIdentification/CameraView';
 import { ResultsView } from '@/components/PlantIdentification/ResultsView';
 import { PlantDetailsModal } from '@/components/PlantIdentification/PlantDetailsModal';
-import { AddPlantModal } from '@/components/PlantIdentification/AddPlantModal';
 import { usePlants } from '@/hooks/usePlants';
 import { PlantIdClassificationResponse } from '@/types/plants';
+import { AddPlantModal } from '@/components/PlantIdentification/AddPlantModal';
 
 export default function IdentifyScreen() {
 	const [permission, requestPermission] = useCameraPermissions();

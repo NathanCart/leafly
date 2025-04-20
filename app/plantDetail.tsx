@@ -55,7 +55,7 @@ const ExpandableCard = ({ title, content, icon }: ExpandableCardProps) => {
 		setExpanded(!expanded);
 	};
 	const rotate = anim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '180deg'] });
-	const needsToggle = content.length > 120;
+	const needsToggle = content?.length > 120;
 	const displayed = needsToggle && !expanded ? `${content.slice(0, 120)}…` : content;
 	return (
 		<View style={styles.cardOuter}>
@@ -268,7 +268,7 @@ export default function PlantDetail() {
 						/>
 						<ExpandableCard
 							title="Soil"
-							content={plant.raw?.details?.best_soil_type}
+							content={plant.raw?.details?.best_soil_type || 'No soil info'}
 							icon={<Leaf size={24} color="#4CAF50" />}
 						/>
 					</Section>
