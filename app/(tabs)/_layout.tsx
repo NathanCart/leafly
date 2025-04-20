@@ -1,4 +1,8 @@
+// TabLayout.tsx
+
+import React, { useRef, useEffect } from 'react';
 import { Tabs } from 'expo-router';
+import type { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs';
 import {
 	LayoutGrid,
 	LayoutGrid as LayoutGridIcon,
@@ -10,12 +14,60 @@ import {
 	User,
 	User as UserIcon,
 } from 'lucide-react-native';
-import { useColorScheme, View, StyleSheet, Platform } from 'react-native';
+import {
+	useColorScheme,
+	View,
+	StyleSheet,
+	Platform,
+	Animated,
+	TouchableOpacity,
+} from 'react-native';
 import { COLORS } from '../constants/colors';
 
+function CustomTabBarButton(props: BottomTabBarButtonProps) {
+	const { children, onPress, accessibilityState, style, ...rest } = props;
+	const scale = useRef(new Animated.Value(1)).current;
+
+	const bounce = () => {
+		scale.setValue(1);
+		Animated.sequence([
+			Animated.spring(scale, {
+				toValue: 1.15,
+				friction: 3,
+				useNativeDriver: true,
+			}),
+			Animated.spring(scale, {
+				toValue: 1,
+				friction: 3,
+				useNativeDriver: true,
+			}),
+		]).start();
+	};
+
+	// always bounce on tap
+	const handlePress = () => {
+		bounce();
+		onPress?.();
+	};
+
+	// *Optional*: also bounce when the tab becomes focused by swiping or programmatically
+	useEffect(() => {
+		if (accessibilityState?.selected) {
+			bounce();
+		}
+	}, [accessibilityState?.selected]);
+
+	return (
+		<TouchableOpacity {...rest} onPress={handlePress} style={style} activeOpacity={1}>
+			<Animated.View style={{ transform: [{ scale }], alignItems: 'center' }}>
+				{children}
+			</Animated.View>
+		</TouchableOpacity>
+	);
+}
+
 export default function TabLayout() {
-	const colorScheme = useColorScheme();
-	const isDark = colorScheme === 'dark';
+	const isDark = useColorScheme() === 'dark';
 
 	return (
 		<Tabs
@@ -49,8 +101,10 @@ export default function TabLayout() {
 						) : (
 							<LayoutGrid color={color} size={24} />
 						),
+					tabBarButton: (props) => <CustomTabBarButton {...props} />,
 				}}
 			/>
+
 			<Tabs.Screen
 				name="collection"
 				options={{
@@ -61,13 +115,15 @@ export default function TabLayout() {
 						) : (
 							<Leaf color={color} size={24} />
 						),
+					tabBarButton: (props) => <CustomTabBarButton {...props} />,
 				}}
 			/>
+
 			<Tabs.Screen
 				name="identify"
 				options={{
 					title: '',
-					tabBarIcon: ({ color }) => (
+					tabBarIcon: () => (
 						<View style={styles.plusButtonContainer}>
 							<View
 								style={[
@@ -79,9 +135,11 @@ export default function TabLayout() {
 							</View>
 						</View>
 					),
-					tabBarStyle: { display: 'none' }, // Hide tab bar on identify screen
+					// keep the “plus” screen’s own behavior
+					tabBarStyle: { display: 'none' },
 				}}
 			/>
+
 			<Tabs.Screen
 				name="care"
 				options={{
@@ -92,8 +150,10 @@ export default function TabLayout() {
 						) : (
 							<ClipboardList color={color} size={24} />
 						),
+					tabBarButton: (props) => <CustomTabBarButton {...props} />,
 				}}
 			/>
+
 			<Tabs.Screen
 				name="profile"
 				options={{
@@ -104,6 +164,7 @@ export default function TabLayout() {
 						) : (
 							<User color={color} size={24} />
 						),
+					tabBarButton: (props) => <CustomTabBarButton {...props} />,
 				}}
 			/>
 		</Tabs>

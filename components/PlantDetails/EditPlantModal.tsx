@@ -93,6 +93,7 @@ export function EditPlantModal({ visible, onClose, onSave, plant, isDark }: Edit
 		const name = uniqueNamesGenerator({
 			dictionaries: [adjectives, colors, animals],
 			length: 2,
+			separator: ' ',
 			style: 'capital',
 		});
 		setNickname(name);
