@@ -18,7 +18,7 @@ import { COLORS } from '@/app/constants/colors';
 import { uniqueNamesGenerator, adjectives, colors, animals } from 'unique-names-generator';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
-import { SuccessAnimation } from './SuccessAnimation';
+import { SuccessAnimation } from '../PlantIdentification/SuccessAnimation';
 
 interface EditPlantModalProps {
 	visible: boolean;
@@ -40,12 +40,14 @@ interface EditPlantModalProps {
 export function EditPlantModal({ visible, onClose, onSave, plant, isDark }: EditPlantModalProps) {
 	if (!plant) return null;
 
+	// Local state
 	const [nickname, setNickname] = useState(plant.nickname || '');
 	const [location, setLocation] = useState<'Indoor' | 'Outdoor'>(plant.location || 'Indoor');
 	const [customImage, setCustomImage] = useState<string | null>(null);
 	const [hasError, setHasError] = useState(false);
 	const [showSuccess, setShowSuccess] = useState(false);
 
+	// Animations
 	const spinValue = useRef(new Animated.Value(0)).current;
 	const inputScale = useRef(new Animated.Value(1)).current;
 	const shakeAnim = useRef(new Animated.Value(0)).current;
@@ -57,6 +59,7 @@ export function EditPlantModal({ visible, onClose, onSave, plant, isDark }: Edit
 			setLocation(plant.location || 'Indoor');
 			setCustomImage(null);
 			setHasError(false);
+			setShowSuccess(false);
 		}
 	}, [visible, plant]);
 
@@ -145,7 +148,9 @@ export function EditPlantModal({ visible, onClose, onSave, plant, isDark }: Edit
 	return (
 		<Modal visible={visible} animationType="slide" transparent={false} onRequestClose={onClose}>
 			<View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#FFFFFF' }]}>
-				{showSuccess && <SuccessAnimation onAnimationComplete={finish} />}
+				{showSuccess && (
+					<SuccessAnimation onAnimationComplete={finish} title="Plant Edited!" />
+				)}
 
 				<TouchableOpacity
 					style={[styles.closeBtn, { top: Platform.OS === 'ios' ? 50 : 20 }]}

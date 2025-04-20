@@ -152,7 +152,7 @@ export function PlantDetailsModal({ visible, onClose, plant, onConfirm, isDark }
 	if (!plant) return null;
 
 	const description = plant.details?.description?.value;
-	const shouldTruncate = description.length > 100;
+	const shouldTruncate = description?.length > 100;
 	const truncatedText =
 		shouldTruncate && !isDescriptionExpanded
 			? description.substring(0, 100) + '...'
