@@ -1,34 +1,36 @@
+// screens/IdentifyScreen.tsx
+
 import React, { useState, useRef } from 'react';
 import {
 	View,
 	Text,
 	StyleSheet,
+	TouchableOpacity,
 	Platform,
+	Image,
 	useColorScheme,
 	Animated,
-	Image,
-	TouchableOpacity,
 } from 'react-native';
+import { X, Camera as CameraIcon } from 'lucide-react-native';
 import { router } from 'expo-router';
-import { useCameraPermissions } from 'expo-camera';
-import { usePlantIdentification } from '@/hooks/usePlantIdentification';
 import * as ImagePicker from 'expo-image-picker';
 import { Button } from '@/components/Button';
-import { Camera as CameraIcon, X } from 'lucide-react-native';
 import { CameraViewComponent } from '@/components/PlantIdentification/CameraView';
 import { ResultsView } from '@/components/PlantIdentification/ResultsView';
 import { PlantDetailsModal } from '@/components/PlantIdentification/PlantDetailsModal';
+import { AddPlantModal } from '@/components/PlantIdentification/AddPlantModal';
+import { useCameraPermissions } from 'expo-camera';
+import { usePlantIdentification } from '@/hooks/usePlantIdentification';
 import { usePlants } from '@/hooks/usePlants';
 import { PlantIdClassificationResponse } from '@/types/plants';
-import { AddPlantModal } from '@/components/PlantIdentification/AddPlantModal';
 
 export default function IdentifyScreen() {
 	const [permission, requestPermission] = useCameraPermissions();
 	const [capturedImage, setCapturedImage] = useState<string | null>(null);
 	const [showResults, setShowResults] = useState(false);
-	const [selectedPlant, setSelectedPlant] = useState<PlantIdClassificationResponse[0] | null>(
-		null
-	);
+	const [selectedPlant, setSelectedPlant] = useState<
+		(PlantIdClassificationResponse[0] & { capturedImageUri?: string }) | null
+	>(null);
 	const [showPlantDetails, setShowPlantDetails] = useState(false);
 	const [showAddPlantModal, setShowAddPlantModal] = useState(false);
 	const colorScheme = useColorScheme();
@@ -36,33 +38,26 @@ export default function IdentifyScreen() {
 	const scrollY = useRef(new Animated.Value(0)).current;
 
 	const { identifying, error, results, identifyPlant } = usePlantIdentification();
-
 	const { addPlant } = usePlants();
 
 	const pickImage = async () => {
 		try {
-			const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-			if (!permissionResult.granted) {
-				console.error('Permission to access media library was denied');
+			const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+			if (!perm.granted) {
+				console.error('Gallery permission denied');
 				return;
 			}
-
 			const result = await ImagePicker.launchImageLibraryAsync({
 				mediaTypes: ImagePicker.MediaTypeOptions.images,
 				allowsEditing: true,
 				aspect: [4, 3],
 				quality: 1,
 			});
-
-			console.log('Image picker result:', result);
-
-			if (!result.canceled && result.assets && result.assets[0]) {
-				console.log('Selected image URI:', result.assets[0].uri);
+			if (!result.canceled && result.assets[0].uri) {
 				setCapturedImage(result.assets[0].uri);
 			}
-		} catch (error) {
-			console.error('Error picking image:', error);
+		} catch (err) {
+			console.error('Error picking image:', err);
 		}
 	};
 
@@ -75,14 +70,9 @@ export default function IdentifyScreen() {
 	};
 
 	const handlePlantSelect = (
-		plant: PlantIdClassificationResponse & {
-			capturedImageUri?: string;
-		}
+		plant: PlantIdClassificationResponse[0] & { capturedImageUri?: string }
 	) => {
-		setSelectedPlant({
-			...plant,
-			capturedImageUri: capturedImage,
-		});
+		setSelectedPlant({ ...plant, capturedImageUri: capturedImage! });
 		setShowPlantDetails(true);
 	};
 
@@ -91,33 +81,27 @@ export default function IdentifyScreen() {
 		setShowAddPlantModal(true);
 	};
 
+	// Only addPlant here—navigation happens AFTER the SuccessAnimation in AddPlantModal
 	const confirmPlantSelection = async (nickname: string) => {
 		if (!selectedPlant) return;
-
 		try {
 			await addPlant({
 				nickname: nickname || selectedPlant.name,
 				...selectedPlant,
 			});
-
-			resetIdentification();
-			router.push('/(tabs)/collection');
-		} catch (error) {
-			console.error('Error saving plant:', error);
+			// do NOT navigate here
+		} catch (err) {
+			console.error('Error saving plant:', err);
 		}
 	};
 
 	const startIdentification = async () => {
 		if (!capturedImage) return;
 		try {
-			const identifiedResults = await identifyPlant(capturedImage);
-			const resultsWithCapturedImage = identifiedResults.map((result) => ({
-				...result,
-				capturedImageUri: capturedImage,
-			}));
+			await identifyPlant(capturedImage);
 			setShowResults(true);
-		} catch (error) {
-			console.error('Identification error:', error);
+		} catch (err) {
+			console.error('Identification error:', err);
 		}
 	};
 
@@ -125,6 +109,7 @@ export default function IdentifyScreen() {
 		router.back();
 	};
 
+	// 1) Permission loading
 	if (!permission) {
 		return (
 			<View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#F5F5F5' }]}>
@@ -172,6 +157,7 @@ export default function IdentifyScreen() {
 		);
 	}
 
+	// 2) Permission denied
 	if (!permission.granted) {
 		return (
 			<View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#F5F5F5' }]}>
@@ -219,6 +205,7 @@ export default function IdentifyScreen() {
 		);
 	}
 
+	// 3) Results screen
 	if (showResults) {
 		return (
 			<View style={styles.container}>
@@ -232,14 +219,16 @@ export default function IdentifyScreen() {
 				<PlantDetailsModal
 					visible={showPlantDetails}
 					onClose={() => setShowPlantDetails(false)}
-					plant={selectedPlant}
+					plant={selectedPlant!}
 					onConfirm={handleAddToCollection}
 					isDark={isDark}
 				/>
 				{selectedPlant && (
 					<AddPlantModal
 						visible={showAddPlantModal}
-						onClose={() => setShowAddPlantModal(false)}
+						onClose={() => {
+							setShowAddPlantModal(false);
+						}}
 						plant={selectedPlant}
 						onConfirm={confirmPlantSelection}
 						isDark={isDark}
@@ -249,6 +238,7 @@ export default function IdentifyScreen() {
 		);
 	}
 
+	// 4) Preview captured image
 	if (capturedImage) {
 		return (
 			<View style={styles.container}>
@@ -263,7 +253,7 @@ export default function IdentifyScreen() {
 							onPress={resetIdentification}
 							style={styles.previewButton}
 						>
-							<X color="white" />
+							<X color="white" size={24} />
 						</TouchableOpacity>
 						<Button
 							onPress={startIdentification}
@@ -278,6 +268,7 @@ export default function IdentifyScreen() {
 		);
 	}
 
+	// 5) Default: camera view
 	return (
 		<View style={styles.container}>
 			<TouchableOpacity style={styles.closeButton} onPress={handleClose}>
@@ -299,7 +290,7 @@ const styles = StyleSheet.create({
 		width: 40,
 		height: 40,
 		borderRadius: 20,
-		backgroundColor: 'rgba(0, 0, 0, 0.3)',
+		backgroundColor: 'rgba(0,0,0,0.3)',
 		justifyContent: 'center',
 		alignItems: 'center',
 		zIndex: 10,

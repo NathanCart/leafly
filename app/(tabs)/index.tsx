@@ -407,7 +407,7 @@ export default function HomeScreen() {
 						{ transform: [{ translateY: scrollY.value }] },
 					]}
 				>
-					{/* Quick Actions */}
+					{/* Quick Actions
 					<View style={styles.quickActions}>
 						{[
 							{
@@ -483,7 +483,7 @@ export default function HomeScreen() {
 								</Text>
 							</TouchableOpacity>
 						))}
-					</View>
+					</View> */}
 
 					{/* Today's Care */}
 					{upcomingCare.length > 0 && (

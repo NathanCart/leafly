@@ -8,11 +8,11 @@ import {
 	TextInput,
 	TouchableOpacity,
 	Platform,
-	useColorScheme,
 	Animated,
 	Easing,
+	ActivityIndicator,
 } from 'react-native';
-import { X, Leaf, Dice6, Library, Image as ImageIcon, MapPin } from 'lucide-react-native';
+import { X, Leaf, Dice6, Image as ImageIcon } from 'lucide-react-native';
 import { Button } from '@/components/Button';
 import { COLORS } from '@/app/constants/colors';
 import { uniqueNamesGenerator, adjectives, colors, animals } from 'unique-names-generator';
@@ -20,12 +20,13 @@ import { SuccessAnimation } from './SuccessAnimation';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import { PlantIdSuggestionRaw } from '@/types/plants';
+import { router } from 'expo-router';
 
 interface Props {
 	visible: boolean;
 	onClose: () => void;
 	plant: PlantIdSuggestionRaw;
-	onConfirm: (nickname: string, imageUri?: string) => void;
+	onConfirm: (nickname: string, imageUri?: string) => Promise<void>;
 	isDark: boolean;
 }
 
@@ -33,14 +34,15 @@ export function AddPlantModal({ visible, onClose, plant, onConfirm, isDark }: Pr
 	const [nickname, setNickname] = useState('');
 	const [hasError, setHasError] = useState(false);
 	const [showSuccess, setShowSuccess] = useState(false);
+	const [isLoading, setIsLoading] = useState(false);
 	const [customImage, setCustomImage] = useState<string | null>(null);
+
 	const spinValue = useRef(new Animated.Value(0)).current;
 	const inputScaleValue = useRef(new Animated.Value(1)).current;
 	const shakeAnimation = useRef(new Animated.Value(0)).current;
 	const isSpinning = useRef(false);
 	const hapticInterval = useRef<NodeJS.Timeout | null>(null);
 
-	// Use the captured image by default, fall back to the identified image
 	const currentImage = customImage || plant.capturedImageUri;
 
 	const pickImage = async () => {
@@ -51,37 +53,28 @@ export function AddPlantModal({ visible, onClose, plant, onConfirm, isDark }: Pr
 				aspect: [1, 1],
 				quality: 1,
 			});
-
 			if (!result.canceled && result.assets[0].uri) {
 				setCustomImage(result.assets[0].uri);
 				if (Platform.OS !== 'web') {
 					Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 				}
 			}
-		} catch (error) {
-			console.error('Error picking image:', error);
+		} catch (err) {
+			console.error('Error picking image:', err);
 		}
 	};
 
 	const triggerHaptics = () => {
 		if (Platform.OS === 'web') return;
-
 		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-		if (hapticInterval.current) {
-			clearInterval(hapticInterval.current);
-		}
-
+		if (hapticInterval.current) clearInterval(hapticInterval.current);
 		hapticInterval.current = setInterval(() => {
 			if (isSpinning.current) {
 				Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 			}
 		}, 100);
-
 		setTimeout(() => {
-			if (hapticInterval.current) {
-				clearInterval(hapticInterval.current);
-			}
+			if (hapticInterval.current) clearInterval(hapticInterval.current);
 			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 		}, 800);
 	};
@@ -89,7 +82,6 @@ export function AddPlantModal({ visible, onClose, plant, onConfirm, isDark }: Pr
 	const generateRandomNickname = () => {
 		isSpinning.current = true;
 		triggerHaptics();
-
 		Animated.timing(spinValue, {
 			toValue: 4,
 			duration: 800,
@@ -99,7 +91,6 @@ export function AddPlantModal({ visible, onClose, plant, onConfirm, isDark }: Pr
 			spinValue.setValue(0);
 			isSpinning.current = false;
 		});
-
 		Animated.sequence([
 			Animated.timing(inputScaleValue, {
 				toValue: 1.05,
@@ -114,42 +105,23 @@ export function AddPlantModal({ visible, onClose, plant, onConfirm, isDark }: Pr
 				useNativeDriver: true,
 			}),
 		]).start();
-
 		const randomName = uniqueNamesGenerator({
 			dictionaries: [adjectives, colors, animals],
 			length: 2,
 			separator: ' ',
 			style: 'capital',
 		});
-
 		setNickname(randomName);
 		setHasError(false);
 	};
 
 	const shake = () => {
 		Animated.sequence([
-			Animated.timing(shakeAnimation, {
-				toValue: 10,
-				duration: 100,
-				useNativeDriver: true,
-			}),
-			Animated.timing(shakeAnimation, {
-				toValue: -10,
-				duration: 100,
-				useNativeDriver: true,
-			}),
-			Animated.timing(shakeAnimation, {
-				toValue: 10,
-				duration: 100,
-				useNativeDriver: true,
-			}),
-			Animated.timing(shakeAnimation, {
-				toValue: 0,
-				duration: 100,
-				useNativeDriver: true,
-			}),
+			Animated.timing(shakeAnimation, { toValue: 10, duration: 100, useNativeDriver: true }),
+			Animated.timing(shakeAnimation, { toValue: -10, duration: 100, useNativeDriver: true }),
+			Animated.timing(shakeAnimation, { toValue: 10, duration: 100, useNativeDriver: true }),
+			Animated.timing(shakeAnimation, { toValue: 0, duration: 100, useNativeDriver: true }),
 		]).start();
-
 		if (Platform.OS !== 'web') {
 			Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
 		}
@@ -160,19 +132,31 @@ export function AddPlantModal({ visible, onClose, plant, onConfirm, isDark }: Pr
 		outputRange: ['0deg', '1440deg'],
 	});
 
-	const handleConfirm = () => {
+	const handleConfirm = async () => {
 		if (!nickname.trim()) {
 			setHasError(true);
 			shake();
 			return;
 		}
 		setHasError(false);
-		setShowSuccess(true);
+		setIsLoading(true);
+
+		try {
+			await onConfirm(nickname, currentImage);
+			setShowSuccess(true);
+		} catch (err) {
+			console.error('Failed to add plant:', err);
+			// Optionally handle error UI here
+		} finally {
+			setIsLoading(false);
+		}
 	};
 
 	const handleAnimationComplete = () => {
 		setShowSuccess(false);
-		onConfirm(nickname, currentImage);
+		onClose();
+
+		router.push('/(tabs)/collection');
 	};
 
 	const handleChangeText = (text: string) => {
@@ -186,6 +170,12 @@ export function AddPlantModal({ visible, onClose, plant, onConfirm, isDark }: Pr
 		<Modal visible={visible} animationType="fade" transparent={false} onRequestClose={onClose}>
 			<View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#FFFFFF' }]}>
 				{showSuccess && <SuccessAnimation onAnimationComplete={handleAnimationComplete} />}
+
+				{isLoading && !showSuccess && (
+					<View style={styles.loaderOverlay}>
+						<ActivityIndicator size="large" color={COLORS.primary} />
+					</View>
+				)}
 
 				<TouchableOpacity
 					style={[styles.closeButton, { top: Platform.OS === 'ios' ? 50 : 20 }]}
@@ -241,56 +231,46 @@ export function AddPlantModal({ visible, onClose, plant, onConfirm, isDark }: Pr
 
 						<View style={styles.inputContainer}>
 							<View style={styles.nicknameInputContainer}>
-								<View style={styles.inputWrapper}>
-									<Animated.View
+								<Animated.View
+									style={[
+										styles.inputWrapper,
+										{
+											transform: [
+												{ scale: inputScaleValue },
+												{ translateX: shakeAnimation },
+											],
+										},
+									]}
+								>
+									<TextInput
 										style={[
-											styles.inputWrapper,
+											styles.input,
 											{
-												transform: [
-													{ scale: inputScaleValue },
-													{ translateX: shakeAnimation },
-												],
+												backgroundColor: hasError
+													? isDark
+														? '#3A2A2A'
+														: '#FFE8E0'
+													: isDark
+													? '#2A2A2A'
+													: '#F5F5F5',
+												color: isDark ? '#E0E0E0' : '#283618',
+												borderColor: hasError ? '#D27D4C' : 'transparent',
+												borderWidth: hasError ? 1 : 0,
 											},
 										]}
-									>
-										<TextInput
-											style={[
-												styles.input,
-												{
-													backgroundColor: hasError
-														? isDark
-															? '#3A2A2A'
-															: '#FFE8E0'
-														: isDark
-														? '#2A2A2A'
-														: '#F5F5F5',
-													color: isDark ? '#E0E0E0' : '#283618',
-													borderColor: hasError
-														? '#D27D4C'
-														: 'transparent',
-													borderWidth: hasError ? 1 : 0,
-												},
-											]}
-											placeholder="Give me a name"
-											placeholderTextColor={
-												hasError
-													? isDark
-														? '#D27D4C'
-														: '#D27D4C'
-													: isDark
-													? '#888'
-													: '#999'
-											}
-											value={nickname}
-											onChangeText={handleChangeText}
-										/>
-										{hasError && (
-											<Text style={[styles.errorText, { color: '#D27D4C' }]}>
-												Please give your plant a name
-											</Text>
-										)}
-									</Animated.View>
-								</View>
+										placeholder="Give me a name"
+										placeholderTextColor={
+											hasError ? '#D27D4C' : isDark ? '#888' : '#999'
+										}
+										value={nickname}
+										onChangeText={handleChangeText}
+									/>
+									{hasError && (
+										<Text style={[styles.errorText, { color: '#D27D4C' }]}>
+											Please give your plant a name
+										</Text>
+									)}
+								</Animated.View>
 								<TouchableOpacity
 									style={[
 										styles.diceButton,
@@ -335,14 +315,14 @@ export function AddPlantModal({ visible, onClose, plant, onConfirm, isDark }: Pr
 										{ color: isDark ? '#BBBBBB' : '#555555' },
 									]}
 								>
-									Let's find the watering rhythm
+									Let&apos;s find the watering rhythm
 								</Text>
 							</View>
 						</View>
 					</View>
 
 					<View style={styles.buttonContainer}>
-						<Button onPress={handleConfirm} fullWidth size="large">
+						<Button onPress={handleConfirm} fullWidth size="large" disabled={isLoading}>
 							Add Plant
 						</Button>
 					</View>
@@ -355,6 +335,13 @@ export function AddPlantModal({ visible, onClose, plant, onConfirm, isDark }: Pr
 const styles = StyleSheet.create({
 	container: {
 		flex: 1,
+	},
+	loaderOverlay: {
+		...StyleSheet.absoluteFillObject,
+		backgroundColor: 'rgba(0,0,0,0.4)',
+		justifyContent: 'center',
+		alignItems: 'center',
+		zIndex: 20,
 	},
 	closeButton: {
 		position: 'absolute',
@@ -393,6 +380,12 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		opacity: 0,
 	},
+	changePhotoText: {
+		color: 'white',
+		fontSize: 14,
+		fontWeight: '600',
+		marginTop: 8,
+	},
 	editIndicator: {
 		position: 'absolute',
 		top: 10,
@@ -407,12 +400,6 @@ const styles = StyleSheet.create({
 		shadowOpacity: 0.1,
 		shadowRadius: 4,
 		elevation: 2,
-	},
-	changePhotoText: {
-		color: 'white',
-		fontSize: 14,
-		fontWeight: '600',
-		marginTop: 8,
 	},
 	plantBadge: {
 		position: 'absolute',
@@ -473,17 +460,6 @@ const styles = StyleSheet.create({
 		borderRadius: 16,
 		justifyContent: 'center',
 		alignItems: 'center',
-	},
-	locationBadge: {
-		paddingHorizontal: 16,
-		paddingVertical: 8,
-		borderRadius: 20,
-		marginBottom: 16,
-	},
-	locationText: {
-		fontSize: 14,
-		fontWeight: '600',
-		textAlign: 'center',
 	},
 	reminderCard: {
 		width: '100%',
