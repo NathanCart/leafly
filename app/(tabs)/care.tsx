@@ -1,523 +1,247 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  useColorScheme,
-  Platform,
-  ActivityIndicator,
+	View,
+	Text,
+	TouchableOpacity,
+	StyleSheet,
+	Platform,
+	StatusBar,
+	Modal,
+	Animated,
 } from 'react-native';
-import { router } from 'expo-router';
-import { Calendar, Droplet, Sun, Wind, CircleArrowRight as ArrowRightCircle, Clipboard, Check } from 'lucide-react-native';
-import { useCareSchedules } from '@/data/careSchedule';
+import { HelpCircle, Leaf, X } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
+import { Button } from '@/components/Button';
+import { COLORS } from '../constants/colors';
 
-export default function CareScreen() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [activeTab, setActiveTab] = useState('today');
-  const [completedTasks, setCompletedTasks] = useState([]);
-  const { careSchedule, loading, error } = useCareSchedules();
+const CareSchedule = () => {
+	const insets = useSafeAreaInsets();
+	const [activeTab, setActiveTab] = useState<'today' | 'upcoming'>('today');
+	const [showInfo, setShowInfo] = useState(false);
 
-  const today = new Date();
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  
-  // Get day names for the next 7 days
-  const weekDays = Array.from({ length: 7 }, (_, i) => {
-    const date = new Date(today);
-    date.setDate(date.getDate() + i);
-    return {
-      day: date.toLocaleDateString('en-US', { weekday: 'short' }),
-      date: date.getDate(),
-      full: date,
-    };
-  });
+	// Example schedule items - in real use, pull from props or context
+	const scheduleItems = []; // if non-empty, promo won't show
 
-  // Filter tasks based on the selected date
-  const getTasksForDate = (date) => {
-    if (!careSchedule) return [];
-    
-    const dateStr = date.toISOString().split('T')[0];
-    return careSchedule.filter(task => {
-      const taskDate = new Date(task.scheduled_date).toISOString().split('T')[0];
-      return taskDate === dateStr;
-    });
-  };
+	const scaleAnim = useRef(new Animated.Value(0)).current;
+	useFocusEffect(
+		useCallback(() => {
+			scaleAnim.setValue(0);
+			Animated.spring(scaleAnim, {
+				toValue: 1,
+				friction: 5,
+				useNativeDriver: true,
+			}).start();
+		}, [scaleAnim])
+	);
 
-  const tasksForSelectedDate = getTasksForDate(selectedDate);
-  
-  // Filter tasks for Today, Upcoming, and All
-  const todayTasks = getTasksForDate(today);
-  const upcomingTasks = careSchedule?.filter(task => {
-    const taskDate = new Date(task.scheduled_date);
-    const todayDate = new Date(today);
-    todayDate.setHours(0, 0, 0, 0);
-    taskDate.setHours(0, 0, 0, 0);
-    return taskDate > todayDate;
-  }) || [];
-  
-  const displayTasks = 
-    activeTab === 'today' ? todayTasks :
-    activeTab === 'upcoming' ? upcomingTasks :
-    careSchedule || [];
-  
-  const toggleTaskComplete = (taskId) => {
-    setCompletedTasks(prev => {
-      if (prev.includes(taskId)) {
-        return prev.filter(id => id !== taskId);
-      } else {
-        return [...prev, taskId];
-      }
-    });
-  };
-  
-  // Get icon for task type
-  const getTaskIcon = (type) => {
-    switch (type.toLowerCase()) {
-      case 'water':
-        return <Droplet size={20} color="#3A8349" />;
-      case 'light':
-        return <Sun size={20} color="#FFAD33" />;
-      case 'mist':
-        return <Wind size={20} color="#33A1FF" />;
-      default:
-        return <Clipboard size={20} color="#3A8349" />;
-    }
-  };
+	return (
+		<View style={[styles.container, { paddingTop: insets.top + 8 }]}>
+			<StatusBar barStyle="dark-content" />
 
-  if (loading) {
-    return (
-      <View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#F5F5F5' }]}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#3A8349" />
-          <Text style={[styles.loadingText, { color: isDark ? '#E0E0E0' : '#283618' }]}>
-            Loading care schedule...
-          </Text>
-        </View>
-      </View>
-    );
-  }
+			{/* Info Modal */}
+			<Modal
+				visible={showInfo}
+				transparent
+				animationType="fade"
+				onRequestClose={() => setShowInfo(false)}
+			>
+				<View style={styles.modalOverlay}>
+					<View style={styles.modalContent}>
+						<TouchableOpacity
+							style={styles.modalCloseButton}
+							onPress={() => setShowInfo(false)}
+							hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+						>
+							<X size={20} color="#000" />
+						</TouchableOpacity>
+						<Text style={styles.modalTitle}>About Care Schedule</Text>
+						<Text style={styles.modalText}>
+							This page helps you stay on top of your plant care tasks. The “Today”
+							tab shows what needs doing right now, while “Upcoming” lists tasks
+							planned for future dates.
+						</Text>
+						<Button onPress={() => setShowInfo(false)} style={{ marginTop: 16 }}>
+							Got it
+						</Button>
+					</View>
+				</View>
+			</Modal>
 
-  if (error) {
-    return (
-      <View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#F5F5F5' }]}>
-        <View style={styles.errorContainer}>
-          <Text style={[styles.errorText, { color: isDark ? '#FFB4A1' : '#D27D4C' }]}>
-            {error.message}
-          </Text>
-          <TouchableOpacity
-            style={[styles.retryButton, { backgroundColor: '#3A8349' }]}
-            onPress={() => router.replace('/(tabs)/care')}
-          >
-            <Text style={styles.retryButtonText}>Retry</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
+			{/* Header */}
+			<View style={styles.header}>
+				<View style={styles.headerLeft}>
+					<Leaf color={COLORS.tabBar.active} size={24} />
+					<Text style={styles.headerTitle}>Care Schedule</Text>
+				</View>
+				<TouchableOpacity
+					style={styles.headerButton}
+					onPress={() => setShowInfo(true)}
+					hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+				>
+					<HelpCircle color="#000" size={24} />
+				</TouchableOpacity>
+			</View>
 
-  return (
-    <View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#F5F5F5' }]}>
-      <View style={styles.header}>
-        <View style={styles.titleContainer}>
-          <Calendar color={isDark ? '#8EB69B' : '#3A8349'} size={24} />
-          <Text style={[styles.title, { color: isDark ? '#E0E0E0' : '#283618' }]}>
-            Plant Care
-          </Text>
-        </View>
-      </View>
-      
-      {/* Date selector */}
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false}
-        style={styles.dateSelector}
-        contentContainerStyle={styles.dateSelectorContent}
-      >
-        {weekDays.map((item, index) => {
-          const isSelected = 
-            selectedDate.getDate() === item.full.getDate() && 
-            selectedDate.getMonth() === item.full.getMonth();
-          
-          const isToday = index === 0;
-          
-          return (
-            <TouchableOpacity
-              key={index}
-              style={[
-                styles.dateItem,
-                isSelected && styles.selectedDateItem,
-                isSelected && { backgroundColor: '#3A8349' }
-              ]}
-              onPress={() => {
-                setSelectedDate(item.full);
-                setActiveTab('custom');
-              }}
-            >
-              <Text style={[
-                styles.dateDayText,
-                { color: isSelected ? 'white' : isDark ? '#BBBBBB' : '#555555' }
-              ]}>
-                {isToday ? 'Today' : item.day}
-              </Text>
-              <Text style={[
-                styles.dateNumberText,
-                { color: isSelected ? 'white' : isDark ? '#E0E0E0' : '#283618' }
-              ]}>
-                {item.date}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-      
-      {/* Tab selector */}
-      <View style={styles.tabSelector}>
-        <TouchableOpacity
-          style={[
-            styles.tabItem,
-            activeTab === 'today' && styles.activeTabItem,
-            activeTab === 'today' && { borderBottomColor: '#3A8349' }
-          ]}
-          onPress={() => {
-            setActiveTab('today');
-            setSelectedDate(today);
-          }}
-        >
-          <Text style={[
-            styles.tabText,
-            activeTab === 'today' && styles.activeTabText,
-            { color: activeTab === 'today' ? '#3A8349' : isDark ? '#BBBBBB' : '#555555' }
-          ]}>
-            Today
-          </Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={[
-            styles.tabItem,
-            activeTab === 'upcoming' && styles.activeTabItem,
-            activeTab === 'upcoming' && { borderBottomColor: '#3A8349' }
-          ]}
-          onPress={() => {
-            setActiveTab('upcoming');
-          }}
-        >
-          <Text style={[
-            styles.tabText,
-            activeTab === 'upcoming' && styles.activeTabText,
-            { color: activeTab === 'upcoming' ? '#3A8349' : isDark ? '#BBBBBB' : '#555555' }
-          ]}>
-            Upcoming
-          </Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={[
-            styles.tabItem,
-            activeTab === 'all' && styles.activeTabItem,
-            activeTab === 'all' && { borderBottomColor: '#3A8349' }
-          ]}
-          onPress={() => {
-            setActiveTab('all');
-          }}
-        >
-          <Text style={[
-            styles.tabText,
-            activeTab === 'all' && styles.activeTabText,
-            { color: activeTab === 'all' ? '#3A8349' : isDark ? '#BBBBBB' : '#555555' }
-          ]}>
-            All Tasks
-          </Text>
-        </TouchableOpacity>
-      </View>
-      
-      {/* Task list */}
-      {displayTasks.length > 0 ? (
-        <ScrollView
-          style={styles.taskListContainer}
-          contentContainerStyle={styles.taskList}
-          showsVerticalScrollIndicator={false}
-        >
-          {displayTasks.map((task, index) => {
-            const isCompleted = completedTasks.includes(task.id);
-            const taskDate = new Date(task.scheduled_date);
-            const isToday = 
-              taskDate.getDate() === today.getDate() && 
-              taskDate.getMonth() === today.getMonth();
-              
-            return (
-              <View key={task.id}>
-                {!isToday && activeTab !== 'today' && (
-                  <Text style={[styles.dateHeader, { color: isDark ? '#BBBBBB' : '#555555' }]}>
-                    {taskDate.toLocaleDateString('en-US', { 
-                      weekday: 'long', 
-                      month: 'long', 
-                      day: 'numeric' 
-                    })}
-                  </Text>
-                )}
-                
-                <TouchableOpacity
-                  style={[
-                    styles.taskCard,
-                    { backgroundColor: isDark ? '#2A3A30' : '#FFFFFF' },
-                    isCompleted && { opacity: 0.7 }
-                  ]}
-                  onPress={() => router.push({
-                    pathname: '/taskDetail',
-                    params: { 
-                      id: task.id, 
-                      plantName: task.plantName,
-                      action: task.action
-                    }
-                  })}
-                >
-                  <TouchableOpacity
-                    style={[
-                      styles.checkboxContainer,
-                      isCompleted && { backgroundColor: '#3A8349', borderColor: '#3A8349' }
-                    ]}
-                    onPress={() => toggleTaskComplete(task.id)}
-                  >
-                    {isCompleted && <Check size={16} color="white" />}
-                  </TouchableOpacity>
-                  
-                  <View style={styles.taskIconContainer}>
-                    {getTaskIcon(task.action)}
-                  </View>
-                  
-                  <View style={styles.taskContent}>
-                    <Text style={[
-                      styles.taskTitle,
-                      { color: isDark ? '#E0E0E0' : '#283618' },
-                      isCompleted && styles.completedTaskText
-                    ]}>
-                      {task.action} {task.plantName}
-                    </Text>
-                    
-                    <Text style={[
-                      styles.taskTime,
-                      { color: isDark ? '#BBBBBB' : '#555555' }
-                    ]}>
-                      {task.scheduled_time || 'Anytime today'}
-                    </Text>
-                  </View>
-                  
-                  <ArrowRightCircle 
-                    size={22} 
-                    color={isDark ? '#8EB69B' : '#3A8349'} 
-                    style={styles.taskArrow} 
-                  />
-                </TouchableOpacity>
-              </View>
-            );
-          })}
-        </ScrollView>
-      ) : (
-        <View style={styles.emptyContainer}>
-          <View style={[
-            styles.emptyIconContainer,
-            { backgroundColor: isDark ? '#2A3A30' : '#E6F2E8' }
-          ]}>
-            <Calendar size={40} color="#3A8349" />
-          </View>
-          <Text style={[styles.emptyTitle, { color: isDark ? '#E0E0E0' : '#283618' }]}>
-            All Caught Up!
-          </Text>
-          <Text style={[styles.emptyText, { color: isDark ? '#BBBBBB' : '#555555' }]}>
-            You have no plant care tasks for {
-              activeTab === 'today' ? 'today' : 
-              activeTab === 'upcoming' ? 'the upcoming days' : 
-              'this period'
-            }
-          </Text>
-        </View>
-      )}
-    </View>
-  );
-}
+			{/* Tabs */}
+			<View style={styles.tabContainer}>
+				<View style={styles.tabsWrapper}>
+					{['today', 'upcoming'].map((tabKey) => (
+						<TouchableOpacity
+							key={tabKey}
+							onPress={() => setActiveTab(tabKey as any)}
+							style={styles.tab}
+							hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+						>
+							<Text
+								style={[
+									styles.tabText,
+									activeTab === tabKey && styles.activeTabText,
+								]}
+							>
+								{tabKey === 'today' ? 'Today' : 'Upcoming'}
+							</Text>
+							{activeTab === tabKey && <View style={styles.activeTabIndicator} />}
+						</TouchableOpacity>
+					))}
+				</View>
+			</View>
+
+			<View style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+				{/* Empty State with animation */}
+				<View style={styles.emptyState}>
+					<Animated.View
+						style={[styles.plantIllustration, { transform: [{ scale: scaleAnim }] }]}
+					>
+						<View style={styles.plantPot} />
+						<View style={styles.plantLeaves}>
+							<View style={[styles.leaf, styles.leafLeft]} />
+							<View style={[styles.leaf, styles.leafMiddle]} />
+							<View style={[styles.leaf, styles.leafRight]} />
+						</View>
+						<Text style={[styles.sparkle, styles.sparkleTopLeft]}>★</Text>
+						<Text style={[styles.sparkle, styles.sparkleTopRight]}>★</Text>
+						<Text style={[styles.sparkle, styles.sparkleBottom]}>★</Text>
+					</Animated.View>
+				</View>
+
+				{/* Inline Promo Card, shown only if no schedule items */}
+				{scheduleItems.length === 0 && (
+					<View style={styles.inlinePromoCard}>
+						<Text style={styles.promoTitle}>Smart Reminders</Text>
+						<Text style={styles.promoDescription}>
+							Get notified when your plants are ready for a nutrient boost!
+						</Text>
+						<Button variant="secondary" onPress={() => {}}>
+							Set up
+						</Button>
+					</View>
+				)}
+			</View>
+		</View>
+	);
+};
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingTop: 60,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  errorText: {
-    fontSize: 16,
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  retryButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    marginLeft: 8,
-  },
-  dateSelector: {
-    maxHeight: 80,
-  },
-  dateSelectorContent: {
-    paddingHorizontal: 20,
-  },
-  dateItem: {
-    width: 70,
-    height: 70,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 8,
-  },
-  selectedDateItem: {
-    backgroundColor: '#3A8349',
-  },
-  dateDayText: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  dateNumberText: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginTop: 4,
-  },
-  tabSelector: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  tabItem: {
-    paddingBottom: 8,
-    marginRight: 24,
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-  },
-  activeTabItem: {
-    borderBottomWidth: 2,
-    borderBottomColor: '#3A8349',
-  },
-  tabText: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  activeTabText: {
-    fontWeight: '600',
-  },
-  taskListContainer: {
-    flex: 1,
-  },
-  taskList: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-  },
-  dateHeader: {
-    fontSize: 14,
-    fontWeight: '500',
-    marginTop: 20,
-    marginBottom: 8,
-  },
-  taskCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 10,
-  },
-  checkboxContainer: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#3A8349',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  taskIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(58, 131, 73, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  taskContent: {
-    flex: 1,
-  },
-  taskTitle: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  completedTaskText: {
-    textDecorationLine: 'line-through',
-  },
-  taskTime: {
-    fontSize: 14,
-    marginTop: 2,
-  },
-  taskArrow: {
-    marginLeft: 10,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  emptyIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  emptyText: {
-    fontSize: 16,
-    textAlign: 'center',
-  },
+	container: { flex: 1, backgroundColor: '#FFF' },
+
+	header: {
+		flexDirection: 'row',
+		justifyContent: 'space-between',
+		alignItems: 'center',
+		paddingHorizontal: 16,
+	},
+	headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+	headerTitle: { fontSize: 24, fontWeight: 'bold' },
+	headerButton: { padding: 4 },
+
+	tabContainer: {
+		paddingTop: 16,
+		borderBottomWidth: 1,
+		borderBottomColor: '#E5E7EB',
+	},
+	tabsWrapper: { flexDirection: 'row' },
+	tab: { flex: 1, alignItems: 'center', paddingBottom: 16 },
+	tabText: { color: '#9CA3AF', fontSize: 16 },
+	activeTabText: { color: COLORS.primary, fontWeight: '500' },
+	activeTabIndicator: {
+		position: 'absolute',
+		bottom: 0,
+		left: 16,
+		right: 16,
+		height: 4,
+		backgroundColor: COLORS.primary,
+		borderTopLeftRadius: 4,
+		borderTopRightRadius: 4,
+	},
+
+	emptyState: {
+		alignItems: 'center',
+		justifyContent: 'center',
+		paddingHorizontal: 32,
+	},
+	plantIllustration: { width: 192, height: 192, position: 'relative' },
+	plantPot: {
+		position: 'absolute',
+		bottom: 32,
+		left: '50%',
+		marginLeft: -32,
+		width: 64,
+		height: 64,
+		backgroundColor: '#CC7154',
+		borderRadius: 8,
+	},
+	plantLeaves: {
+		position: 'absolute',
+		bottom: 96,
+		left: '50%',
+		marginLeft: -48,
+		width: 96,
+		height: 128,
+	},
+	leaf: {
+		position: 'absolute',
+		width: 32,
+		height: 48,
+		backgroundColor: '#34D399',
+		borderRadius: 24,
+	},
+	leafLeft: { bottom: 0, left: 0, transform: [{ rotate: '-15deg' }] },
+	leafMiddle: { bottom: 16, left: 16, height: 64 },
+	leafRight: { bottom: 0, right: 0, transform: [{ rotate: '15deg' }] },
+	sparkle: { position: 'absolute', fontSize: 24, color: '#FBBF24' },
+	sparkleTopLeft: { top: 0, left: 0 },
+	sparkleTopRight: { top: 32, right: 0 },
+	sparkleBottom: { bottom: 80, left: 0 },
+
+	inlinePromoCard: {
+		padding: 16,
+		margin: 16,
+		borderRadius: 12,
+		backgroundColor: '#F9FAFB',
+		...Platform.select({
+			ios: {
+				shadowColor: '#000',
+				shadowOffset: { width: 0, height: 2 },
+				shadowOpacity: 0.1,
+				shadowRadius: 4,
+			},
+			android: { elevation: 4 },
+		}),
+	},
+	promoTitle: { fontSize: 18, fontWeight: '600', marginBottom: 4 },
+	promoDescription: { fontSize: 14, color: '#4B5563', marginBottom: 16 },
+
+	modalOverlay: {
+		...StyleSheet.absoluteFillObject,
+		backgroundColor: 'rgba(0,0,0,0.5)',
+		justifyContent: 'center',
+		alignItems: 'center',
+	},
+	modalContent: { width: '80%', backgroundColor: '#FFF', borderRadius: 12, padding: 16 },
+	modalCloseButton: { position: 'absolute', top: 8, right: 8 },
+	modalTitle: { fontSize: 20, fontWeight: '600', marginBottom: 8 },
+	modalText: { fontSize: 16, color: '#4B5563', lineHeight: 22 },
 });
+
+export default CareSchedule;
