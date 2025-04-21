@@ -181,12 +181,21 @@ export function EditPlantModal({ visible, onClose, onSave, plant, isDark }: Edit
 					<View
 						style={[
 							styles.plantBadge,
-							{ backgroundColor: isDark ? '#2A3A30' : '#E6F2E8' },
+							{
+								backgroundColor: isDark ? '#2A3A30' : '#E6F2E8',
+								display: 'flex',
+							},
 						]}
 					>
 						<Leaf color={COLORS.primary} size={20} />
 						<Text
-							style={[styles.badgeText, { color: isDark ? '#E0E0E0' : '#283618' }]}
+							style={[
+								styles.badgeText,
+								{
+									color: isDark ? '#E0E0E0' : '#283618',
+									maxWidth: 110,
+								},
+							]}
 							numberOfLines={1}
 						>
 							{plant.name}

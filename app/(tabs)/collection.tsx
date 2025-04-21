@@ -206,7 +206,6 @@ export default function CollectionScreen() {
 						{ backgroundColor: isDark ? '#2A2A2A' : '#FFFFFF' },
 					]}
 				>
-					{' '}
 					<Search color={COLORS.tabBar.inactive} size={20} />
 					<TextInput
 						style={[styles.searchInput, { color: isDark ? '#E0E0E0' : '#283618' }]}
@@ -264,7 +263,6 @@ export default function CollectionScreen() {
 					<View style={styles.emptyContainer}>
 						<Leaf color={isDark ? '#555555' : '#CCCCCC'} size={40} />
 						<Text style={[styles.emptyText, { color: COLORS.tabBar.inactive }]}>
-							{' '}
 							{searchQuery
 								? 'No plants match your search'
 								: 'No plants in this category'}

@@ -31,17 +31,27 @@ import { usePlants } from '@/hooks/usePlants';
 import { Button } from '@/components/Button';
 import { EditPlantModal } from '@/components/PlantDetails/EditPlantModal';
 import { GalleryModal } from '@/components/PlantDetails/GalleryModal';
+import { ScheduleModal } from '@/components/PlantDetails/ScheduleModal';
+import { ScheduleDisplay } from '@/components/PlantDetails/ScheduleDisplay';
 import { COLORS } from './constants/colors';
 import { HeartButton } from '@/components/PlantDetails/HeartButton';
 
 const HEADER_HEIGHT = 300;
 
 // Expandable Card
-const ExpandableCard = ({ title, content, icon }) => {
+const ExpandableCard = ({
+	title,
+	content,
+	icon,
+}: {
+	title: string;
+	content: string;
+	icon?: React.ReactNode;
+}) => {
 	const [expanded, setExpanded] = useState(false);
 	const anim = useRef(new Animated.Value(0)).current;
-	const needsToggle = content?.length > 120;
-	const displayed = needsToggle && !expanded ? `${content.slice(0, 120)}…` : content;
+	const needsToggle = content?.length > 64;
+	const displayed = needsToggle && !expanded ? `${content.slice(0, 64)}…` : content;
 	const rotate = anim.interpolate({
 		inputRange: [0, 1],
 		outputRange: ['0deg', '180deg'],
@@ -92,6 +102,7 @@ export default function PlantDetail() {
 	const [loading, setLoading] = useState(true);
 	const [showEditModal, setShowEditModal] = useState(false);
 	const [showGalleryModal, setShowGalleryModal] = useState(false);
+	const [showScheduleModal, setShowScheduleModal] = useState(false);
 	const [deleting, setDeleting] = useState(false);
 	const scrollY = useRef(new Animated.Value(0)).current;
 
@@ -142,6 +153,7 @@ export default function PlantDetail() {
 			console.error(e);
 		}
 	};
+
 	const confirmDelete = () => {
 		Alert.alert('Delete Plant', 'This action cannot be undone.', [
 			{ text: 'Cancel', style: 'cancel' },
@@ -162,12 +174,25 @@ export default function PlantDetail() {
 			},
 		]);
 	};
+
 	const handleSaveUpdates = async ({ nickname, imageUri, location }: any) => {
 		const payload: any = { nickname, location };
 		if (imageUri) payload.image_url = imageUri;
 		const updated = await updatePlant(plantId!, payload);
 		setPlant(updated);
 		setIsFavorite(!!updated.is_favorite);
+	};
+
+	const handleSaveSchedule = async (scheduleSettings: any) => {
+		if (!plant) return;
+		try {
+			const updated = await updatePlant(plantId!, {
+				care_schedule: scheduleSettings,
+			});
+			setPlant(updated);
+		} catch (e) {
+			console.error(e);
+		}
 	};
 
 	if (loading) {
@@ -273,7 +298,6 @@ export default function PlantDetail() {
 								style={{
 									padding: 8,
 									backgroundColor: 'rgba(0,0,0,0.05)',
-
 									borderRadius: 20,
 								}}
 								onPress={() => setShowEditModal(true)}
@@ -288,6 +312,13 @@ export default function PlantDetail() {
 							<ExpandableCard icon={<></>} title="" content={plant.notes} />
 						</Section>
 					)}
+
+					<Section title="Schedule">
+						<ScheduleDisplay
+							scheduleSettings={plant.care_schedule}
+							onPress={() => setShowScheduleModal(true)}
+						/>
+					</Section>
 
 					<Section title="Care Instructions">
 						<ExpandableCard
@@ -332,6 +363,13 @@ export default function PlantDetail() {
 				onClose={() => setShowGalleryModal(false)}
 				mainImage={plant.image_url}
 				plantId={plantId!}
+				isDark={isDark}
+			/>
+			<ScheduleModal
+				visible={showScheduleModal}
+				onClose={() => setShowScheduleModal(false)}
+				onSave={handleSaveSchedule}
+				initialSettings={plant.care_schedule}
 				isDark={isDark}
 			/>
 		</View>
@@ -396,7 +434,7 @@ const styles = StyleSheet.create({
 		borderTopLeftRadius: 20,
 		borderTopRightRadius: 20,
 		marginTop: -40,
-		padding: 24,
+		padding: 16,
 	},
 
 	center: {

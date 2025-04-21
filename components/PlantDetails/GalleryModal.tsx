@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
 	Modal,
 	View,
@@ -13,14 +13,13 @@ import {
 	Alert,
 	Share,
 } from 'react-native';
-import { X, Plus, Share2, Camera, Trash2, ChevronLeft } from 'lucide-react-native';
+import { X, Plus, Share2, Camera, Trash2 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Button } from '@/components/Button';
 import { usePlantImages } from '@/hooks/usePlantImages';
-import { COLORS } from '@/app/constants/colors';
-import { router } from 'expo-router';
 import { usePlants } from '@/hooks/usePlants';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { COLORS } from '@/app/constants/colors';
 
 interface GalleryModalProps {
 	visible: boolean;
@@ -32,14 +31,22 @@ interface GalleryModalProps {
 
 export function GalleryModal({ visible, onClose, plantId, mainImage, isDark }: GalleryModalProps) {
 	const insets = useSafeAreaInsets();
-	const { width } = useWindowDimensions();
+	const { width, height } = useWindowDimensions();
 	const imageSize = (width - 48) / 2;
+
 	const [uploading, setUploading] = useState(false);
-	const { images, loading, addImage, deleteImage } = usePlantImages(plantId);
+	const [viewerVisible, setViewerVisible] = useState(false);
+	const [selectedIndex, setSelectedIndex] = useState(0);
+	const scrollRef = useRef<ScrollView>(null);
+
+	const { images, loading, addImage, deleteImage, refresh } = usePlantImages(plantId);
 	const { uploadImage } = usePlants();
+
+	const allImages = [{ id: 'main', image_url: mainImage }, ...(images || [])];
 
 	const handleImagePick = async () => {
 		try {
+			setUploading(true);
 			const result = await ImagePicker.launchImageLibraryAsync({
 				mediaTypes: ImagePicker.MediaTypeOptions.images,
 				allowsEditing: true,
@@ -47,39 +54,50 @@ export function GalleryModal({ visible, onClose, plantId, mainImage, isDark }: G
 				quality: 0.6,
 			});
 
-			const uploadedImage = await uploadImage(result?.assets?.[0].uri ?? '');
-
-			console.log('Uploaded image:', uploadedImage);
-
-			if (!result.canceled && result.assets[0]) {
-				await addImage(uploadedImage);
-			}
-		} catch (error) {
-			console.error('Error picking image:', error);
+			if (result.canceled || !result.assets[0]?.uri) return;
+			const uri = result.assets[0].uri;
+			const publicUrl = await uploadImage(uri);
+			await addImage(publicUrl);
+			await refresh();
+		} catch (error: any) {
+			Alert.alert('Error', error.message || 'Failed to add image');
 		} finally {
 			setUploading(false);
 		}
 	};
 
-	const handleCameraCapture = () => {
-		router.push({
-			pathname: '/identify',
-			params: { mode: 'progress', plantId },
-		});
+	const handleCameraCapture = async () => {
+		try {
+			setUploading(true);
+			const result = await ImagePicker.launchCameraAsync({
+				quality: 0.6,
+				allowsEditing: false,
+			});
+
+			if (result.canceled || !result.assets[0]?.uri) return;
+			const uri = result.assets[0].uri;
+			const publicUrl = await uploadImage(uri);
+			await addImage(publicUrl);
+			await refresh();
+		} catch (error: any) {
+			Alert.alert('Error', error.message || 'Failed to take photo');
+		} finally {
+			setUploading(false);
+		}
 	};
 
 	const handleShare = async (imageUrl: string) => {
 		try {
 			await Share.share({
 				url: imageUrl,
-				message: 'Check out my plant!',
+				message: 'Check out my plant progress!',
 			});
 		} catch (error) {
-			console.error('Error sharing image:', error);
+			console.error('Share error:', error);
 		}
 	};
 
-	const handleDelete = async (imageId: string) => {
+	const handleDelete = (imageId: string) => {
 		Alert.alert('Delete Image', 'Are you sure you want to delete this image?', [
 			{ text: 'Cancel', style: 'cancel' },
 			{
@@ -88,7 +106,8 @@ export function GalleryModal({ visible, onClose, plantId, mainImage, isDark }: G
 				onPress: async () => {
 					try {
 						await deleteImage(imageId);
-					} catch (error) {
+						await refresh();
+					} catch {
 						Alert.alert('Error', 'Failed to delete image');
 					}
 				},
@@ -96,32 +115,35 @@ export function GalleryModal({ visible, onClose, plantId, mainImage, isDark }: G
 		]);
 	};
 
-	const allImages = [{ id: 'main', image_url: mainImage }, ...(images || [])];
+	const openViewer = (index: number) => {
+		setSelectedIndex(index);
+		setViewerVisible(true);
+	};
+
+	const closeViewer = () => {
+		setViewerVisible(false);
+	};
+
+	useEffect(() => {
+		if (viewerVisible && scrollRef.current) {
+			scrollRef.current.scrollTo({ x: selectedIndex * width, animated: false });
+		}
+	}, [viewerVisible, selectedIndex, width]);
 
 	return (
-		<Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
+		<Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
 			<View
 				style={[
 					styles.container,
-
-					{
-						backgroundColor: isDark ? 'rgba(0,0,0,0.95)' : 'rgba(255,255,255,0.95)',
-					},
+					{ backgroundColor: isDark ? 'rgba(0,0,0,0.95)' : 'rgba(255,255,255,0.95)' },
 				]}
 			>
-				<View
-					style={[
-						styles.content,
-						{
-							backgroundColor: isDark ? '#121212' : '#FFFFFF',
-						},
-					]}
-				>
+				<View style={[styles.content, { backgroundColor: isDark ? '#121212' : '#FFFFFF' }]}>
 					<TouchableOpacity
 						style={[styles.backBtn, { top: insets.top + 8 }]}
-						onPress={() => onClose()}
+						onPress={onClose}
 					>
-						<X color={COLORS.background.light} size={24} />
+						<X color={isDark ? '#fff' : '#fff'} size={24} />
 					</TouchableOpacity>
 
 					{loading ? (
@@ -132,46 +154,29 @@ export function GalleryModal({ visible, onClose, plantId, mainImage, isDark }: G
 						<ScrollView style={[styles.gallery, { paddingTop: insets.top + 8 }]}>
 							<View style={styles.grid}>
 								{allImages.map((image, index) => (
-									<View
+									<TouchableOpacity
 										key={image.id}
-										style={[
-											styles.imageContainer,
-											{
-												width: imageSize,
-												height: imageSize,
-												borderColor:
-													index === 0 ? COLORS.primary : 'transparent',
-												borderWidth: index === 0 ? 2 : 0,
-												backgroundColor: isDark ? '#121212' : '#FFFFFF',
-											},
-										]}
+										onPress={() => openViewer(index)}
+										style={{
+											width: imageSize,
+											height: imageSize,
+											borderRadius: 12,
+											overflow: 'hidden',
+											marginBottom: 8,
+											backgroundColor: isDark ? '#121212' : '#FFFFFF',
+										}}
 									>
 										<Image
 											source={{ uri: image.image_url }}
 											style={styles.image}
 										/>
-										<View style={styles.imageOverlay}>
-											<TouchableOpacity
-												style={styles.shareButton}
-												onPress={() => handleShare(image.image_url)}
-											>
-												<Share2 color="white" size={20} />
-											</TouchableOpacity>
-											{image.id !== 'main' && (
-												<TouchableOpacity
-													style={[styles.deleteButton]}
-													onPress={() => handleDelete(image.id)}
-												>
-													<Trash2 color="white" size={20} />
-												</TouchableOpacity>
-											)}
-										</View>
-									</View>
+									</TouchableOpacity>
 								))}
 							</View>
 						</ScrollView>
 					)}
 				</View>
+
 				<View style={styles.buttonContainer}>
 					<Button
 						onPress={handleCameraCapture}
@@ -179,6 +184,8 @@ export function GalleryModal({ visible, onClose, plantId, mainImage, isDark }: G
 						icon={<Camera color="white" size={20} />}
 						fullWidth
 						style={{ marginBottom: 12 }}
+						loading={uploading}
+						disabled={uploading}
 					>
 						Take Progress Photo
 					</Button>
@@ -193,12 +200,78 @@ export function GalleryModal({ visible, onClose, plantId, mainImage, isDark }: G
 						Add from Gallery
 					</Button>
 				</View>
+
+				{/* Fullscreen Image Viewer */}
+				<Modal visible={viewerVisible} animationType="fade" transparent>
+					<View style={styles.viewerContainer}>
+						<TouchableOpacity
+							style={[styles.backBtn, { top: insets.top + 8, right: 16 }]}
+							onPress={closeViewer}
+						>
+							<X color="#fff" size={24} />
+						</TouchableOpacity>
+
+						<ScrollView
+							ref={scrollRef}
+							horizontal
+							pagingEnabled
+							showsHorizontalScrollIndicator={false}
+							style={{ flex: 1 }}
+						>
+							{allImages.map((image, idx) => (
+								<View
+									key={image.id}
+									style={{
+										width,
+										height,
+										justifyContent: 'center',
+										alignItems: 'center',
+									}}
+								>
+									<Image
+										source={{ uri: image.image_url }}
+										style={{
+											width,
+											height: height * 0.8,
+											resizeMode: 'contain',
+										}}
+									/>
+									<View style={styles.viewerActions}>
+										<TouchableOpacity
+											onPress={() => handleShare(image.image_url)}
+											style={styles.actionBtn}
+										>
+											<Share2 color="white" size={24} />
+										</TouchableOpacity>
+										{image.id !== 'main' && (
+											<TouchableOpacity
+												onPress={() => handleDelete(image.id)}
+												style={styles.actionBtn}
+											>
+												<Trash2 color="white" size={24} />
+											</TouchableOpacity>
+										)}
+									</View>
+								</View>
+							))}
+						</ScrollView>
+					</View>
+				</Modal>
 			</View>
 		</Modal>
 	);
 }
 
 const styles = StyleSheet.create({
+	container: { flex: 1 },
+	content: {
+		paddingHorizontal: 16,
+		flex: 1,
+		borderTopLeftRadius: 20,
+		borderTopRightRadius: 20,
+		paddingBottom: 8,
+		maxHeight: '90%',
+	},
 	backBtn: {
 		position: 'absolute',
 		left: 16,
@@ -209,29 +282,6 @@ const styles = StyleSheet.create({
 		justifyContent: 'center',
 		alignItems: 'center',
 		zIndex: 10,
-	},
-	container: {
-		flex: 1,
-	},
-	content: {
-		paddingHorizontal: 16,
-		flex: 1,
-		borderTopLeftRadius: 20,
-		borderTopRightRadius: 20,
-		paddingBottom: Platform.OS === 'ios' ? 40 : 20,
-		maxHeight: '90%',
-	},
-	closeButton: {
-		position: 'absolute',
-		top: 20,
-		right: 20,
-		zIndex: 1,
-	},
-	title: {
-		fontSize: 24,
-		fontWeight: '700',
-		marginBottom: 24,
-		marginTop: 12,
 	},
 	loadingContainer: {
 		flex: 1,
@@ -245,42 +295,32 @@ const styles = StyleSheet.create({
 		flexWrap: 'wrap',
 		gap: 8,
 	},
-	imageContainer: {
-		borderRadius: 12,
-		overflow: 'hidden',
-		position: 'relative',
-	},
 	image: {
 		width: '100%',
 		height: '100%',
 		resizeMode: 'cover',
 	},
-	imageOverlay: {
-		position: 'absolute',
-		top: 8,
-		right: 8,
-		flexDirection: 'row',
-		gap: 8,
-	},
-	shareButton: {
-		width: 36,
-		height: 36,
-		borderRadius: 18,
-		backgroundColor: 'rgba(0,0,0,0.5)',
-		justifyContent: 'center',
-		alignItems: 'center',
-	},
-	deleteButton: {
-		width: 36,
-		height: 36,
-		borderRadius: 18,
-		backgroundColor: 'rgba(255,0,0,0.5)',
-		justifyContent: 'center',
-		alignItems: 'center',
-	},
 	buttonContainer: {
 		paddingHorizontal: 16,
 		paddingBottom: 16,
 		marginTop: 'auto',
+	},
+	viewerContainer: {
+		flex: 1,
+		backgroundColor: 'rgba(0,0,0,0.9)',
+	},
+	viewerActions: {
+		position: 'absolute',
+		bottom: 32,
+		left: 0,
+		right: 0,
+		flexDirection: 'row',
+		justifyContent: 'center',
+		gap: 24,
+	},
+	actionBtn: {
+		padding: 12,
+		backgroundColor: 'rgba(0,0,0,0.5)',
+		borderRadius: 24,
 	},
 });
