@@ -10,7 +10,6 @@ import {
 	Share,
 	Alert,
 	ActivityIndicator,
-	Platform,
 	useColorScheme,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -26,6 +25,7 @@ import {
 	Sun,
 	Leaf,
 	ChevronDown,
+	Pencil,
 } from 'lucide-react-native';
 import { usePlants } from '@/hooks/usePlants';
 import { Button } from '@/components/Button';
@@ -34,17 +34,19 @@ import { GalleryModal } from '@/components/PlantDetails/GalleryModal';
 import { COLORS } from './constants/colors';
 import { HeartButton } from '@/components/PlantDetails/HeartButton';
 
-const HEADER_HEIGHT = 400;
+const HEADER_HEIGHT = 300;
 
 // Expandable Card
-interface ExpandableCardProps {
-	title: string;
-	content: string;
-	icon?: React.ReactNode;
-}
-const ExpandableCard = ({ title, content, icon }: ExpandableCardProps) => {
+const ExpandableCard = ({ title, content, icon }) => {
 	const [expanded, setExpanded] = useState(false);
 	const anim = useRef(new Animated.Value(0)).current;
+	const needsToggle = content?.length > 120;
+	const displayed = needsToggle && !expanded ? `${content.slice(0, 120)}…` : content;
+	const rotate = anim.interpolate({
+		inputRange: [0, 1],
+		outputRange: ['0deg', '180deg'],
+	});
+
 	const toggle = () => {
 		Animated.spring(anim, {
 			toValue: expanded ? 0 : 1,
@@ -54,9 +56,7 @@ const ExpandableCard = ({ title, content, icon }: ExpandableCardProps) => {
 		}).start();
 		setExpanded(!expanded);
 	};
-	const rotate = anim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '180deg'] });
-	const needsToggle = content?.length > 120;
-	const displayed = needsToggle && !expanded ? `${content.slice(0, 120)}…` : content;
+
 	return (
 		<View style={styles.cardOuter}>
 			{icon && <View style={styles.cardIcon}>{icon}</View>}
@@ -169,18 +169,15 @@ export default function PlantDetail() {
 		setPlant(updated);
 		setIsFavorite(!!updated.is_favorite);
 	};
-	const handleUploadImage = async (uri: string) => {
-		await updatePlant(plantId!, { image_url: uri });
-		setPlant(await getPlantById(plantId!));
-	};
 
-	if (loading)
+	if (loading) {
 		return (
 			<View style={styles.center}>
 				<ActivityIndicator size="large" color={COLORS.primary} />
 			</View>
 		);
-	if (!plant)
+	}
+	if (!plant) {
 		return (
 			<View style={styles.center}>
 				<Text style={{ color: COLORS.text.primary.light, marginBottom: 16 }}>
@@ -191,10 +188,13 @@ export default function PlantDetail() {
 				</Button>
 			</View>
 		);
+	}
 
 	return (
 		<View style={styles.container}>
 			<StatusBar translucent barStyle="light-content" />
+
+			{/* Parallax Header Image */}
 			<Animated.Image
 				source={{ uri: plant.image_url }}
 				style={[
@@ -202,13 +202,17 @@ export default function PlantDetail() {
 					{ width: windowWidth, transform: [{ translateY }, { scale }] },
 				]}
 			/>
+
+			{/* Back */}
 			<TouchableOpacity
-				style={[styles.backBtn, { top: insets.top + 8 }]}
+				style={[styles.iconBtn, { left: 16, top: insets.top + 8 }]}
 				onPress={() => router.back()}
 			>
-				<ChevronLeft color={COLORS.background.light} size={24} />
+				<ChevronLeft color="#fff" size={24} />
 			</TouchableOpacity>
-			<View style={[styles.favoriteBtn, { top: insets.top + 8 }]}>
+
+			{/* Favorite */}
+			<View style={[styles.iconBtn, { right: 16, top: insets.top + 8 }]}>
 				<HeartButton
 					isFavorite={isFavorite}
 					onToggle={toggleFavorite}
@@ -216,6 +220,25 @@ export default function PlantDetail() {
 					style={styles.heartBtnTouchable}
 				/>
 			</View>
+
+			{/* Share */}
+			<TouchableOpacity
+				style={[styles.iconBtn, { right: 64, top: insets.top + 8 }]}
+				onPress={handleShare}
+			>
+				<Share2 color="#fff" size={20} />
+			</TouchableOpacity>
+
+			{/* Gallery Pill (inside header) */}
+			<TouchableOpacity
+				style={[styles.galleryBtn, { right: 16, top: insets.top + 60 }]}
+				onPress={() => setShowGalleryModal(true)}
+			>
+				<ImagePlus color="#fff" size={16} />
+				<Text style={styles.galleryText}>Gallery</Text>
+			</TouchableOpacity>
+
+			{/* Main content */}
 			<Animated.ScrollView
 				style={styles.scrollView}
 				contentContainerStyle={{ paddingBottom: 80 }}
@@ -226,35 +249,46 @@ export default function PlantDetail() {
 				})}
 			>
 				<View style={{ height: HEADER_HEIGHT }} />
+
 				<View style={styles.contentCard}>
 					<View style={styles.locationBadge}>
 						<MapPin size={16} color={COLORS.primary} />
 						<Text style={styles.locationText}>{plant.location || 'Indoor'} Plant</Text>
 					</View>
-					<Text style={styles.title}>{plant.nickname || plant.name}</Text>
-					<Text style={styles.subtitle}>{plant.name}</Text>
-					<View style={styles.actionsRow}>
-						<QuickAction
-							label="Edit"
-							icon={<Pen size={20} color={COLORS.primary} />}
-							onPress={() => setShowEditModal(true)}
-						/>
-						<QuickAction
-							label="Gallery"
-							icon={<ImagePlus size={20} color={COLORS.primary} />}
-							onPress={() => setShowGalleryModal(true)}
-						/>
-						<QuickAction
-							label="Share"
-							icon={<Share2 size={20} color={COLORS.primary} />}
-							onPress={handleShare}
-						/>
+
+					<View
+						style={{
+							display: 'flex',
+							flexDirection: 'row',
+							gap: 8,
+						}}
+					>
+						<View>
+							<Text style={styles.title}>{plant.nickname || plant.name}</Text>
+							<Text style={styles.subtitle}>{plant.name}</Text>
+						</View>
+
+						<View>
+							<TouchableOpacity
+								style={{
+									padding: 8,
+									backgroundColor: 'rgba(0,0,0,0.05)',
+
+									borderRadius: 20,
+								}}
+								onPress={() => setShowEditModal(true)}
+							>
+								<Pencil size={20} color={COLORS.primary} />
+							</TouchableOpacity>
+						</View>
 					</View>
+
 					{plant.notes && (
 						<Section title="Notes">
-							<ExpandableCard title="" content={plant.notes} />
+							<ExpandableCard icon={<></>} title="" content={plant.notes} />
 						</Section>
 					)}
+
 					<Section title="Care Instructions">
 						<ExpandableCard
 							title="Watering"
@@ -272,6 +306,7 @@ export default function PlantDetail() {
 							icon={<Leaf size={24} color="#4CAF50" />}
 						/>
 					</Section>
+
 					<TouchableOpacity
 						style={styles.deleteBtn}
 						onPress={confirmDelete}
@@ -284,6 +319,7 @@ export default function PlantDetail() {
 					</TouchableOpacity>
 				</View>
 			</Animated.ScrollView>
+
 			<EditPlantModal
 				visible={showEditModal}
 				onClose={() => setShowEditModal(false)}
@@ -295,7 +331,6 @@ export default function PlantDetail() {
 				visible={showGalleryModal}
 				onClose={() => setShowGalleryModal(false)}
 				mainImage={plant.image_url}
-				images={[plant.image_url]}
 				plantId={plantId!}
 				isDark={isDark}
 			/>
@@ -303,21 +338,7 @@ export default function PlantDetail() {
 	);
 }
 
-const QuickAction = ({
-	label,
-	icon,
-	onPress,
-}: {
-	label: string;
-	icon: React.ReactNode;
-	onPress: () => void;
-}) => (
-	<TouchableOpacity style={styles.quickAction} onPress={onPress}>
-		{icon}
-		<Text style={styles.quickLabel}>{label}</Text>
-	</TouchableOpacity>
-);
-const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
+const Section = ({ title, children }: { title?: string; children: React.ReactNode }) => (
 	<View style={styles.section}>
 		{title ? <Text style={styles.sectionTitle}>{title}</Text> : null}
 		{children}
@@ -327,6 +348,7 @@ const Section = ({ title, children }: { title: string; children: React.ReactNode
 const styles = StyleSheet.create({
 	container: { flex: 1, backgroundColor: COLORS.surface.light },
 	scrollView: { flex: 1 },
+
 	headerImage: {
 		position: 'absolute',
 		top: 0,
@@ -334,20 +356,9 @@ const styles = StyleSheet.create({
 		height: HEADER_HEIGHT,
 		resizeMode: 'cover',
 	},
-	backBtn: {
+
+	iconBtn: {
 		position: 'absolute',
-		left: 16,
-		width: 40,
-		height: 40,
-		borderRadius: 20,
-		backgroundColor: 'rgba(0,0,0,0.4)',
-		justifyContent: 'center',
-		alignItems: 'center',
-		zIndex: 10,
-	},
-	favoriteBtn: {
-		position: 'absolute',
-		right: 16,
 		width: 40,
 		height: 40,
 		borderRadius: 20,
@@ -362,19 +373,39 @@ const styles = StyleSheet.create({
 		justifyContent: 'center',
 		alignItems: 'center',
 	},
+
+	galleryBtn: {
+		position: 'absolute',
+		flexDirection: 'row',
+		alignItems: 'center',
+		paddingHorizontal: 12,
+		paddingVertical: 8,
+		borderRadius: 16,
+		backgroundColor: 'rgba(0,0,0,0.4)',
+		zIndex: 10,
+	},
+	galleryText: {
+		color: '#fff',
+		fontSize: 12,
+		fontWeight: '600',
+		marginLeft: 6,
+	},
+
 	contentCard: {
 		backgroundColor: COLORS.surface.light,
 		borderTopLeftRadius: 20,
 		borderTopRightRadius: 20,
-		marginTop: -20,
+		marginTop: -40,
 		padding: 24,
 	},
+
 	center: {
 		flex: 1,
 		alignItems: 'center',
 		justifyContent: 'center',
 		backgroundColor: COLORS.surface.light,
 	},
+
 	locationBadge: {
 		flexDirection: 'row',
 		alignItems: 'center',
@@ -387,15 +418,30 @@ const styles = StyleSheet.create({
 		marginTop: -32,
 		marginBottom: 16,
 	},
-	locationText: { fontSize: 14, fontWeight: '600', color: COLORS.text.primary.light },
-	title: { fontSize: 28, fontWeight: '700', color: COLORS.text.primary.light, marginBottom: 4 },
+	locationText: {
+		fontSize: 14,
+		fontWeight: '600',
+		color: COLORS.text.primary.light,
+	},
+
+	title: {
+		fontSize: 28,
+		fontWeight: '700',
+		color: COLORS.text.primary.light,
+		marginBottom: 4,
+	},
 	subtitle: {
 		fontSize: 16,
 		fontStyle: 'italic',
 		color: COLORS.text.secondary.light,
 		marginBottom: 24,
 	},
-	actionsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 32 },
+
+	actionsRow: {
+		flexDirection: 'row',
+		justifyContent: 'space-between',
+		marginBottom: 32,
+	},
 	quickAction: {
 		alignItems: 'center',
 		width: '30%',
@@ -403,7 +449,13 @@ const styles = StyleSheet.create({
 		padding: 16,
 		borderRadius: 12,
 	},
-	quickLabel: { marginTop: 6, fontSize: 14, fontWeight: '500', color: COLORS.text.primary.light },
+	quickLabel: {
+		marginTop: 6,
+		fontSize: 14,
+		fontWeight: '500',
+		color: COLORS.text.primary.light,
+	},
+
 	section: { marginBottom: 32 },
 	sectionTitle: {
 		fontSize: 18,
@@ -411,6 +463,7 @@ const styles = StyleSheet.create({
 		color: COLORS.text.primary.light,
 		marginBottom: 12,
 	},
+
 	cardOuter: {
 		flexDirection: 'row',
 		alignItems: 'flex-start',
@@ -440,9 +493,24 @@ const styles = StyleSheet.create({
 		marginBottom: 8,
 		color: COLORS.text.primary.light,
 	},
-	cardText: { fontSize: 14, lineHeight: 20, color: COLORS.text.secondary.light },
-	expandBtn: { flexDirection: 'row', alignItems: 'center', marginTop: 8, paddingVertical: 4 },
-	expandLabel: { fontSize: 14, fontWeight: '600', marginRight: 4, color: COLORS.primary },
+	cardText: {
+		fontSize: 14,
+		lineHeight: 20,
+		color: COLORS.text.secondary.light,
+	},
+	expandBtn: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		marginTop: 8,
+		paddingVertical: 4,
+	},
+	expandLabel: {
+		fontSize: 14,
+		fontWeight: '600',
+		marginRight: 4,
+		color: COLORS.primary,
+	},
+
 	deleteBtn: {
 		flexDirection: 'row',
 		alignItems: 'center',
@@ -451,5 +519,10 @@ const styles = StyleSheet.create({
 		padding: 16,
 		borderRadius: 12,
 	},
-	deleteText: { color: COLORS.error, fontSize: 16, fontWeight: '600', marginLeft: 8 },
+	deleteText: {
+		color: COLORS.error,
+		fontSize: 16,
+		fontWeight: '600',
+		marginLeft: 8,
+	},
 });

@@ -322,7 +322,7 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		opacity: 0,
 	},
-	overlayText: { color: '#FFF', fontSize: 14, fontWeight: '600', marginTop: 8 },
+	overlayText: { color: '#FFF', fontSize: 14, fontWeight: '600', marginTop: 8, maxWidth: 20 },
 	editIndicator: {
 		position: 'absolute',
 		top: 10,

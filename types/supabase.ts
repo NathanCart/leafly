@@ -43,6 +43,10 @@ export interface Database {
 					created_at: string;
 					updated_at: string;
 					raw: PlantIdSuggestionRaw;
+					last_watered?: string | null;
+					last_fertilized?: string | null;
+					watering_interval?: string | null;
+					fertilizing_interval?: string | null;
 				};
 				Insert: {
 					id?: string;
@@ -58,6 +62,10 @@ export interface Database {
 					created_at?: string;
 					updated_at?: string;
 					raw: PlantIdSuggestionRaw;
+					last_watered?: string | null;
+					last_fertilized?: string | null;
+					watering_interval?: string | null;
+					fertilizing_interval?: string | null;
 				};
 				Update: {
 					id?: string;
@@ -73,6 +81,10 @@ export interface Database {
 					created_at?: string;
 					updated_at?: string;
 					raw: PlantIdSuggestionRaw;
+					last_watered?: string | null;
+					last_fertilized?: string | null;
+					watering_interval?: string | null;
+					fertilizing_interval?: string | null;
 				};
 			};
 			plant_images: {
@@ -112,6 +124,7 @@ export interface Database {
 				Insert: {
 					id?: string;
 					plant_id: string;
+
 					action: string;
 					scheduled_date: string;
 					scheduled_time?: string | null;

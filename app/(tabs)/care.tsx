@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
 	View,
 	Text,
@@ -6,12 +6,14 @@ import {
 	StyleSheet,
 	Platform,
 	StatusBar,
-	Modal,
 	Animated,
+	PermissionsAndroid,
 } from 'react-native';
 import { HelpCircle, Leaf, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
+import * as Notifications from 'expo-notifications';
+import * as Device from 'expo-device';
 import { Button } from '@/components/Button';
 import { COLORS } from '../constants/colors';
 
@@ -19,9 +21,11 @@ const CareSchedule = () => {
 	const insets = useSafeAreaInsets();
 	const [activeTab, setActiveTab] = useState<'today' | 'upcoming'>('today');
 	const [showInfo, setShowInfo] = useState(false);
+	const [permissionsGranted, setPermissionsGranted] = useState(false);
+	const [promoClosed, setPromoClosed] = useState(false);
 
-	// Example schedule items - in real use, pull from props or context
-	const scheduleItems = []; // if non-empty, promo won't show
+	// If you have schedule items, skip the promo
+	const scheduleItems: any[] = [];
 
 	const scaleAnim = useRef(new Animated.Value(0)).current;
 	useFocusEffect(
@@ -32,26 +36,45 @@ const CareSchedule = () => {
 				friction: 5,
 				useNativeDriver: true,
 			}).start();
-		}, [scaleAnim])
+		}, [])
 	);
+
+	// Check current permission status
+	useEffect(() => {
+		(async () => {
+			const { status } = await Notifications.getPermissionsAsync();
+			setPermissionsGranted(status === 'granted');
+		})();
+	}, []);
+
+	// Fire native prompt
+	const requestPermissions = async () => {
+		let granted = false;
+
+		if (Device.isDevice) {
+			const { status } = await Notifications.requestPermissionsAsync();
+			granted = status === 'granted';
+		} else if (Platform.OS === 'android') {
+			const result = await PermissionsAndroid.request(
+				PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS
+			);
+			granted = result === PermissionsAndroid.RESULTS.GRANTED;
+		}
+
+		setPermissionsGranted(granted);
+	};
 
 	return (
 		<View style={[styles.container, { paddingTop: insets.top + 8 }]}>
 			<StatusBar barStyle="dark-content" />
 
 			{/* Info Modal */}
-			<Modal
-				visible={showInfo}
-				transparent
-				animationType="fade"
-				onRequestClose={() => setShowInfo(false)}
-			>
+			{showInfo && (
 				<View style={styles.modalOverlay}>
 					<View style={styles.modalContent}>
 						<TouchableOpacity
 							style={styles.modalCloseButton}
 							onPress={() => setShowInfo(false)}
-							hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
 						>
 							<X size={20} color="#000" />
 						</TouchableOpacity>
@@ -66,7 +89,7 @@ const CareSchedule = () => {
 						</Button>
 					</View>
 				</View>
-			</Modal>
+			)}
 
 			{/* Header */}
 			<View style={styles.header}>
@@ -74,11 +97,7 @@ const CareSchedule = () => {
 					<Leaf color={COLORS.tabBar.active} size={24} />
 					<Text style={styles.headerTitle}>Care Schedule</Text>
 				</View>
-				<TouchableOpacity
-					style={styles.headerButton}
-					onPress={() => setShowInfo(true)}
-					hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-				>
+				<TouchableOpacity style={styles.headerButton} onPress={() => setShowInfo(true)}>
 					<HelpCircle color="#000" size={24} />
 				</TouchableOpacity>
 			</View>
@@ -86,12 +105,11 @@ const CareSchedule = () => {
 			{/* Tabs */}
 			<View style={styles.tabContainer}>
 				<View style={styles.tabsWrapper}>
-					{['today', 'upcoming'].map((tabKey) => (
+					{(['today', 'upcoming'] as const).map((tabKey) => (
 						<TouchableOpacity
 							key={tabKey}
-							onPress={() => setActiveTab(tabKey as any)}
+							onPress={() => setActiveTab(tabKey)}
 							style={styles.tab}
-							hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
 						>
 							<Text
 								style={[
@@ -107,37 +125,45 @@ const CareSchedule = () => {
 				</View>
 			</View>
 
-			<View style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-				{/* Empty State with animation */}
-				<View style={styles.emptyState}>
-					<Animated.View
-						style={[styles.plantIllustration, { transform: [{ scale: scaleAnim }] }]}
-					>
-						<View style={styles.plantPot} />
-						<View style={styles.plantLeaves}>
-							<View style={[styles.leaf, styles.leafLeft]} />
-							<View style={[styles.leaf, styles.leafMiddle]} />
-							<View style={[styles.leaf, styles.leafRight]} />
-						</View>
-						<Text style={[styles.sparkle, styles.sparkleTopLeft]}>★</Text>
-						<Text style={[styles.sparkle, styles.sparkleTopRight]}>★</Text>
-						<Text style={[styles.sparkle, styles.sparkleBottom]}>★</Text>
-					</Animated.View>
-				</View>
+			{/* Empty State & Plant Illustration */}
+			<View style={styles.emptyState}>
+				<Animated.View
+					style={[styles.plantIllustration, { transform: [{ scale: scaleAnim }] }]}
+				>
+					<View style={styles.plantPot} />
+					<View style={styles.plantLeaves}>
+						<View style={[styles.leaf, styles.leafLeft]} />
+						<View style={[styles.leaf, styles.leafMiddle]} />
+						<View style={[styles.leaf, styles.leafRight]} />
+					</View>
+					<Text style={[styles.sparkle, styles.sparkleTopLeft]}>★</Text>
+					<Text style={[styles.sparkle, styles.sparkleTopRight]}>★</Text>
+					<Text style={[styles.sparkle, styles.sparkleBottom]}>★</Text>
+				</Animated.View>
+			</View>
 
-				{/* Inline Promo Card, shown only if no schedule items */}
-				{scheduleItems.length === 0 && (
-					<View style={styles.inlinePromoCard}>
+			{/* Inline Promo Card with Close Button */}
+			{scheduleItems.length === 0 && !permissionsGranted && !promoClosed && (
+				<View style={styles.inlinePromoContainer}>
+					<Animated.View
+						style={[styles.inlinePromoCard, { transform: [{ scale: scaleAnim }] }]}
+					>
+						<TouchableOpacity
+							style={styles.promoCloseButton}
+							onPress={() => setPromoClosed(true)}
+						>
+							<X size={20} color="#000" />
+						</TouchableOpacity>
 						<Text style={styles.promoTitle}>Smart Reminders</Text>
 						<Text style={styles.promoDescription}>
 							Get notified when your plants are ready for a nutrient boost!
 						</Text>
-						<Button variant="secondary" onPress={() => {}}>
+						<Button variant="secondary" onPress={requestPermissions}>
 							Set up
 						</Button>
-					</View>
-				)}
-			</View>
+					</Animated.View>
+				</View>
+			)}
 		</View>
 	);
 };
@@ -176,9 +202,9 @@ const styles = StyleSheet.create({
 	},
 
 	emptyState: {
+		flex: 1,
 		alignItems: 'center',
 		justifyContent: 'center',
-		paddingHorizontal: 32,
 	},
 	plantIllustration: { width: 192, height: 192, position: 'relative' },
 	plantPot: {
@@ -214,11 +240,12 @@ const styles = StyleSheet.create({
 	sparkleTopRight: { top: 32, right: 0 },
 	sparkleBottom: { bottom: 80, left: 0 },
 
+	inlinePromoContainer: { padding: 16 },
 	inlinePromoCard: {
 		padding: 16,
-		margin: 16,
 		borderRadius: 12,
 		backgroundColor: '#F9FAFB',
+		position: 'relative',
 		...Platform.select({
 			ios: {
 				shadowColor: '#000',
@@ -229,8 +256,14 @@ const styles = StyleSheet.create({
 			android: { elevation: 4 },
 		}),
 	},
-	promoTitle: { fontSize: 18, fontWeight: '600', marginBottom: 4 },
-	promoDescription: { fontSize: 14, color: '#4B5563', marginBottom: 16 },
+	promoCloseButton: {
+		position: 'absolute',
+		top: 8,
+		right: 8,
+		padding: 4,
+	},
+	promoTitle: { fontSize: 18, fontWeight: '600', marginBottom: 4, textAlign: 'center' },
+	promoDescription: { fontSize: 14, color: '#4B5563', marginBottom: 16, textAlign: 'center' },
 
 	modalOverlay: {
 		...StyleSheet.absoluteFillObject,
@@ -238,7 +271,12 @@ const styles = StyleSheet.create({
 		justifyContent: 'center',
 		alignItems: 'center',
 	},
-	modalContent: { width: '80%', backgroundColor: '#FFF', borderRadius: 12, padding: 16 },
+	modalContent: {
+		width: '80%',
+		backgroundColor: '#FFF',
+		borderRadius: 12,
+		padding: 16,
+	},
 	modalCloseButton: { position: 'absolute', top: 8, right: 8 },
 	modalTitle: { fontSize: 20, fontWeight: '600', marginBottom: 8 },
 	modalText: { fontSize: 16, color: '#4B5563', lineHeight: 22 },
