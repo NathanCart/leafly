@@ -51,7 +51,7 @@ export default function IdentifyScreen() {
 				mediaTypes: ImagePicker.MediaTypeOptions.images,
 				allowsEditing: true,
 				aspect: [4, 3],
-				quality: 1,
+				quality: 0.6,
 			});
 			if (!result.canceled && result.assets[0].uri) {
 				setCapturedImage(result.assets[0].uri);

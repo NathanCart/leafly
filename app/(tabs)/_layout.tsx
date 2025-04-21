@@ -22,44 +22,51 @@ import {
 	Animated,
 	TouchableOpacity,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { COLORS } from '../constants/colors';
 
 function CustomTabBarButton(props: BottomTabBarButtonProps) {
 	const { children, onPress, accessibilityState, style, ...rest } = props;
 	const scale = useRef(new Animated.Value(1)).current;
 
-	const bounce = () => {
-		scale.setValue(1);
-		Animated.sequence([
-			Animated.spring(scale, {
-				toValue: 1.15,
-				friction: 3,
-				useNativeDriver: true,
-			}),
-			Animated.spring(scale, {
-				toValue: 1,
-				friction: 3,
-				useNativeDriver: true,
-			}),
-		]).start();
+	// Optional: bounce when tab is selected programmatically or by swipe
+
+	const handlePressIn = () => {
+		// animate inward
+		Animated.spring(scale, {
+			toValue: 0.85,
+			friction: 5,
+			tension: 100,
+			useNativeDriver: true,
+		}).start();
+		// heavier haptic feedback
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 	};
 
-	// always bounce on tap
+	const handlePressOut = () => {
+		// animate back out
+		Animated.spring(scale, {
+			toValue: 1,
+			friction: 5,
+			tension: 100,
+			useNativeDriver: true,
+		}).start();
+	};
+
 	const handlePress = () => {
-		bounce();
 		onPress?.();
 	};
 
-	// *Optional*: also bounce when the tab becomes focused by swiping or programmatically
-	useEffect(() => {
-		if (accessibilityState?.selected) {
-			bounce();
-		}
-	}, [accessibilityState?.selected]);
-
 	return (
-		<TouchableOpacity {...rest} onPress={handlePress} style={style} activeOpacity={1}>
-			<Animated.View style={{ transform: [{ scale }], alignItems: 'center' }}>
+		<TouchableOpacity
+			{...rest}
+			style={style}
+			activeOpacity={1}
+			onPressIn={handlePressIn}
+			onPressOut={handlePressOut}
+			onPress={handlePress}
+		>
+			<Animated.View style={[styles.tabButton, { transform: [{ scale }] }]}>
 				{children}
 			</Animated.View>
 		</TouchableOpacity>
@@ -104,7 +111,6 @@ export default function TabLayout() {
 					tabBarButton: (props) => <CustomTabBarButton {...props} />,
 				}}
 			/>
-
 			<Tabs.Screen
 				name="collection"
 				options={{
@@ -118,7 +124,6 @@ export default function TabLayout() {
 					tabBarButton: (props) => <CustomTabBarButton {...props} />,
 				}}
 			/>
-
 			<Tabs.Screen
 				name="identify"
 				options={{
@@ -135,11 +140,9 @@ export default function TabLayout() {
 							</View>
 						</View>
 					),
-					// keep the “plus” screen’s own behavior
 					tabBarStyle: { display: 'none' },
 				}}
 			/>
-
 			<Tabs.Screen
 				name="care"
 				options={{
@@ -153,7 +156,6 @@ export default function TabLayout() {
 					tabBarButton: (props) => <CustomTabBarButton {...props} />,
 				}}
 			/>
-
 			<Tabs.Screen
 				name="profile"
 				options={{
@@ -172,6 +174,10 @@ export default function TabLayout() {
 }
 
 const styles = StyleSheet.create({
+	tabButton: {
+		alignItems: 'center',
+		justifyContent: 'center',
+	},
 	plusButtonContainer: {
 		position: 'absolute',
 		top: -20,

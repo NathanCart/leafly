@@ -51,7 +51,7 @@ export function AddPlantModal({ visible, onClose, plant, onConfirm, isDark }: Pr
 				mediaTypes: ImagePicker.MediaTypeOptions.images,
 				allowsEditing: true,
 				aspect: [1, 1],
-				quality: 1,
+				quality: 0.6,
 			});
 			if (!result.canceled && result.assets[0].uri) {
 				setCustomImage(result.assets[0].uri);

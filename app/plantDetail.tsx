@@ -294,8 +294,9 @@ export default function PlantDetail() {
 			<GalleryModal
 				visible={showGalleryModal}
 				onClose={() => setShowGalleryModal(false)}
-				onUpload={handleUploadImage}
+				mainImage={plant.image_url}
 				images={[plant.image_url]}
+				plantId={plantId!}
 				isDark={isDark}
 			/>
 		</View>

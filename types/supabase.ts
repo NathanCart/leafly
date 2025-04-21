@@ -75,6 +75,29 @@ export interface Database {
 					raw: PlantIdSuggestionRaw;
 				};
 			};
+			plant_images: {
+				Row: {
+					id: string;
+					plant_id: string;
+					image_url: string;
+					notes: string | null;
+					created_at: string;
+				};
+				Insert: {
+					id?: string;
+					plant_id: string;
+					image_url: string;
+					notes?: string | null;
+					created_at?: string;
+				};
+				Update: {
+					id?: string;
+					plant_id?: string;
+					image_url?: string;
+					notes?: string | null;
+					created_at?: string;
+				};
+			};
 			care_schedule: {
 				Row: {
 					id: string;

@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
 	View,
 	Text,
 	StyleSheet,
 	FlatList,
-	TouchableOpacity,
+	Pressable,
+	Animated,
 	Image,
 	TextInput,
 	useColorScheme,
@@ -12,9 +13,45 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { Search, Plus, Leaf, Settings, Filter, Droplet } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
+import { Search, Leaf, Droplet } from 'lucide-react-native';
 import { useMyPlants } from '@/data/plants';
 import { COLORS } from '@/app/constants/colors';
+
+// Reusable component for press animations and haptic feedback
+function ScalePressable({ children, style, onPress, ...props }) {
+	const scale = useRef(new Animated.Value(1)).current;
+
+	const handlePressIn = () => {
+		Animated.spring(scale, {
+			toValue: 0.95,
+			useNativeDriver: true,
+			friction: 5,
+			tension: 100,
+		}).start();
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+	};
+
+	const handlePressOut = () => {
+		Animated.spring(scale, {
+			toValue: 1,
+			useNativeDriver: true,
+			friction: 5,
+			tension: 100,
+		}).start();
+	};
+
+	return (
+		<Pressable
+			onPress={onPress}
+			onPressIn={handlePressIn}
+			onPressOut={handlePressOut}
+			{...props}
+		>
+			<Animated.View style={[{ transform: [{ scale }] }, style]}>{children}</Animated.View>
+		</Pressable>
+	);
+}
 
 export default function CollectionScreen() {
 	const colorScheme = useColorScheme();
@@ -27,7 +64,7 @@ export default function CollectionScreen() {
 	const filterOptions = ['All', 'Indoor', 'Outdoor', 'Favorites'];
 	const screenWidth = Dimensions.get('window').width;
 
-	// Filter plants based on search query and active filter
+	// Filter logic
 	const filteredPlants = (myPlants || []).filter((plant) => {
 		const matchesSearch =
 			plant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -42,18 +79,13 @@ export default function CollectionScreen() {
 	});
 
 	const renderPlantItem = ({ item }) => (
-		<TouchableOpacity
+		<ScalePressable
 			style={[
 				styles.plantCard,
 				{ backgroundColor: isDark ? '#2A3A30' : '#FFFFFF' },
-				{ width: (screenWidth - 60) / 2 }, // Adjust for 2 columns with padding
+				{ width: (screenWidth - 60) / 2 },
 			]}
-			onPress={() =>
-				router.push({
-					pathname: '/plantDetail',
-					params: { id: item.id },
-				})
-			}
+			onPress={() => router.push({ pathname: '/plantDetail', params: { id: item.id } })}
 		>
 			{item.image_url ? (
 				<Image source={{ uri: item.image_url }} style={styles.plantImage} />
@@ -75,7 +107,6 @@ export default function CollectionScreen() {
 				>
 					{item.nickname || item.name}
 				</Text>
-
 				<Text
 					style={[styles.plantSpecies, { color: COLORS.tabBar.inactive }]}
 					numberOfLines={1}
@@ -93,10 +124,10 @@ export default function CollectionScreen() {
 						<Text
 							style={[styles.healthText, { color: isDark ? '#E0E0E0' : '#283618' }]}
 						>
+							{' '}
 							{item.health_status || 'Healthy'}
 						</Text>
 					</View>
-
 					{item.next_watering && (
 						<View
 							style={[
@@ -117,11 +148,10 @@ export default function CollectionScreen() {
 					)}
 				</View>
 			</View>
-		</TouchableOpacity>
+		</ScalePressable>
 	);
 
-	// Function to determine health indicator color
-	function getHealthColor(health: string | null, isDark: boolean) {
+	const getHealthColor = (health, isDark) => {
 		switch (health?.toLowerCase()) {
 			case 'healthy':
 				return isDark ? '#2A5A35' : '#E6F2E8';
@@ -132,7 +162,7 @@ export default function CollectionScreen() {
 			default:
 				return isDark ? '#2A5A35' : '#E6F2E8';
 		}
-	}
+	};
 
 	if (loading) {
 		return (
@@ -176,6 +206,7 @@ export default function CollectionScreen() {
 						{ backgroundColor: isDark ? '#2A2A2A' : '#FFFFFF' },
 					]}
 				>
+					{' '}
 					<Search color={COLORS.tabBar.inactive} size={20} />
 					<TextInput
 						style={[styles.searchInput, { color: isDark ? '#E0E0E0' : '#283618' }]}
@@ -194,7 +225,7 @@ export default function CollectionScreen() {
 					showsHorizontalScrollIndicator={false}
 					keyExtractor={(item) => item}
 					renderItem={({ item }) => (
-						<TouchableOpacity
+						<ScalePressable
 							style={[
 								styles.filterOption,
 								activeFilter === item && styles.activeFilterOption,
@@ -216,7 +247,7 @@ export default function CollectionScreen() {
 							>
 								{item}
 							</Text>
-						</TouchableOpacity>
+						</ScalePressable>
 					)}
 					contentContainerStyle={styles.filterList}
 				/>
@@ -233,6 +264,7 @@ export default function CollectionScreen() {
 					<View style={styles.emptyContainer}>
 						<Leaf color={isDark ? '#555555' : '#CCCCCC'} size={40} />
 						<Text style={[styles.emptyText, { color: COLORS.tabBar.inactive }]}>
+							{' '}
 							{searchQuery
 								? 'No plants match your search'
 								: 'No plants in this category'}
@@ -245,9 +277,7 @@ export default function CollectionScreen() {
 }
 
 const styles = StyleSheet.create({
-	container: {
-		flex: 1,
-	},
+	container: { flex: 1 },
 	header: {
 		flexDirection: 'row',
 		justifyContent: 'space-between',
@@ -255,20 +285,10 @@ const styles = StyleSheet.create({
 		paddingHorizontal: 16,
 		marginBottom: 20,
 	},
-	titleContainer: {
-		flexDirection: 'row',
-		alignItems: 'center',
-	},
-	title: {
-		fontSize: 24,
-		fontWeight: '700',
-		marginLeft: 8,
-	},
-	searchContainer: {
-		flexDirection: 'row',
-		paddingHorizontal: 16,
-		marginBottom: 16,
-	},
+	titleContainer: { flexDirection: 'row', alignItems: 'center' },
+	title: { fontSize: 24, fontWeight: '700', marginLeft: 8 },
+
+	searchContainer: { flexDirection: 'row', paddingHorizontal: 16, marginBottom: 16 },
 	searchInputContainer: {
 		flex: 1,
 		flexDirection: 'row',
@@ -278,45 +298,18 @@ const styles = StyleSheet.create({
 		paddingHorizontal: 16,
 		marginRight: 12,
 	},
-	searchInput: {
-		flex: 1,
-		height: '100%',
-		marginLeft: 8,
-		fontSize: 16,
-	},
-	filterButton: {
-		width: 44,
-		height: 44,
-		borderRadius: 22,
-		justifyContent: 'center',
-		alignItems: 'center',
-	},
-	filterContainer: {
-		marginBottom: 16,
-	},
-	filterList: {
-		paddingHorizontal: 16,
-	},
-	filterOption: {
-		paddingHorizontal: 16,
-		paddingVertical: 8,
-		borderRadius: 20,
-		marginRight: 8,
-	},
+	searchInput: { flex: 1, height: '100%', marginLeft: 8, fontSize: 16 },
+
+	filterContainer: { marginBottom: 16 },
+	filterList: { paddingHorizontal: 16 },
+	filterOption: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, marginRight: 8 },
 	activeFilterOption: {
-		backgroundColor: COLORS.tabBar.active,
+		/* background handled inline */
 	},
-	filterText: {
-		fontSize: 14,
-		fontWeight: '500',
-	},
-	activeFilterText: {
-		color: 'white',
-	},
-	plantList: {
-		paddingHorizontal: 16,
-		paddingBottom: 100,
-	},
+	filterText: { fontSize: 14, fontWeight: '500' },
+	activeFilterText: { color: 'white' },
+
+	plantList: { paddingHorizontal: 16, paddingBottom: 100 },
 	plantCard: {
 		borderRadius: 16,
 		overflow: 'hidden',
@@ -328,43 +321,19 @@ const styles = StyleSheet.create({
 		shadowOpacity: 0.1,
 		shadowRadius: 4,
 	},
-	plantImage: {
-		width: '100%',
-		height: 120,
-		resizeMode: 'cover',
-	},
+	plantImage: { width: '100%', height: 120, resizeMode: 'cover' },
 	plantImagePlaceholder: {
 		width: '100%',
 		height: 120,
 		justifyContent: 'center',
 		alignItems: 'center',
 	},
-	plantCardContent: {
-		padding: 12,
-	},
-	plantName: {
-		fontSize: 16,
-		fontWeight: '600',
-	},
-	plantSpecies: {
-		fontSize: 12,
-		marginTop: 2,
-	},
-	plantCardFooter: {
-		flexDirection: 'row',
-		marginTop: 8,
-		flexWrap: 'wrap',
-		gap: 6,
-	},
-	healthIndicator: {
-		paddingHorizontal: 8,
-		paddingVertical: 4,
-		borderRadius: 12,
-	},
-	healthText: {
-		fontSize: 10,
-		fontWeight: '500',
-	},
+	plantCardContent: { padding: 12 },
+	plantName: { fontSize: 16, fontWeight: '600' },
+	plantSpecies: { fontSize: 12, marginTop: 2 },
+	plantCardFooter: { flexDirection: 'row', marginTop: 8, flexWrap: 'wrap', gap: 6 },
+	healthIndicator: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
+	healthText: { fontSize: 10, fontWeight: '500' },
 	waterIndicator: {
 		flexDirection: 'row',
 		alignItems: 'center',
@@ -373,18 +342,7 @@ const styles = StyleSheet.create({
 		borderRadius: 12,
 		gap: 4,
 	},
-	waterText: {
-		fontSize: 10,
-		fontWeight: '500',
-	},
-	emptyContainer: {
-		alignItems: 'center',
-		justifyContent: 'center',
-		paddingVertical: 40,
-	},
-	emptyText: {
-		fontSize: 16,
-		marginTop: 12,
-		textAlign: 'center',
-	},
+	waterText: { fontSize: 10, fontWeight: '500' },
+	emptyContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 40 },
+	emptyText: { fontSize: 16, marginTop: 12, textAlign: 'center' },
 });

@@ -107,7 +107,7 @@ export function EditPlantModal({ visible, onClose, onSave, plant, isDark }: Edit
 				mediaTypes: ImagePicker.MediaTypeOptions.images,
 				allowsEditing: true,
 				aspect: [1, 1],
-				quality: 1,
+				quality: 0.6,
 			});
 			if (!res.canceled && res.assets[0].uri) {
 				setCustomImage(res.assets[0].uri);

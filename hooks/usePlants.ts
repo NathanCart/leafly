@@ -270,6 +270,7 @@ export function usePlants() {
 		error,
 		addPlant,
 		updatePlant,
+		uploadImage,
 		deletePlant,
 		getPlantById, // ← exported here
 		isOnline,
