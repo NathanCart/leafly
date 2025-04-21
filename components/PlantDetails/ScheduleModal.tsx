@@ -11,18 +11,18 @@ import {
 } from 'react-native';
 import { X, Droplet, Leaf, Bell, Sparkles } from 'lucide-react-native';
 import { COLORS } from '@/app/constants/colors';
+import { Button } from '../Button';
+import { Plant } from '@/data/plants';
 
-type ScheduleSettings = {
+export type ScheduleSettings = {
 	watering: {
 		enabled: boolean;
-		days: number;
-		reminderEnabled: boolean;
+		days: number | null;
 		autoSchedule: boolean;
 	};
 	fertilizing: {
 		enabled: boolean;
-		days: number;
-		reminderEnabled: boolean;
+		days: number | null;
 		autoSchedule: boolean;
 	};
 };
@@ -33,6 +33,7 @@ type ScheduleModalProps = {
 	onSave: (scheduleSettings: ScheduleSettings) => void;
 	initialSettings?: ScheduleSettings;
 	isDark?: boolean;
+	plant: Plant;
 };
 
 export const ScheduleModal = ({
@@ -41,18 +42,17 @@ export const ScheduleModal = ({
 	onSave,
 	initialSettings,
 	isDark,
+	plant,
 }: ScheduleModalProps) => {
 	const defaultSettings: ScheduleSettings = {
 		watering: {
-			enabled: false,
-			days: 7,
-			reminderEnabled: false,
+			enabled: !!plant.watering_interval_days,
+			days: plant.watering_interval_days || 7,
 			autoSchedule: false,
 		},
 		fertilizing: {
-			enabled: false,
-			days: 30,
-			reminderEnabled: false,
+			enabled: !!plant.fertilize_interval_days,
+			days: plant.fertilize_interval_days || 30,
 			autoSchedule: false,
 		},
 	};
@@ -60,10 +60,6 @@ export const ScheduleModal = ({
 	const [scheduleSettings, setScheduleSettings] = useState<ScheduleSettings>(
 		initialSettings || defaultSettings
 	);
-
-	useEffect(() => {
-		onSave(scheduleSettings);
-	}, [scheduleSettings]);
 
 	const updateWateringSettings = (updates: Partial<typeof scheduleSettings.watering>) => {
 		setScheduleSettings({
@@ -176,7 +172,7 @@ export const ScheduleModal = ({
 												</Text>
 												<TextInput
 													style={styles.customDaysInput}
-													value={scheduleSettings.watering.days.toString()}
+													value={scheduleSettings?.watering?.days?.toString()}
 													onChangeText={(text) =>
 														updateWateringSettings({
 															days: Number(text),
@@ -192,44 +188,6 @@ export const ScheduleModal = ({
 											</View>
 										</View>
 									)}
-
-									<View style={styles.optionRow}>
-										<TouchableOpacity
-											style={styles.reminderRow}
-											onPress={() =>
-												updateWateringSettings({
-													reminderEnabled:
-														!scheduleSettings.watering.reminderEnabled,
-												})
-											}
-										>
-											<View style={styles.reminderLeft}>
-												<Bell size={18} color="#33A1FF" />
-												<Text
-													style={[
-														styles.optionLabel,
-														{ color: textColor },
-													]}
-												>
-													Reminders
-												</Text>
-											</View>
-											<Switch
-												value={scheduleSettings.watering.reminderEnabled}
-												onValueChange={(value) =>
-													updateWateringSettings({
-														reminderEnabled: value,
-													})
-												}
-												trackColor={{ false: '#767577', true: '#33A1FF50' }}
-												thumbColor={
-													scheduleSettings.watering.reminderEnabled
-														? '#33A1FF'
-														: '#f4f3f4'
-												}
-											/>
-										</TouchableOpacity>
-									</View>
 								</View>
 							)}
 						</View>
@@ -308,7 +266,7 @@ export const ScheduleModal = ({
 												</Text>
 												<TextInput
 													style={styles.customDaysInput}
-													value={scheduleSettings.fertilizing.days.toString()}
+													value={scheduleSettings?.fertilizing?.days?.toString()}
 													onChangeText={(text) =>
 														updateFertilizingSettings({
 															days: Number(text),
@@ -324,49 +282,36 @@ export const ScheduleModal = ({
 											</View>
 										</View>
 									)}
-
-									<View style={styles.optionRow}>
-										<TouchableOpacity
-											style={styles.reminderRow}
-											onPress={() =>
-												updateFertilizingSettings({
-													reminderEnabled:
-														!scheduleSettings.fertilizing
-															.reminderEnabled,
-												})
-											}
-										>
-											<View style={styles.reminderLeft}>
-												<Bell size={18} color="#4CAF50" />
-												<Text
-													style={[
-														styles.optionLabel,
-														{ color: textColor },
-													]}
-												>
-													Reminders
-												</Text>
-											</View>
-											<Switch
-												value={scheduleSettings.fertilizing.reminderEnabled}
-												onValueChange={(value) =>
-													updateFertilizingSettings({
-														reminderEnabled: value,
-													})
-												}
-												trackColor={{ false: '#767577', true: '#4CAF5050' }}
-												thumbColor={
-													scheduleSettings.fertilizing.reminderEnabled
-														? '#4CAF50'
-														: '#f4f3f4'
-												}
-											/>
-										</TouchableOpacity>
-									</View>
 								</View>
 							)}
 						</View>
 					</ScrollView>
+					<View style={{ padding: 16 }}>
+						<Button
+							variant="primary"
+							onPress={() => {
+								onSave({
+									fertilizing: {
+										enabled: scheduleSettings.fertilizing.enabled,
+										days: !!scheduleSettings.fertilizing.enabled
+											? scheduleSettings.fertilizing.days
+											: null,
+										autoSchedule: scheduleSettings.fertilizing.autoSchedule,
+									},
+									watering: {
+										enabled: scheduleSettings.watering.enabled,
+										days: !!scheduleSettings.watering.enabled
+											? scheduleSettings.watering.days
+											: null,
+										autoSchedule: scheduleSettings.watering.autoSchedule,
+									},
+								});
+								onClose();
+							}}
+						>
+							Save
+						</Button>
+					</View>
 				</View>
 			</View>
 		</Modal>
@@ -383,7 +328,6 @@ const styles = StyleSheet.create({
 		borderTopLeftRadius: 24,
 		borderTopRightRadius: 24,
 		paddingTop: 24,
-		paddingBottom: 36,
 		backgroundColor: COLORS.surface.light,
 		maxHeight: '80%',
 		height: '80%',

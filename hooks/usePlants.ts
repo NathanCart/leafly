@@ -196,6 +196,7 @@ export function usePlants() {
 	};
 
 	const updatePlant = async (id: string, updates: Partial<Plant>) => {
+		console.log(id, updates, 'updatePlant data');
 		try {
 			if (updates.image_url && !updates.image_url.startsWith('http')) {
 				updates.image_url = await uploadImage(updates.image_url);
@@ -213,6 +214,7 @@ export function usePlants() {
 			await loadPlants();
 			return data;
 		} catch (e) {
+			console.error('Error in updatePlant:', e);
 			throw e instanceof Error ? e : new Error('Failed to update plant');
 		}
 	};

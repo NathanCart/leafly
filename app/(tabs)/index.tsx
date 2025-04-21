@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
 	View,
 	Text,
@@ -6,20 +6,22 @@ import {
 	Dimensions,
 	Platform,
 	TouchableOpacity,
-	useColorScheme,
+	Image,
+	Pressable,
+	Animated,
 	ActivityIndicator,
+	useColorScheme,
 } from 'react-native';
 import { router } from 'expo-router';
 import {
-	Camera,
-	Calendar,
 	Sun,
 	Cloud,
 	CircleAlert as AlertCircle,
 	CircleArrowRight,
 	Wind,
+	Droplet,
 } from 'lucide-react-native';
-import Animated, {
+import AnimatedLib, {
 	useAnimatedStyle,
 	withRepeat,
 	withTiming,
@@ -29,23 +31,55 @@ import Animated, {
 	useSharedValue,
 } from 'react-native-reanimated';
 import * as Location from 'expo-location';
-import { PlantCard } from '@/components/PlantCard';
-import { RecentPlant } from '@/components/RecentPlant';
+import * as Haptics from 'expo-haptics';
 import { useMyPlants } from '@/data/plants';
 import { useCareSchedules } from '@/data/careSchedule';
 import { useProfile } from '@/hooks/useProfile';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '../constants/colors';
 
-const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
-const HEADER_HEIGHT = 220; // Reduced from 280
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const HEADER_HEIGHT = 220;
+const CARD_GAP = 8;
+const CARD_WIDTH = (SCREEN_WIDTH - 16 * 3) / 2;
 
-// Enhanced sun with rays
+// ScalePressable for tap feedback
+function ScalePressable({ children, style, onPress, ...props }) {
+	const scale = useRef(new Animated.Value(1)).current;
+	const handlePressIn = () => {
+		Animated.spring(scale, {
+			toValue: 0.95,
+			useNativeDriver: true,
+			friction: 5,
+			tension: 100,
+		}).start();
+		Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+	};
+	const handlePressOut = () => {
+		Animated.spring(scale, {
+			toValue: 1,
+			useNativeDriver: true,
+			friction: 5,
+			tension: 100,
+		}).start();
+	};
+	return (
+		<Pressable
+			onPress={onPress}
+			onPressIn={handlePressIn}
+			onPressOut={handlePressOut}
+			{...props}
+		>
+			<Animated.View style={[{ transform: [{ scale }] }, style]}>{children}</Animated.View>
+		</Pressable>
+	);
+}
+
+// Animated Sun and Clouds
 const AnimatedSun = () => {
 	const rotation = useSharedValue(0);
 	const scale = useSharedValue(1);
 	const rayOpacity = useSharedValue(0.7);
-
 	useEffect(() => {
 		rotation.value = withRepeat(
 			withTiming(360, { duration: 30000, easing: Easing.linear }),
@@ -66,39 +100,35 @@ const AnimatedSun = () => {
 			-1
 		);
 	}, []);
-
 	const sunStyle = useAnimatedStyle(() => ({
 		transform: [{ rotate: `${rotation.value}deg` }, { scale: scale.value }],
 	}));
-
 	const rayStyle = useAnimatedStyle(() => ({
 		opacity: rayOpacity.value,
 		transform: [{ rotate: `-${rotation.value * 0.5}deg` }],
 	}));
-
 	return (
 		<View style={styles.sunContainer}>
-			<Animated.View style={[styles.sunRays, rayStyle]}>
+			<AnimatedLib.View style={[styles.sunRays, rayStyle]}>
 				{Array.from({ length: 8 }).map((_, i) => (
 					<View
 						key={i}
 						style={[
 							styles.sunRay,
 							{ transform: [{ rotate: `${i * 45}deg` }] },
-							{ backgroundColor: `${COLORS.warning}B3` }, // 70% alpha
+							{ backgroundColor: `${COLORS.warning}B3` },
 						]}
 					/>
 				))}
-			</Animated.View>
-			<Animated.View style={sunStyle}>
+			</AnimatedLib.View>
+			<AnimatedLib.View style={sunStyle}>
 				<Sun color={COLORS.warning} size={40} />
-			</Animated.View>
+			</AnimatedLib.View>
 		</View>
 	);
 };
 
-// Cloud shape stays white for both themes
-const CloudShape = ({ style, size = 1, rotation = 0 }: any) => (
+const CloudShape = ({ style, size = 1, rotation = 0 }) => (
 	<View
 		style={[
 			styles.cloudGroup,
@@ -110,7 +140,6 @@ const CloudShape = ({ style, size = 1, rotation = 0 }: any) => (
 	</View>
 );
 
-// Animated cloud with slower movement and full opacity
 const AnimatedCloud = ({
 	delay = 0,
 	startX = -100,
@@ -160,7 +189,7 @@ const AnimatedCloud = ({
 		);
 	}, []);
 
-	const style = useAnimatedStyle(() => ({
+	const styleAnim = useAnimatedStyle(() => ({
 		position: 'absolute',
 		top,
 		transform: [{ translateX: translateX.value }, { scale: scale.value }],
@@ -169,9 +198,9 @@ const AnimatedCloud = ({
 	}));
 
 	return (
-		<Animated.View style={style}>
+		<AnimatedLib.View style={styleAnim}>
 			<CloudShape size={size} rotation={rotation} />
-		</Animated.View>
+		</AnimatedLib.View>
 	);
 };
 
@@ -218,10 +247,11 @@ export default function HomeScreen() {
 		}
 	};
 
-	// Build care, recent, alerts…
+	// Data prep
 	const today = new Date();
 	today.setHours(0, 0, 0, 0);
 	const todayStr = today.toISOString().split('T')[0];
+
 	const upcomingCare = careSchedule
 		?.filter((t) => {
 			const d = new Date(t.scheduled_date);
@@ -247,7 +277,7 @@ export default function HomeScreen() {
 		.slice(0, 2)
 		.map((p) => ({
 			id: p.id,
-			name: p.name,
+			name: p.nickname,
 			date: new Date(p.created_at).toLocaleDateString('en-US', {
 				weekday: 'long',
 				month: 'long',
@@ -263,12 +293,7 @@ export default function HomeScreen() {
 
 	if (plantsLoading || scheduleLoading || loading) {
 		return (
-			<View
-				style={[
-					styles.container,
-					{ backgroundColor: isDark ? COLORS.background.dark : COLORS.surface.light },
-				]}
-			>
+			<View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#F5F5F5' }]}>
 				<View style={styles.loadingContainer}>
 					<ActivityIndicator size="large" color={COLORS.primary} />
 					<Text
@@ -289,8 +314,8 @@ export default function HomeScreen() {
 	}
 
 	return (
-		<View style={styles.container}>
-			<Animated.View
+		<View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#F5F5F5' }]}>
+			<AnimatedLib.View
 				style={[
 					styles.headerContainer,
 					{
@@ -301,8 +326,6 @@ export default function HomeScreen() {
 				]}
 			>
 				<AnimatedSun />
-
-				{/* Clouds */}
 				<AnimatedCloud
 					delay={0}
 					startX={-150}
@@ -344,27 +367,25 @@ export default function HomeScreen() {
 					<Text
 						style={[
 							styles.greeting,
-
 							{
-								zIndex: 100,
 								color: isDark
 									? COLORS.text.primary.dark
 									: COLORS.text.primary.light,
 							},
 						]}
 					>
-						{greeting}, {'Plant Lover'}
+						{greeting}, Plant Lover
 					</Text>
 					{weather ? (
 						<View style={styles.weatherInfo}>
 							<Text style={styles.temperature}>
-								{Math.round(weather?.temperature)}°C
+								{Math.round(weather.temperature)}°C
 							</Text>
 							<View style={styles.weatherDetails}>
 								<View style={styles.weatherDetail}>
 									<Wind color={COLORS.background.light} size={18} />
 									<Text style={styles.weatherText}>
-										{Math.round(weather?.windspeed)} m/s
+										{Math.round(weather.windspeed)} m/s
 									</Text>
 								</View>
 							</View>
@@ -384,9 +405,9 @@ export default function HomeScreen() {
 						</Text>
 					)}
 				</View>
-			</Animated.View>
+			</AnimatedLib.View>
 
-			<Animated.ScrollView
+			<AnimatedLib.ScrollView
 				style={styles.scrollView}
 				contentContainerStyle={{ paddingTop: HEADER_HEIGHT - 20 }}
 				scrollEventThrottle={16}
@@ -396,96 +417,16 @@ export default function HomeScreen() {
 					);
 				}}
 			>
-				<Animated.View
+				<AnimatedLib.View
 					style={[
 						styles.contentCard,
 						{
-							backgroundColor: isDark
-								? COLORS.background.dark
-								: COLORS.background.light,
+							backgroundColor: isDark ? COLORS.surface.dark : COLORS.background.light,
+							transform: [{ translateY: scrollY.value }],
 						},
-						{ transform: [{ translateY: scrollY.value }] },
 					]}
 				>
-					{/* Quick Actions
-					<View style={styles.quickActions}>
-						{[
-							{
-								icon: <Camera color={COLORS.primary} size={24} />,
-								label: 'Identify',
-								sub: 'Scan your plants',
-								onPress: () => router.push('/identify'),
-							},
-							{
-								icon: <Calendar color={COLORS.primary} size={24} />,
-								label: 'Care',
-								sub: 'Schedule reminders',
-								onPress: () => router.push('/care'),
-							},
-							{
-								icon: <Sun color={COLORS.primary} size={24} />,
-								label: 'Light',
-								sub: 'Measure light levels',
-								onPress: () => router.push('/lightMeter'),
-							},
-						].map(({ icon, label, sub, onPress }, i) => (
-							<TouchableOpacity
-								key={i}
-								style={[
-									styles.actionButton,
-									{
-										backgroundColor: isDark
-											? COLORS.surface.dark
-											: COLORS.surface.light,
-									},
-								]}
-								onPress={onPress}
-							>
-								<View
-									style={[
-										styles.iconContainer,
-										{
-											backgroundColor: isDark
-												? `${COLORS.primary}1A` // 10% alpha
-												: `${COLORS.primary}1A`,
-											borderWidth: 1,
-											borderColor: isDark
-												? `${COLORS.primary}33` // 20% alpha
-												: `${COLORS.primary}33`,
-										},
-									]}
-								>
-									{icon}
-								</View>
-								<Text
-									style={[
-										styles.actionText,
-										{
-											color: isDark
-												? COLORS.text.primary.dark
-												: COLORS.text.primary.light,
-										},
-									]}
-								>
-									{label}
-								</Text>
-								<Text
-									style={[
-										styles.actionSubtext,
-										{
-											color: isDark
-												? COLORS.text.secondary.dark
-												: COLORS.text.secondary.light,
-										},
-									]}
-								>
-									{sub}
-								</Text>
-							</TouchableOpacity>
-						))}
-					</View> */}
-
-					{/* Today's Care */}
+					{/* Today's Plant Care */}
 					{upcomingCare.length > 0 && (
 						<View style={styles.section}>
 							<View style={styles.sectionHeader}>
@@ -512,22 +453,92 @@ export default function HomeScreen() {
 									</Text>
 								</TouchableOpacity>
 							</View>
-							<View style={styles.careCards}>
+							<View style={styles.grid}>
 								{upcomingCare.map((p) => (
-									<PlantCard
+									<ScalePressable
 										key={p.id}
-										name={p.name}
-										action={p.action}
-										due={p.due}
-										image={p.image}
-										isDark={isDark}
+										style={[
+											styles.plantCard,
+											{
+												width: CARD_WIDTH,
+												backgroundColor: isDark ? '#2A3A30' : '#FFFFFF',
+											},
+										]}
 										onPress={() =>
 											router.push({
 												pathname: '/plantDetail',
 												params: { id: p.id },
 											})
 										}
-									/>
+									>
+										<Image
+											source={{ uri: p.image }}
+											style={styles.plantImage}
+										/>
+										<View style={styles.plantCardContent}>
+											<Text
+												numberOfLines={1}
+												style={[
+													styles.plantName,
+													{ color: isDark ? '#E0E0E0' : '#283618' },
+												]}
+											>
+												{p.name}
+											</Text>
+											<View style={styles.plantCardFooter}>
+												<View
+													style={[
+														styles.healthIndicator,
+														{
+															backgroundColor: isDark
+																? '#5A4A2A'
+																: '#E6F2E8',
+														},
+													]}
+												>
+													<Text
+														style={[
+															styles.healthText,
+															{
+																color: isDark
+																	? '#E0E0E0'
+																	: '#283618',
+															},
+														]}
+													>
+														{p.action}
+													</Text>
+												</View>
+												<View
+													style={[
+														styles.waterIndicator,
+														{
+															backgroundColor: isDark
+																? '#2A4256'
+																: '#E0F2FF',
+														},
+													]}
+												>
+													<Droplet
+														size={12}
+														color={isDark ? '#88CCFF' : '#0080FF'}
+													/>
+													<Text
+														style={[
+															styles.waterText,
+															{
+																color: isDark
+																	? '#88CCFF'
+																	: '#0080FF',
+															},
+														]}
+													>
+														{p.due}
+													</Text>
+												</View>
+											</View>
+										</View>
+									</ScalePressable>
 								))}
 							</View>
 						</View>
@@ -560,21 +571,49 @@ export default function HomeScreen() {
 									</Text>
 								</TouchableOpacity>
 							</View>
-							<View style={styles.recentScroll}>
+							<View style={styles.grid}>
 								{recentlyIdentified.map((p) => (
-									<RecentPlant
+									<ScalePressable
 										key={p.id}
-										name={p.name}
-										date={p.date}
-										image={p.image}
-										isDark={isDark}
+										style={[
+											styles.plantCard,
+											{
+												width: CARD_WIDTH,
+												backgroundColor: isDark ? '#2A3A30' : '#FFFFFF',
+											},
+										]}
 										onPress={() =>
 											router.push({
 												pathname: '/plantDetail',
 												params: { id: p.id },
 											})
 										}
-									/>
+									>
+										<Image
+											source={{ uri: p.image }}
+											style={styles.plantImage}
+										/>
+										<View style={styles.plantCardContent}>
+											<Text
+												numberOfLines={1}
+												style={[
+													styles.plantName,
+													{ color: isDark ? '#E0E0E0' : '#283618' },
+												]}
+											>
+												{p.name}
+											</Text>
+											<Text
+												style={[
+													styles.plantSpecies,
+													{ color: COLORS.tabBar.inactive },
+												]}
+												numberOfLines={1}
+											>
+												{p.date}
+											</Text>
+										</View>
+									</ScalePressable>
 								))}
 							</View>
 						</View>
@@ -652,8 +691,8 @@ export default function HomeScreen() {
 					)}
 
 					<View style={styles.bottomPadding} />
-				</Animated.View>
-			</Animated.ScrollView>
+				</AnimatedLib.View>
+			</AnimatedLib.ScrollView>
 		</View>
 	);
 }
@@ -697,9 +736,7 @@ const styles = StyleSheet.create({
 	},
 	cloudGroup: { width: 80, height: 40 },
 	cloudBase: { position: 'absolute', top: 0, left: 0, color: 'white' },
-	cloudPart1: { position: 'absolute', top: 8, left: 25 },
-	cloudPart2: { position: 'absolute', top: 0, left: 50 },
-	weatherContainer: { paddingHorizontal: 20, marginTop: 10 },
+	weatherContainer: { paddingHorizontal: 16, marginTop: 10 },
 	greeting: { fontSize: 24, fontWeight: '700', marginBottom: 10 },
 	weatherInfo: {
 		flexDirection: 'row',
@@ -720,6 +757,7 @@ const styles = StyleSheet.create({
 		borderTopRightRadius: 32,
 		paddingTop: 20,
 		minHeight: SCREEN_HEIGHT,
+		backgroundColor: 'transparent',
 		...Platform.select({
 			ios: {
 				shadowColor: '#000',
@@ -730,39 +768,6 @@ const styles = StyleSheet.create({
 			android: { elevation: 4 },
 		}),
 	},
-	quickActions: {
-		flexDirection: 'row',
-		justifyContent: 'space-between',
-		marginTop: 8,
-		marginHorizontal: 16,
-		borderRadius: 16,
-		paddingVertical: 8,
-	},
-	actionButton: {
-		alignItems: 'flex-start',
-		padding: 16,
-		borderRadius: 16,
-		width: '31%',
-		...Platform.select({
-			ios: {
-				shadowColor: '#000',
-				shadowOffset: { width: 0, height: 2 },
-				shadowOpacity: 0.1,
-				shadowRadius: 3,
-			},
-			android: { elevation: 2 },
-		}),
-	},
-	iconContainer: {
-		width: 48,
-		height: 48,
-		borderRadius: 24,
-		justifyContent: 'center',
-		alignItems: 'center',
-		marginBottom: 12,
-	},
-	actionText: { fontSize: 16, fontWeight: '600', marginBottom: 4 },
-	actionSubtext: { fontSize: 12, fontWeight: '400' },
 	section: { marginTop: 24, paddingHorizontal: 16 },
 	sectionHeader: {
 		flexDirection: 'row',
@@ -772,8 +777,38 @@ const styles = StyleSheet.create({
 	},
 	sectionTitle: { fontSize: 18, fontWeight: '600' },
 	seeAll: { fontSize: 14, fontWeight: '500' },
-	careCards: { gap: 12 },
-	recentScroll: { flexDirection: 'row', gap: 12 },
+	grid: {
+		flexDirection: 'row',
+		flexWrap: 'wrap',
+		justifyContent: 'space-between',
+		gap: CARD_GAP,
+	},
+	plantCard: {
+		borderRadius: 16,
+		overflow: 'hidden',
+		marginBottom: CARD_GAP,
+		shadowColor: '#000',
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.1,
+		shadowRadius: 4,
+		elevation: 2,
+	},
+	plantImage: { width: '100%', height: 120, resizeMode: 'cover' },
+	plantCardContent: { padding: 12 },
+	plantName: { fontSize: 16, fontWeight: '600' },
+	plantSpecies: { fontSize: 12, marginTop: 2 },
+	plantCardFooter: { flexDirection: 'row', marginTop: 8, flexWrap: 'wrap', gap: 6 },
+	healthIndicator: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
+	healthText: { fontSize: 10, fontWeight: '500' },
+	waterIndicator: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		paddingHorizontal: 8,
+		paddingVertical: 4,
+		borderRadius: 12,
+		gap: 4,
+	},
+	waterText: { fontSize: 10, fontWeight: '500' },
 	alertCard: {
 		flexDirection: 'row',
 		alignItems: 'center',

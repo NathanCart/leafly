@@ -31,10 +31,10 @@ import { usePlants } from '@/hooks/usePlants';
 import { Button } from '@/components/Button';
 import { EditPlantModal } from '@/components/PlantDetails/EditPlantModal';
 import { GalleryModal } from '@/components/PlantDetails/GalleryModal';
-import { ScheduleModal } from '@/components/PlantDetails/ScheduleModal';
-import { ScheduleDisplay } from '@/components/PlantDetails/ScheduleDisplay';
+import { ScheduleModal, ScheduleSettings } from '@/components/PlantDetails/ScheduleModal';
 import { COLORS } from './constants/colors';
 import { HeartButton } from '@/components/PlantDetails/HeartButton';
+import { ScheduleDisplay } from '@/components/PlantDetails/ScheduleDisplay';
 
 const HEADER_HEIGHT = 300;
 
@@ -183,11 +183,13 @@ export default function PlantDetail() {
 		setIsFavorite(!!updated.is_favorite);
 	};
 
-	const handleSaveSchedule = async (scheduleSettings: any) => {
+	const handleSaveSchedule = async (scheduleSettings: ScheduleSettings) => {
+		console.log(scheduleSettings, 'scheduleSettings');
 		if (!plant) return;
 		try {
 			const updated = await updatePlant(plantId!, {
-				care_schedule: scheduleSettings,
+				watering_interval_days: scheduleSettings.watering.days,
+				fertilize_interval_days: scheduleSettings.fertilizing.days,
 			});
 			setPlant(updated);
 		} catch (e) {
@@ -366,6 +368,7 @@ export default function PlantDetail() {
 				isDark={isDark}
 			/>
 			<ScheduleModal
+				plant={plant}
 				visible={showScheduleModal}
 				onClose={() => setShowScheduleModal(false)}
 				onSave={handleSaveSchedule}
