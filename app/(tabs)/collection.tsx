@@ -87,7 +87,7 @@ export default function CollectionScreen() {
 				{
 					backgroundColor: isDark ? '#2A3A30' : '#FFFFFF',
 				},
-				{ width: (screenWidth - 60) / 2 },
+				{ width: (screenWidth - 48) / 2 },
 			]}
 			onPress={() => router.push({ pathname: '/plantDetail', params: { id: item.id } })}
 		>

@@ -225,6 +225,9 @@ export default function HomeScreen() {
 	const scrollY = useSharedValue(0);
 
 	const { profile } = useProfile();
+
+	console.log('Profile:', profile);
+
 	const { plants, loading: plantsLoading, scheduleEntries } = usePlants();
 
 	const headerStyle = useAnimatedStyle(() => ({ transform: [{ translateY: scrollY.value }] }));
@@ -365,7 +368,7 @@ export default function HomeScreen() {
 							},
 						]}
 					>
-						{greeting}, Plant Lover
+						{greeting}, {profile?.username ?? 'Plant Lover'}
 					</Text>
 					{weather ? (
 						<View style={styles.weatherInfo}>
