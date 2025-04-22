@@ -7,17 +7,21 @@ import {
 	TouchableOpacity,
 	Platform,
 	Dimensions,
+	StatusBar,
 } from 'react-native';
 import { X, Calendar } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '../Button';
 import { TaskSuccessAnimation } from './TaskSuccessAnimation';
+import { COLORS } from '@/app/constants/colors';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 type TaskCompletionModalProps = {
 	visible: boolean;
 	onClose: () => void;
-	onComplete: () => void;
+	onComplete: () => Promise<void>;
+	onDismissReminder?: () => void;
 	plantName: string;
 	taskType: 'Water' | 'Fertilize';
 };
@@ -26,34 +30,55 @@ export const TaskCompletionModal = ({
 	visible,
 	onClose,
 	onComplete,
+	onDismissReminder,
 	plantName,
 	taskType,
 }: TaskCompletionModalProps) => {
+	const insets = useSafeAreaInsets();
 	const [showSuccess, setShowSuccess] = useState(false);
 	const isWatering = taskType === 'Water';
 	const accentColor = isWatering ? '#33A1FF' : '#4CAF50';
 
-	const handleComplete = async () => {
+	const handleComplete = () => {
 		setShowSuccess(true);
 	};
 
 	const handleAnimationComplete = async () => {
 		setShowSuccess(false);
-
 		onClose();
 		await onComplete();
 	};
 
+	const handleDismiss = () => {
+		onClose();
+		onComplete();
+		if (onDismissReminder) {
+			onDismissReminder();
+		}
+	};
+
 	return (
-		<Modal animationType="fade" transparent={true} visible={visible} onRequestClose={onClose}>
-			<View style={styles.modalOverlay}>
+		<Modal
+			animationType="fade"
+			presentationStyle="fullScreen"
+			visible={visible}
+			onRequestClose={onClose}
+		>
+			<StatusBar barStyle="dark-content" />
+			<View style={[styles.modalContainer, { paddingTop: insets.top + 16 }]}>
 				{!showSuccess ? (
-					<View style={styles.modalContainer}>
-						<TouchableOpacity onPress={onClose} style={styles.closeButton}>
+					<>
+						<TouchableOpacity
+							onPress={onClose}
+							style={[styles.closeButton, { top: insets.top + 16 }]}
+							accessibilityLabel="Close modal"
+						>
 							<X size={24} color="#6B7280" />
 						</TouchableOpacity>
 
-						<View style={styles.iconContainer}>
+						<View
+							style={[styles.iconContainer, { backgroundColor: `${accentColor}20` }]}
+						>
 							<Calendar size={32} color={accentColor} />
 						</View>
 
@@ -62,15 +87,24 @@ export const TaskCompletionModal = ({
 							Mark {taskType.toLowerCase()} task as complete for {plantName}?
 						</Text>
 
-						<View style={styles.buttonContainer}>
+						<View style={styles.buttonRow}>
 							<Button variant="secondary" onPress={onClose} style={styles.button}>
 								Cancel
 							</Button>
-							<Button onPress={handleComplete} style={[styles.button]}>
+							<Button onPress={handleComplete} style={styles.button}>
 								Complete
 							</Button>
 						</View>
-					</View>
+
+						<TouchableOpacity
+							onPress={handleDismiss}
+							style={styles.dismissButton}
+							activeOpacity={0.7}
+							accessibilityLabel="Dismiss this task"
+						>
+							<Text style={styles.dismissText}>Dismiss Task</Text>
+						</TouchableOpacity>
+					</>
 				) : (
 					<TaskSuccessAnimation
 						type={taskType}
@@ -83,65 +117,67 @@ export const TaskCompletionModal = ({
 };
 
 const styles = StyleSheet.create({
-	modalOverlay: {
+	modalContainer: {
 		flex: 1,
-		backgroundColor: 'rgba(0, 0, 0, 0.5)',
+		backgroundColor: '#FFF',
+		paddingHorizontal: 16,
 		justifyContent: 'center',
 		alignItems: 'center',
-		padding: 16,
-	},
-	modalContainer: {
-		width: '100%',
-		maxWidth: Math.min(400, SCREEN_WIDTH - 32),
-		backgroundColor: '#FFF',
-		borderRadius: 16,
-		padding: 24,
-		alignItems: 'center',
-		...Platform.select({
-			ios: {
-				shadowColor: '#000',
-				shadowOffset: { width: 0, height: 2 },
-				shadowOpacity: 0.25,
-				shadowRadius: 4,
-			},
-			android: {
-				elevation: 5,
-			},
-		}),
 	},
 	closeButton: {
 		position: 'absolute',
-		right: 16,
-		top: 16,
-		padding: 4,
+		left: 16,
+		padding: 10,
+		zIndex: 1,
+		borderRadius: 20,
+		backgroundColor: '#F3F4F6',
 	},
 	iconContainer: {
-		width: 64,
-		height: 64,
-		borderRadius: 32,
-		backgroundColor: '#F3F4F6',
+		width: 72,
+		height: 72,
+		borderRadius: 36,
 		justifyContent: 'center',
 		alignItems: 'center',
-		marginBottom: 16,
+		marginBottom: 24,
 	},
 	title: {
-		fontSize: 20,
-		fontWeight: '600',
+		fontSize: 22,
+		fontWeight: '700',
 		color: '#111827',
-		marginBottom: 8,
+		textAlign: 'center',
+		marginBottom: 12,
 	},
 	description: {
 		fontSize: 16,
 		color: '#4B5563',
 		textAlign: 'center',
-		marginBottom: 24,
+		marginBottom: 32,
+		lineHeight: 22,
 	},
-	buttonContainer: {
+	buttonRow: {
 		flexDirection: 'row',
-		gap: 8,
-		width: '100%',
+		justifyContent: 'center',
+		alignItems: 'center',
+		gap: 0,
+		marginBottom: 24,
 	},
 	button: {
 		flex: 1,
+		marginHorizontal: 6,
+	},
+	dismissButton: {
+		alignItems: 'center',
+		paddingVertical: 14,
+		paddingHorizontal: 16,
+		position: 'absolute',
+		bottom: 16,
+		width: SCREEN_WIDTH - 48,
+		borderRadius: 12,
+		backgroundColor: '#FEE2E2',
+	},
+	dismissText: {
+		fontSize: 16,
+		fontWeight: '600',
+		color: COLORS.error,
 	},
 });

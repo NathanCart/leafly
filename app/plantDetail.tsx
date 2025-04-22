@@ -89,7 +89,7 @@ const ExpandableCard = ({
 };
 
 export default function PlantDetail() {
-	const { getPlantById, updatePlant, deletePlant } = usePlants();
+	const { getPlantById, updatePlant, deletePlant, refreshPlants } = usePlants();
 	const { id: plantId } = useLocalSearchParams<{ id: string }>();
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
@@ -123,6 +123,7 @@ export default function PlantDetail() {
 		if (!plant) return;
 		try {
 			const updated = await updatePlant(plantId!, { is_favorite: !isFavorite });
+			refreshPlants();
 			setIsFavorite(updated.is_favorite);
 			setPlant(updated);
 		} catch (e) {
@@ -179,12 +180,12 @@ export default function PlantDetail() {
 		const payload: any = { nickname, location };
 		if (imageUri) payload.image_url = imageUri;
 		const updated = await updatePlant(plantId!, payload);
+		refreshPlants;
 		setPlant(updated);
 		setIsFavorite(!!updated.is_favorite);
 	};
 
 	const handleSaveSchedule = async (scheduleSettings: ScheduleSettings) => {
-		console.log(scheduleSettings, 'scheduleSettings');
 		if (!plant) return;
 		try {
 			const updated = await updatePlant(plantId!, {
@@ -192,6 +193,7 @@ export default function PlantDetail() {
 				fertilize_interval_days: scheduleSettings.fertilizing.days,
 			});
 			setPlant(updated);
+			router.push('/(tabs)/care');
 		} catch (e) {
 			console.error(e);
 		}
@@ -315,7 +317,7 @@ export default function PlantDetail() {
 						</Section>
 					)}
 
-					<Section title="Schedule">
+					<Section title="">
 						<ScheduleDisplay
 							scheduleSettings={plant.care_schedule}
 							onPress={() => setShowScheduleModal(true)}

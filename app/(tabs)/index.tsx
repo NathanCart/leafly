@@ -20,6 +20,7 @@ import {
 	CircleArrowRight,
 	Wind,
 	Droplet,
+	Leaf,
 } from 'lucide-react-native';
 import AnimatedLib, {
 	useAnimatedStyle,
@@ -37,11 +38,19 @@ import { useCareSchedules } from '@/data/careSchedule';
 import { useProfile } from '@/hooks/useProfile';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '../constants/colors';
-
+import { usePlants } from '@/hooks/usePlants';
+const getRelativeDate = (date: any) => {
+	const now = new Date();
+	const diffDays = Math.ceil((date - now) / (1000 * 60 * 60 * 24));
+	if (diffDays === 0) return 'Due today';
+	if (diffDays === 1) return 'Due tomorrow';
+	if (diffDays < 0) return `${Math.abs(diffDays)} days overdue`;
+	return `Due in ${diffDays} days`;
+};
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const HEADER_HEIGHT = 220;
 const CARD_GAP = 8;
-const CARD_WIDTH = (SCREEN_WIDTH - 16 * 3) / 2;
+const CARD_WIDTH = (SCREEN_WIDTH - 14 * 3) / 2;
 
 // ScalePressable for tap feedback
 function ScalePressable({ children, style, onPress, ...props }) {
@@ -216,8 +225,7 @@ export default function HomeScreen() {
 	const scrollY = useSharedValue(0);
 
 	const { profile } = useProfile();
-	const { myPlants: plants, loading: plantsLoading } = useMyPlants();
-	const { careSchedule, loading: scheduleLoading } = useCareSchedules();
+	const { plants, loading: plantsLoading, scheduleEntries } = usePlants();
 
 	const headerStyle = useAnimatedStyle(() => ({ transform: [{ translateY: scrollY.value }] }));
 
@@ -252,25 +260,8 @@ export default function HomeScreen() {
 	today.setHours(0, 0, 0, 0);
 	const todayStr = today.toISOString().split('T')[0];
 
-	const upcomingCare = careSchedule
-		?.filter((t) => {
-			const d = new Date(t.scheduled_date);
-			d.setHours(0, 0, 0, 0);
-			return d >= today && !t.completed;
-		})
-		.slice(0, 3)
-		.map((task) => {
-			const plant = plants.find((p) => p.id === task.plant_id);
-			return {
-				id: task.id,
-				name: plant?.name || 'Unknown',
-				action: task.action,
-				due: task.scheduled_date === todayStr ? 'Today' : 'Tomorrow',
-				image:
-					plant?.image_url ||
-					'https://images.pexels.com/photos/3097770/pexels-photo-3097770.jpeg',
-			};
-		});
+	// inside HomeScreen(), replace your upcomingCare mapping:
+	const upcomingTasks = scheduleEntries?.splice(0, 3);
 
 	const recentlyIdentified = plants
 		?.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
@@ -291,7 +282,7 @@ export default function HomeScreen() {
 		?.filter((p) => ['Needs Attention', 'Unhealthy'].includes(p?.health_status || ''))
 		.map((p) => ({ id: p.id, plant: p.name, issue: p.health_status }));
 
-	if (plantsLoading || scheduleLoading || loading) {
+	if (plantsLoading || loading) {
 		return (
 			<View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#F5F5F5' }]}>
 				<View style={styles.loadingContainer}>
@@ -421,129 +412,11 @@ export default function HomeScreen() {
 					style={[
 						styles.contentCard,
 						{
-							backgroundColor: isDark ? COLORS.surface.dark : COLORS.background.light,
+							backgroundColor: isDark ? '#121212' : '#F5F5F5',
 							transform: [{ translateY: scrollY.value }],
 						},
 					]}
 				>
-					{/* Today's Plant Care */}
-					{upcomingCare.length > 0 && (
-						<View style={styles.section}>
-							<View style={styles.sectionHeader}>
-								<Text
-									style={[
-										styles.sectionTitle,
-										{
-											color: isDark
-												? COLORS.text.primary.dark
-												: COLORS.text.primary.light,
-										},
-									]}
-								>
-									Today's Plant Care
-								</Text>
-								<TouchableOpacity onPress={() => router.push('/care')}>
-									<Text
-										style={[
-											styles.seeAll,
-											{ color: isDark ? COLORS.secondary : COLORS.primary },
-										]}
-									>
-										See all
-									</Text>
-								</TouchableOpacity>
-							</View>
-							<View style={styles.grid}>
-								{upcomingCare.map((p) => (
-									<ScalePressable
-										key={p.id}
-										style={[
-											styles.plantCard,
-											{
-												width: CARD_WIDTH,
-												backgroundColor: isDark ? '#2A3A30' : '#FFFFFF',
-											},
-										]}
-										onPress={() =>
-											router.push({
-												pathname: '/plantDetail',
-												params: { id: p.id },
-											})
-										}
-									>
-										<Image
-											source={{ uri: p.image }}
-											style={styles.plantImage}
-										/>
-										<View style={styles.plantCardContent}>
-											<Text
-												numberOfLines={1}
-												style={[
-													styles.plantName,
-													{ color: isDark ? '#E0E0E0' : '#283618' },
-												]}
-											>
-												{p.name}
-											</Text>
-											<View style={styles.plantCardFooter}>
-												<View
-													style={[
-														styles.healthIndicator,
-														{
-															backgroundColor: isDark
-																? '#5A4A2A'
-																: '#E6F2E8',
-														},
-													]}
-												>
-													<Text
-														style={[
-															styles.healthText,
-															{
-																color: isDark
-																	? '#E0E0E0'
-																	: '#283618',
-															},
-														]}
-													>
-														{p.action}
-													</Text>
-												</View>
-												<View
-													style={[
-														styles.waterIndicator,
-														{
-															backgroundColor: isDark
-																? '#2A4256'
-																: '#E0F2FF',
-														},
-													]}
-												>
-													<Droplet
-														size={12}
-														color={isDark ? '#88CCFF' : '#0080FF'}
-													/>
-													<Text
-														style={[
-															styles.waterText,
-															{
-																color: isDark
-																	? '#88CCFF'
-																	: '#0080FF',
-															},
-														]}
-													>
-														{p.due}
-													</Text>
-												</View>
-											</View>
-										</View>
-									</ScalePressable>
-								))}
-							</View>
-						</View>
-					)}
-
 					{/* Recently Added */}
 					{recentlyIdentified.length > 0 && (
 						<View style={styles.section}>
@@ -618,7 +491,87 @@ export default function HomeScreen() {
 							</View>
 						</View>
 					)}
-
+					{upcomingTasks.length > 0 && (
+						<View style={styles.section}>
+							<View style={styles.sectionHeader}>
+								<Text
+									style={[
+										styles.sectionTitle,
+										{
+											color: isDark
+												? COLORS.text.primary.dark
+												: COLORS.text.primary.light,
+										},
+									]}
+								>
+									Upcoming Care
+								</Text>
+							</View>
+							{upcomingTasks.map((task) => {
+								const isWater = task.type === 'Water';
+								const accent = isWater ? '#33A1FF' : '#4CAF50';
+								const rel = getRelativeDate(task.dueDate);
+								const overdue = task.dueDate < today;
+								return (
+									<ScalePressable
+										key={task.id}
+										style={styles.card}
+										onPress={() =>
+											router.push({
+												pathname: '/plantDetail',
+												params: { id: task.plantId },
+											})
+										}
+									>
+										<Image
+											source={{ uri: task?.plantImage ?? '' }}
+											style={styles.carePlantImage}
+										/>
+										<View style={styles.cardContent}>
+											<View style={styles.cardHeader}>
+												<Text style={styles.cardPlant}>
+													{task.plantName}
+												</Text>
+												<View
+													style={[
+														styles.cardIcon,
+														{ backgroundColor: accent + '10' },
+													]}
+												>
+													{isWater ? (
+														<Droplet
+															fill={accent}
+															color={accent}
+															size={16}
+														/>
+													) : (
+														<Leaf
+															fill={accent}
+															color={accent}
+															size={16}
+														/>
+													)}
+												</View>
+											</View>
+											<View style={styles.cardRow}>
+												<Text style={[styles.cardType, { color: accent }]}>
+													{task.type}
+												</Text>
+												<Text
+													style={[
+														styles.cardDate,
+														overdue && { color: COLORS.error },
+													]}
+												>
+													{rel}
+												</Text>
+											</View>
+										</View>
+									</ScalePressable>
+								);
+							})}
+						</View>
+					)}
 					{/* Health Alerts */}
 					{plantHealthAlerts.length > 0 && (
 						<View style={styles.section}>
@@ -689,7 +642,6 @@ export default function HomeScreen() {
 							))}
 						</View>
 					)}
-
 					<View style={styles.bottomPadding} />
 				</AnimatedLib.View>
 			</AnimatedLib.ScrollView>
@@ -698,6 +650,63 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
+	card: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		backgroundColor: '#FFF',
+		padding: 12,
+		borderRadius: 12,
+		marginBottom: 12,
+		...Platform.select({
+			ios: {
+				shadowColor: '#000',
+				shadowOffset: { width: 0, height: 1 },
+				shadowOpacity: 0.1,
+				shadowRadius: 2,
+			},
+			android: { elevation: 2 },
+		}),
+	},
+	carePlantImage: {
+		width: 56,
+		height: 56,
+		borderRadius: 8,
+		marginRight: 12,
+	},
+	cardContent: {
+		flex: 1,
+	},
+	cardHeader: {
+		flexDirection: 'row',
+		justifyContent: 'space-between',
+		alignItems: 'center',
+		marginBottom: 4,
+	},
+	cardPlant: {
+		fontSize: 16,
+		fontWeight: '600',
+		color: '#111827',
+	},
+	cardIcon: {
+		width: 28,
+		height: 28,
+		borderRadius: 14,
+		justifyContent: 'center',
+		alignItems: 'center',
+	},
+	cardRow: {
+		flexDirection: 'row',
+		justifyContent: 'space-between',
+		alignItems: 'center',
+	},
+	cardType: {
+		fontSize: 14,
+		fontWeight: '500',
+	},
+	cardDate: {
+		fontSize: 14,
+		color: '#6B7280',
+	},
 	container: { flex: 1 },
 	headerContainer: {
 		position: 'absolute',
@@ -773,10 +782,10 @@ const styles = StyleSheet.create({
 		flexDirection: 'row',
 		justifyContent: 'space-between',
 		alignItems: 'center',
-		marginBottom: 16,
+		marginBottom: 8,
 	},
 	sectionTitle: { fontSize: 18, fontWeight: '600' },
-	seeAll: { fontSize: 14, fontWeight: '500' },
+	seeAll: { fontSize: 14, fontWeight: '600' },
 	grid: {
 		flexDirection: 'row',
 		flexWrap: 'wrap',

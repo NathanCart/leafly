@@ -10,6 +10,7 @@ import {
 	TextInput,
 	useColorScheme,
 	Dimensions,
+	Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -82,7 +83,10 @@ export default function CollectionScreen() {
 		<ScalePressable
 			style={[
 				styles.plantCard,
-				{ backgroundColor: isDark ? '#2A3A30' : '#FFFFFF' },
+
+				{
+					backgroundColor: isDark ? '#2A3A30' : '#FFFFFF',
+				},
 				{ width: (screenWidth - 60) / 2 },
 			]}
 			onPress={() => router.push({ pathname: '/plantDetail', params: { id: item.id } })}
@@ -307,7 +311,7 @@ const styles = StyleSheet.create({
 	filterText: { fontSize: 14, fontWeight: '500' },
 	activeFilterText: { color: 'white' },
 
-	plantList: { paddingHorizontal: 16, paddingBottom: 100 },
+	plantList: { paddingHorizontal: 12, paddingBottom: 100 },
 	plantCard: {
 		borderRadius: 16,
 		overflow: 'hidden',

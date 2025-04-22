@@ -49,6 +49,7 @@ const createDroplet = (index: number): Droplet => ({
 export const TaskSuccessAnimation = ({ type, onAnimationComplete }: TaskSuccessAnimationProps) => {
 	const isWatering = type === 'Water';
 	const accentColor = isWatering ? '#33A1FF' : '#4CAF50';
+	const backgroundAccentColor = isWatering ? '#E0F7FF' : '#E8F5E9';
 
 	const scaleAnim = useRef(new Animated.Value(0)).current;
 	const textAnim = useRef(new Animated.Value(0)).current;
@@ -173,7 +174,11 @@ export const TaskSuccessAnimation = ({ type, onAnimationComplete }: TaskSuccessA
 			<View style={styles.container}>
 				{/* Glow Effect */}
 				<Animated.View
-					style={[styles.glowContainer, glowStyle, { backgroundColor: accentColor }]}
+					style={[
+						styles.glowContainer,
+						glowStyle,
+						{ backgroundColor: backgroundAccentColor },
+					]}
 				/>
 
 				{/* Particles */}

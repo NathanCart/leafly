@@ -54,11 +54,10 @@ const EmptyState = ({ message, scale }: { message: string; scale: Animated.Value
 const CareSchedule = () => {
 	const insets = useSafeAreaInsets();
 	const [activeTab, setActiveTab] = useState<'today' | 'upcoming'>('today');
-	const [showInfo, setShowInfo] = useState(false);
 	const [permissionsGranted, setPermissionsGranted] = useState(false);
 	const [promoClosed, setPromoClosed] = useState(false);
 	const [selectedTask, setSelectedTask] = useState<Entry | null>(null);
-	const { plants, updatePlant } = usePlants();
+	const { plants, updatePlant, refreshPlants } = usePlants();
 
 	// Prepare dates
 	const today = new Date();
@@ -78,7 +77,7 @@ const CareSchedule = () => {
 			entries.push({
 				id: `${plant.id}-water`,
 				plantId: plant.id,
-				plantName: plant.name,
+				plantName: plant.nickname,
 				plantImage: plant.image_url,
 				type: 'Water',
 				dueDate: due,
@@ -111,11 +110,13 @@ const CareSchedule = () => {
 		d.setHours(0, 0, 0, 0);
 		return d.getTime() === today.getTime();
 	});
-	const scheduleUpcoming = entries.filter((e) => {
-		const d = new Date(e.dueDate);
-		d.setHours(0, 0, 0, 0);
-		return d.getTime() > today.getTime();
-	});
+	const scheduleUpcoming = entries
+		.filter((e) => {
+			const d = new Date(e.dueDate);
+			d.setHours(0, 0, 0, 0);
+			return d.getTime() > today.getTime();
+		})
+		?.sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
 
 	// Animation for empty / promo
 	const scaleAnim = useRef(new Animated.Value(0)).current;
@@ -195,11 +196,13 @@ const CareSchedule = () => {
 	};
 
 	return (
-		<View style={[styles.container, { paddingTop: insets.top + 8 }]}>
+		<View
+			style={[styles.container, { paddingTop: insets.top + 8, backgroundColor: '#F5F5F5' }]}
+		>
 			<StatusBar barStyle="dark-content" />
 
 			{/* Info Modal */}
-			{showInfo && (
+			{/* {showInfo && (
 				<View style={styles.modalOverlay}>
 					<View style={styles.modalContent}>
 						<TouchableOpacity
@@ -218,7 +221,7 @@ const CareSchedule = () => {
 						</Button>
 					</View>
 				</View>
-			)}
+			)} */}
 
 			{/* Header */}
 			<View style={styles.header}>
@@ -226,9 +229,9 @@ const CareSchedule = () => {
 					<Leaf color={COLORS.tabBar.active} size={24} />
 					<Text style={styles.headerTitle}>Care Schedule</Text>
 				</View>
-				<TouchableOpacity onPress={() => setShowInfo(true)}>
+				{/* <TouchableOpacity onPress={() => setShowInfo(true)}>
 					<HelpCircle color="#000" size={24} />
-				</TouchableOpacity>
+				</TouchableOpacity> */}
 			</View>
 
 			{/* Tabs */}

@@ -20,32 +20,25 @@ export function usePlants() {
 	const [error, setError] = useState<Error | null>(null);
 	const [uploadProgress, setUploadProgress] = useState(0);
 
+	// Load cache or fetch
 	const loadPlants = async () => {
 		if (!session?.user.id) {
 			setLoading(false);
 			return;
 		}
-
 		try {
 			setLoading(true);
 			setError(null);
-
-			// Try to load from cache first
 			const cached = await AsyncStorage.getItem(PLANTS_CACHE_KEY);
-			if (cached) {
-				setPlants(JSON.parse(cached));
-			}
+			if (cached) setPlants(JSON.parse(cached));
 
-			// If online, fetch fresh data
 			if (isOnline) {
 				const { data, error } = await supabase
 					.from('plants')
 					.select('*')
 					.eq('user_id', session.user.id)
 					.order('created_at', { ascending: false });
-
 				if (error) throw error;
-
 				setPlants(data || []);
 				await AsyncStorage.setItem(PLANTS_CACHE_KEY, JSON.stringify(data));
 			}
@@ -57,114 +50,106 @@ export function usePlants() {
 		}
 	};
 
+	// Real-time subscription
 	useEffect(() => {
+		if (!session?.user.id || !isOnline) return;
 		loadPlants();
+		const channel = supabase
+			.channel(`plants:uid_${session.user.id}`)
+			.on(
+				'postgres_changes',
+				{
+					event: '*',
+					schema: 'public',
+					table: 'plants',
+					filter: `user_id=eq.${session.user.id}`,
+				},
+				(payload) => {
+					setPlants((prev) => {
+						let updated = prev;
+						if (payload.eventType === 'INSERT') {
+							updated = [payload.new as Plant, ...prev];
+						} else if (payload.eventType === 'UPDATE') {
+							updated = prev.map((p) =>
+								p.id === payload.new.id ? (payload.new as Plant) : p
+							);
+						} else if (payload.eventType === 'DELETE') {
+							updated = prev.filter((p) => p.id !== payload.old.id);
+						}
+						AsyncStorage.setItem(PLANTS_CACHE_KEY, JSON.stringify(updated));
+						return updated;
+					});
+				}
+			)
+			.subscribe();
+		return () => supabase.removeChannel(channel);
 	}, [session?.user.id, isOnline]);
 
+	// Upload image helper
 	const uploadImage = async (uri: string): Promise<string> => {
-		if (!session?.user.id) {
-			throw new Error('User not authenticated');
-		}
-
+		if (!session?.user.id) throw new Error('User not authenticated');
 		setUploadProgress(0);
-
-		// If already a remote URL, return as is
 		if (uri.startsWith('http')) {
 			setUploadProgress(100);
 			return uri;
 		}
-
 		const timestamp = Date.now();
-		const randomString = Math.random().toString(36).substring(7);
-		const extension = uri.split('.').pop()?.toLowerCase() || 'jpg';
-		const filename = `${timestamp}-${randomString}.${extension}`;
-		const filePath = `${session.user.id}/${filename}`;
-
-		const uploadOptions = {
-			contentType: `image/${extension === 'jpg' ? 'jpeg' : extension}`,
+		const rand = Math.random().toString(36).substring(7);
+		const ext = uri.split('.').pop()?.toLowerCase() || 'jpg';
+		const filename = `${timestamp}-${rand}.${ext}`;
+		const path = `${session.user.id}/${filename}`;
+		const opts: any = {
+			contentType: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
 			cacheControl: '3600',
 			upsert: false,
 			metadata: {
 				user_id: session.user.id,
-				mime_type: `image/${extension === 'jpg' ? 'jpeg' : extension}`,
+				mime_type: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
 				filename,
 				size: 0,
 				created_at: new Date().toISOString(),
 			},
 		};
-
 		try {
+			let file: Blob | ArrayBuffer;
 			if (Platform.OS === 'web') {
-				const response = await fetch(uri);
-				if (!response.ok) {
-					throw new Error(`Failed to fetch image: ${response.status}`);
-				}
-				const blob = await response.blob();
-				uploadOptions.metadata.size = blob.size;
-
-				const { data, error } = await supabase.storage
-					.from('plants')
-					.upload(filePath, blob, uploadOptions);
-
-				if (error) throw error;
-				if (!data?.path) throw new Error('Upload succeeded but no path returned');
-
-				const { data: urlData } = supabase.storage.from('plants').getPublicUrl(filePath);
-
-				setUploadProgress(100);
-				return urlData.publicUrl;
+				const res = await fetch(uri);
+				if (!res.ok) throw new Error(`Failed to fetch: ${res.status}`);
+				file = await res.blob();
+				opts.metadata.size = (file as Blob).size;
 			} else {
-				let fileUri = uri;
-
-				if (!uri.startsWith('file://')) {
-					const downloadResult = await FileSystem.downloadAsync(
-						uri,
-						FileSystem.cacheDirectory + filename
-					);
-					fileUri = downloadResult.uri;
-				}
-
-				const fileInfo = await FileSystem.getInfoAsync(fileUri);
-				uploadOptions.metadata.size = fileInfo.size ?? 0;
-
-				const base64 = await FileSystem.readAsStringAsync(fileUri, {
+				let fileUri = uri.startsWith('file://')
+					? uri
+					: (await FileSystem.downloadAsync(uri, FileSystem.cacheDirectory + filename))
+							.uri;
+				const info = await FileSystem.getInfoAsync(fileUri);
+				opts.metadata.size = info.size || 0;
+				const b64 = await FileSystem.readAsStringAsync(fileUri, {
 					encoding: FileSystem.EncodingType.Base64,
 				});
-
-				const arrayBuffer = decode(base64);
-
-				const { data, error } = await supabase.storage
-					.from('plants')
-					.upload(filePath, arrayBuffer, uploadOptions);
-
-				if (error) throw error;
-				if (!data?.path) throw new Error('Upload succeeded but no path returned');
-
-				if (!uri.startsWith('file://')) {
+				file = decode(b64);
+				if (!uri.startsWith('file://'))
 					await FileSystem.deleteAsync(fileUri, { idempotent: true });
-				}
-
-				const { data: urlData } = supabase.storage.from('plants').getPublicUrl(filePath);
-
-				setUploadProgress(100);
-				return urlData.publicUrl;
 			}
-		} catch (err: any) {
-			console.error('Upload error:', err);
+			const { data, error } = await supabase.storage.from('plants').upload(path, file, opts);
+			if (error) throw error;
+			if (!data?.path) throw new Error('No path returned');
+			const { data: urlData } = supabase.storage.from('plants').getPublicUrl(path);
+			setUploadProgress(100);
+			return urlData.publicUrl;
+		} catch (e: any) {
+			console.error('Upload error:', e);
 			setUploadProgress(0);
-			throw new Error(`Failed to upload image: ${err.message}`);
+			throw new Error(`Failed to upload image: ${e.message}`);
 		}
 	};
 
+	// CRUD operations
 	const addPlant = async (plant: PlantIdSuggestionRaw & { nickname: string }) => {
 		try {
-			let imageUrl = plant.capturedImageUri;
-			if (imageUrl) {
-				imageUrl = await uploadImage(imageUrl);
-			}
-
-			console.log(plant.capturedImageUri, 'capturedImageUri data');
-
+			let imageUrl = plant.capturedImageUri
+				? await uploadImage(plant.capturedImageUri)
+				: undefined;
 			const { data, error } = await supabase
 				.from('plants')
 				.insert([
@@ -179,43 +164,31 @@ export function usePlants() {
 				])
 				.select()
 				.single();
-
-			if (error) {
-				console.error('Error inserting plant:', error);
-				throw error;
-			}
-
-			console.log('Plant added successfully:', data);
-
+			if (error) throw error;
 			await loadPlants();
 			return data;
 		} catch (e) {
-			console.error('Error in addPlant:', e);
-			throw e instanceof Error ? e : new Error('Failed to add plant');
+			console.error('addPlant error:', e);
+			throw e;
 		}
 	};
 
 	const updatePlant = async (id: string, updates: Partial<Plant>) => {
-		console.log(id, updates, 'updatePlant data');
 		try {
-			if (updates.image_url && !updates.image_url.startsWith('http')) {
+			if (updates.image_url && !updates.image_url.startsWith('http'))
 				updates.image_url = await uploadImage(updates.image_url);
-			}
-
 			const { data, error } = await supabase
 				.from('plants')
 				.update({ ...updates, updated_at: new Date().toISOString() })
 				.eq('id', id)
 				.select()
 				.single();
-
 			if (error) throw error;
-
 			await loadPlants();
 			return data;
 		} catch (e) {
-			console.error('Error in updatePlant:', e);
-			throw e instanceof Error ? e : new Error('Failed to update plant');
+			console.error('updatePlant error:', e);
+			throw e;
 		}
 	};
 
@@ -225,28 +198,21 @@ export function usePlants() {
 			if (plant?.image_url) {
 				try {
 					const url = new URL(plant.image_url);
-					const filePath = url.pathname.split('/').slice(-2).join('/');
-					await supabase.storage.from('plants').remove([filePath]);
-				} catch (err) {
-					console.warn('Failed to delete image from storage:', err);
-				}
+					const fp = url.pathname.split('/').slice(-2).join('/');
+					await supabase.storage.from('plants').remove([fp]);
+				} catch {}
 			}
-
 			const { error } = await supabase.from('plants').delete().eq('id', id);
-
 			if (error) throw error;
-
 			await loadPlants();
 		} catch (e) {
-			throw e instanceof Error ? e : new Error('Failed to delete plant');
+			console.error('deletePlant error:', e);
+			throw e;
 		}
 	};
 
-	// New: fetch a single plant by its ID
 	const getPlantById = async (id: string): Promise<Plant | null> => {
-		if (!session?.user.id) {
-			throw new Error('User not authenticated');
-		}
+		if (!session?.user.id) throw new Error('User not authenticated');
 		try {
 			if (isOnline) {
 				const { data, error } = await supabase
@@ -256,15 +222,60 @@ export function usePlants() {
 					.single();
 				if (error) throw error;
 				return data;
-			} else {
-				// Fallback to local cache
-				return plants.find((p) => p.id === id) || null;
 			}
+			return plants.find((p) => p.id === id) || null;
 		} catch (e) {
-			console.error('Error fetching plant by id:', e);
-			throw e instanceof Error ? e : new Error('Failed to get plant');
+			console.error('getPlantById error:', e);
+			throw e;
 		}
 	};
+
+	// Prepare dates
+	const today = new Date();
+	today.setHours(0, 0, 0, 0);
+
+	// Build schedule entries for watering & fertilizing
+	const entries: any[] = [];
+	plants.forEach((plant) => {
+		if (plant.watering_interval_days) {
+			let due: Date;
+			if (plant.last_watered) {
+				const last = new Date(plant.last_watered);
+				due = new Date(last.getTime() + plant.watering_interval_days * 24 * 60 * 60 * 1000);
+			} else {
+				due = new Date(today);
+			}
+			entries.push({
+				id: `${plant.id}-water`,
+				plantId: plant.id,
+				plantName: plant.nickname,
+				plantImage: plant.image_url,
+				type: 'Water',
+				dueDate: due,
+			});
+		}
+		if (plant.fertilize_interval_days) {
+			let due: Date;
+			if (plant.last_fertilized) {
+				const last = new Date(plant.last_fertilized);
+				due = new Date(
+					last.getTime() + plant.fertilize_interval_days * 24 * 60 * 60 * 1000
+				);
+			} else {
+				due = new Date(today);
+			}
+			entries.push({
+				id: `${plant.id}-fertilize`,
+				plantId: plant.id,
+				plantName: plant.name,
+				plantImage: plant.image_url,
+				type: 'Fertilize',
+				dueDate: due,
+			});
+		}
+	});
+
+	const sortedEntries = entries.sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
 
 	return {
 		plants,
@@ -274,9 +285,10 @@ export function usePlants() {
 		updatePlant,
 		uploadImage,
 		deletePlant,
-		getPlantById, // ← exported here
+		getPlantById,
 		isOnline,
 		uploadProgress,
+		scheduleEntries: sortedEntries,
 		refreshPlants: loadPlants,
 	};
 }

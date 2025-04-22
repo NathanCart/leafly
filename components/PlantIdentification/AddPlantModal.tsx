@@ -1,26 +1,28 @@
-import React, { useState, useRef } from 'react';
+import { COLORS } from '@/app/constants/colors';
+import { Button } from '@/components/Button';
+import { PlantIdSuggestionRaw } from '@/types/plants';
+import * as Haptics from 'expo-haptics';
+import * as ImagePicker from 'expo-image-picker';
+import { router } from 'expo-router';
+import { Dice6, Image as ImageIcon, Leaf, X } from 'lucide-react-native';
+import React, { useRef, useState } from 'react';
 import {
-	View,
-	Text,
-	StyleSheet,
-	Modal,
-	Image,
-	TextInput,
-	TouchableOpacity,
-	Platform,
+	ActivityIndicator,
 	Animated,
 	Easing,
-	ActivityIndicator,
+	Image,
+	KeyboardAvoidingView,
+	Modal,
+	Platform,
+	ScrollView,
+	StyleSheet,
+	Text,
+	TextInput,
+	TouchableOpacity,
+	View,
 } from 'react-native';
-import { X, Leaf, Dice6, Image as ImageIcon } from 'lucide-react-native';
-import { Button } from '@/components/Button';
-import { COLORS } from '@/app/constants/colors';
-import { uniqueNamesGenerator, adjectives, colors, animals } from 'unique-names-generator';
+import { adjectives, animals, colors, uniqueNamesGenerator } from 'unique-names-generator';
 import { SuccessAnimation } from './SuccessAnimation';
-import * as ImagePicker from 'expo-image-picker';
-import * as Haptics from 'expo-haptics';
-import { PlantIdSuggestionRaw } from '@/types/plants';
-import { router } from 'expo-router';
 
 interface Props {
 	visible: boolean;
@@ -139,10 +141,8 @@ export function AddPlantModal({ visible, onClose, plant, onConfirm, isDark }: Pr
 			return;
 		}
 		setHasError(false);
-		setIsLoading(true);
 
 		try {
-			await onConfirm(nickname, currentImage);
 			setShowSuccess(true);
 		} catch (err) {
 			console.error('Failed to add plant:', err);
@@ -153,6 +153,8 @@ export function AddPlantModal({ visible, onClose, plant, onConfirm, isDark }: Pr
 	};
 
 	const handleAnimationComplete = () => {
+		onConfirm(nickname, currentImage);
+
 		setShowSuccess(false);
 		onClose();
 
@@ -168,166 +170,194 @@ export function AddPlantModal({ visible, onClose, plant, onConfirm, isDark }: Pr
 
 	return (
 		<Modal visible={visible} animationType="fade" transparent={false} onRequestClose={onClose}>
-			<View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#FFFFFF' }]}>
-				{showSuccess && <SuccessAnimation onAnimationComplete={handleAnimationComplete} />}
-
-				{isLoading && !showSuccess && (
-					<View style={styles.loaderOverlay}>
-						<ActivityIndicator size="large" color={COLORS.primary} />
-					</View>
-				)}
-
-				<TouchableOpacity
-					style={[styles.closeButton, { top: Platform.OS === 'ios' ? 50 : 20 }]}
-					onPress={onClose}
+			<KeyboardAvoidingView
+				behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+				style={styles.container}
+			>
+				<ScrollView
+					contentContainerStyle={{ flexGrow: 1 }}
+					keyboardDismissMode="on-drag"
+					style={[
+						styles.container,
+						{ backgroundColor: isDark ? '#121212' : '#FFFFFF', flex: 1 },
+					]}
 				>
-					<X color="white" size={24} />
-				</TouchableOpacity>
+					{showSuccess && (
+						<SuccessAnimation onAnimationComplete={handleAnimationComplete} />
+					)}
 
-				<View style={styles.content}>
+					{isLoading && !showSuccess && (
+						<View style={styles.loaderOverlay}>
+							<ActivityIndicator size="large" color={COLORS.primary} />
+						</View>
+					)}
+
 					<TouchableOpacity
-						style={styles.imageContainer}
-						onPress={pickImage}
-						activeOpacity={0.8}
+						style={[styles.closeButton, { top: Platform.OS === 'ios' ? 50 : 20 }]}
+						onPress={onClose}
 					>
-						<Image source={{ uri: currentImage }} style={styles.plantImage} />
-						<View style={[styles.imageOverlay, { backgroundColor: 'rgba(0,0,0,0.3)' }]}>
-							<ImageIcon color="white" size={24} />
-							<Text style={styles.changePhotoText}>Change Photo</Text>
-						</View>
-						<View
-							style={[
-								styles.editIndicator,
-								{ backgroundColor: isDark ? '#2A3A30' : '#E6F2E8' },
-							]}
-						>
-							<ImageIcon color={COLORS.primary} size={20} />
-						</View>
-						<View
-							style={[
-								styles.plantBadge,
-								{ backgroundColor: isDark ? '#2A3A30' : '#E6F2E8' },
-							]}
-						>
-							<Leaf color={COLORS.primary} size={20} />
-							<Text
-								style={[
-									styles.plantBadgeText,
-									{ color: isDark ? '#E0E0E0' : '#283618' },
-								]}
-							>
-								{plant.name}
-							</Text>
-						</View>
+						<X color="white" size={24} />
 					</TouchableOpacity>
 
-					<View style={styles.form}>
-						<Text style={[styles.title, { color: isDark ? '#E0E0E0' : '#283618' }]}>
-							Name Your Plant
-						</Text>
-						<Text style={[styles.subtitle, { color: isDark ? '#BBBBBB' : '#555555' }]}>
-							Give your new plant friend a unique name
-						</Text>
-
-						<View style={styles.inputContainer}>
-							<View style={styles.nicknameInputContainer}>
-								<Animated.View
-									style={[
-										styles.inputWrapper,
-										{
-											transform: [
-												{ scale: inputScaleValue },
-												{ translateX: shakeAnimation },
-											],
-										},
-									]}
-								>
-									<TextInput
-										style={[
-											styles.input,
-											{
-												backgroundColor: hasError
-													? isDark
-														? '#3A2A2A'
-														: '#FFE8E0'
-													: isDark
-													? '#2A2A2A'
-													: '#F5F5F5',
-												color: isDark ? '#E0E0E0' : '#283618',
-												borderColor: hasError ? '#D27D4C' : 'transparent',
-												borderWidth: hasError ? 1 : 0,
-											},
-										]}
-										placeholder="Give me a name"
-										placeholderTextColor={
-											hasError ? '#D27D4C' : isDark ? '#888' : '#999'
-										}
-										value={nickname}
-										onChangeText={handleChangeText}
-									/>
-									{hasError && (
-										<Text style={[styles.errorText, { color: '#D27D4C' }]}>
-											Please give your plant a name
-										</Text>
-									)}
-								</Animated.View>
-								<TouchableOpacity
-									style={[
-										styles.diceButton,
-										{ backgroundColor: isDark ? '#2A3A30' : '#E6F2E8' },
-									]}
-									onPress={generateRandomNickname}
-									activeOpacity={0.8}
-								>
-									<Animated.View style={{ transform: [{ rotate: spin }] }}>
-										<Dice6 size={24} color={COLORS.primary} />
-									</Animated.View>
-								</TouchableOpacity>
-							</View>
-						</View>
-
-						<View
-							style={[
-								styles.reminderCard,
-								{ backgroundColor: isDark ? '#2A3A30' : '#E6F2E8' },
-							]}
+					<View style={styles.content}>
+						<TouchableOpacity
+							style={styles.imageContainer}
+							onPress={pickImage}
+							activeOpacity={0.8}
 						>
+							<Image source={{ uri: currentImage }} style={styles.plantImage} />
 							<View
 								style={[
-									styles.reminderIconContainer,
-									{ backgroundColor: isDark ? '#1A2A20' : '#FFFFFF' },
+									styles.imageOverlay,
+									{ backgroundColor: 'rgba(0,0,0,0.3)' },
 								]}
 							>
-								<Leaf size={24} color={COLORS.primary} />
+								<ImageIcon color="white" size={24} />
+								<Text style={styles.changePhotoText}>Change Photo</Text>
 							</View>
-							<View style={styles.reminderContent}>
+							<View
+								style={[
+									styles.editIndicator,
+									{ backgroundColor: isDark ? '#2A3A30' : '#E6F2E8' },
+								]}
+							>
+								<ImageIcon color={COLORS.primary} size={20} />
+							</View>
+							<View
+								style={[
+									styles.plantBadge,
+									{ backgroundColor: isDark ? '#2A3A30' : '#E6F2E8' },
+								]}
+							>
+								<Leaf color={COLORS.primary} size={20} />
 								<Text
 									style={[
-										styles.reminderTitle,
+										styles.plantBadgeText,
 										{ color: isDark ? '#E0E0E0' : '#283618' },
 									]}
 								>
-									SMART REMINDERS
-								</Text>
-								<Text
-									style={[
-										styles.reminderText,
-										{ color: isDark ? '#BBBBBB' : '#555555' },
-									]}
-								>
-									Let&apos;s find the watering rhythm
+									{plant.name}
 								</Text>
 							</View>
+						</TouchableOpacity>
+
+						<View style={styles.form}>
+							<Text style={[styles.title, { color: isDark ? '#E0E0E0' : '#283618' }]}>
+								Name Your Plant
+							</Text>
+							<Text
+								style={[styles.subtitle, { color: isDark ? '#BBBBBB' : '#555555' }]}
+							>
+								Give your new plant friend a unique name
+							</Text>
+
+							<View style={styles.inputContainer}>
+								<View style={styles.nicknameInputContainer}>
+									<Animated.View
+										style={[
+											styles.inputWrapper,
+											{
+												transform: [
+													{ scale: inputScaleValue },
+													{ translateX: shakeAnimation },
+												],
+											},
+										]}
+									>
+										<TextInput
+											style={[
+												styles.input,
+												{
+													backgroundColor: hasError
+														? isDark
+															? '#3A2A2A'
+															: '#FFE8E0'
+														: isDark
+														? '#2A2A2A'
+														: '#F5F5F5',
+													color: isDark ? '#E0E0E0' : '#283618',
+													borderColor: hasError
+														? '#D27D4C'
+														: 'transparent',
+													borderWidth: hasError ? 1 : 0,
+												},
+											]}
+											placeholder="Give me a name"
+											placeholderTextColor={
+												hasError ? '#D27D4C' : isDark ? '#888' : '#999'
+											}
+											value={nickname}
+											onChangeText={handleChangeText}
+										/>
+										{hasError && (
+											<Text style={[styles.errorText, { color: '#D27D4C' }]}>
+												Please give your plant a name
+											</Text>
+										)}
+									</Animated.View>
+									<TouchableOpacity
+										style={[
+											styles.diceButton,
+											{ backgroundColor: isDark ? '#2A3A30' : '#E6F2E8' },
+										]}
+										onPress={generateRandomNickname}
+										activeOpacity={0.8}
+									>
+										<Animated.View style={{ transform: [{ rotate: spin }] }}>
+											<Dice6 size={24} color={COLORS.primary} />
+										</Animated.View>
+									</TouchableOpacity>
+								</View>
+							</View>
+
+							<View
+								style={[
+									styles.reminderCard,
+									{ backgroundColor: isDark ? '#2A3A30' : '#E6F2E8' },
+								]}
+							>
+								<View
+									style={[
+										styles.reminderIconContainer,
+										{ backgroundColor: isDark ? '#1A2A20' : '#FFFFFF' },
+									]}
+								>
+									<Leaf size={24} color={COLORS.primary} />
+								</View>
+								<View style={[styles.reminderContent]}>
+									<Text
+										style={[
+											styles.reminderTitle,
+											{ color: isDark ? '#E0E0E0' : '#283618' },
+										]}
+									>
+										SMART REMINDERS
+									</Text>
+									<Text
+										style={[
+											styles.reminderText,
+											{ color: isDark ? '#BBBBBB' : '#555555' },
+										]}
+									>
+										Let&apos;s find the watering rhythm
+									</Text>
+								</View>
+							</View>
+						</View>
+
+						<View style={styles.buttonContainer}>
+							<Button
+								onPress={handleConfirm}
+								fullWidth
+								size="large"
+								disabled={isLoading}
+							>
+								Add Plant
+							</Button>
 						</View>
 					</View>
-
-					<View style={styles.buttonContainer}>
-						<Button onPress={handleConfirm} fullWidth size="large" disabled={isLoading}>
-							Add Plant
-						</Button>
-					</View>
-				</View>
-			</View>
+				</ScrollView>
+			</KeyboardAvoidingView>
 		</Modal>
 	);
 }
