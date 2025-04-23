@@ -14,6 +14,7 @@ import { Leaf, Mail, Lock, User, ChevronLeft } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Text } from '@/components/Text';
+import { COLORS } from '../constants/colors';
 
 export default function RegisterScreen() {
 	const [username, setUsername] = useState('');
@@ -303,6 +304,8 @@ const styles = StyleSheet.create({
 		borderRadius: 12,
 		paddingHorizontal: 16,
 		gap: 12,
+		borderWidth: 2,
+		borderColor: COLORS.border,
 	},
 	inputText: {
 		flex: 1,

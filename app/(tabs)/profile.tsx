@@ -23,19 +23,21 @@ import { COLORS } from '@/app/constants/colors';
 import { Text } from '@/components/Text';
 import { usePlants } from '@/hooks/usePlants';
 import { useProfile } from '@/hooks/useProfile';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function ProfileScreen() {
 	const colorScheme = useColorScheme();
 	const isDark = colorScheme === 'dark';
 	const insets = useSafeAreaInsets();
+	const { signOut, session } = useAuth();
 
 	const { plants } = usePlants();
 	const { profile } = useProfile();
 
 	const userProfile = {
 		name: profile?.username ?? '-',
-		email: profile?.email ?? '-',
-		avatar: profile?.avatar ?? '',
+		email: session?.user?.email ?? '-',
+		avatar: profile?.avatar_url ?? '',
 		plantCount: plants?.length || 0,
 		streakDays: '-',
 		level: '-',
@@ -46,22 +48,30 @@ export default function ProfileScreen() {
 			id: 'account',
 			icon: <User size={20} color={COLORS.tabBar.active} />,
 			title: 'Account Settings',
-			screen: '/accountSettings',
+			onPress: () => router.push('/accountSettings'),
 		},
-
 		{
 			id: 'help',
 			icon: <HelpCircle size={20} color={COLORS.tabBar.active} />,
 			title: 'Help & Support',
-			screen: '/help',
+			onPress: () => router.push('/help'),
 		},
 		{
 			id: 'share',
 			icon: <Share2 size={20} color={COLORS.tabBar.active} />,
 			title: 'Share with Friends',
-			screen: '/share',
+			onPress: () => router.push('/share'),
 		},
 	];
+
+	const handleLogout = async () => {
+		try {
+			await signOut();
+			router.replace('/login');
+		} catch (error) {
+			console.error('Logout error:', error);
+		}
+	};
 
 	return (
 		<View
@@ -89,9 +99,12 @@ export default function ProfileScreen() {
 						{ backgroundColor: isDark ? '#2A3A30' : '#FFFFFF' },
 					]}
 				>
-					<View style={COLORS.shadowLg}>
-						<Image source={{ uri: userProfile.avatar }} style={styles.avatar} />
-					</View>
+					{!!userProfile?.avatar && (
+						<View style={COLORS.shadowLg}>
+							<Image source={{ uri: userProfile.avatar }} style={styles.avatar} />
+						</View>
+					)}
+
 					<Text style={[styles.profileName, { color: isDark ? '#E0E0E0' : '#283618' }]}>
 						{userProfile.name}
 					</Text>
@@ -177,6 +190,7 @@ export default function ProfileScreen() {
 								styles.menuItem,
 								{ backgroundColor: isDark ? '#2A3A30' : '#FFFFFF' },
 							]}
+							onPress={item.onPress}
 						>
 							<View style={styles.menuIconContainer}>{item.icon}</View>
 							<Text
@@ -196,11 +210,13 @@ export default function ProfileScreen() {
 				<TouchableOpacity
 					style={[
 						styles.logoutButton,
+
 						{ backgroundColor: isDark ? '#2A2A2A' : '#FFFFFF' },
 					]}
+					onPress={handleLogout}
 				>
-					<LogOut size={24} color="#D27D4C" />
-					<Text style={[styles.logoutText, { color: '#D27D4C' }]}>Log Out</Text>
+					<LogOut size={24} color={COLORS.warning} />
+					<Text style={[styles.logoutText, { color: COLORS.warning }]}>Log Out</Text>
 				</TouchableOpacity>
 
 				<Text style={[styles.versionText, { color: isDark ? '#BBBBBB' : '#555555' }]}>
@@ -237,7 +253,6 @@ const styles = StyleSheet.create({
 		width: 80,
 		height: 80,
 		borderRadius: 14,
-
 		marginBottom: 12,
 	},
 	profileName: { fontSize: 20, fontWeight: '600', marginBottom: 4 },
@@ -291,11 +306,9 @@ const styles = StyleSheet.create({
 		padding: 16,
 		borderRadius: 12,
 		marginBottom: 24,
-		shadowColor: '#000',
-		shadowOffset: { width: 0, height: 1 },
-		shadowOpacity: 0.1,
-		shadowRadius: 2,
-		elevation: 1,
+		borderWidth: 2,
+		borderColor: COLORS.border,
+		color: COLORS.warning,
 	},
 	logoutText: { fontSize: 16, fontWeight: '600', marginLeft: 8 },
 	versionText: { textAlign: 'center', fontSize: 12, marginBottom: 16 },

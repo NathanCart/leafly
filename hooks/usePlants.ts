@@ -1,13 +1,13 @@
+// hooks/usePlants.ts
 import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/lib/supabase';
 import { Database } from '@/types/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOfflineSync } from './useOfflineSync';
-import * as FileSystem from 'expo-file-system';
 import { Platform } from 'react-native';
-import { decode } from 'base64-arraybuffer';
-import { PlantIdSuggestionRaw } from '@/types/plants';
+import type { PlantIdSuggestionRaw } from '@/types/plants';
+import { useS3Uploader } from '@/components/useS3Uploader';
 
 type Plant = Database['public']['Tables']['plants']['Row'];
 const PLANTS_CACHE_KEY = '@plants_cache';
@@ -20,7 +20,10 @@ export function usePlants() {
 	const [error, setError] = useState<Error | null>(null);
 	const [uploadProgress, setUploadProgress] = useState(0);
 
-	// Load cache or fetch
+	// Initialize S3 uploader
+	const BUCKET = process.env.EXPO_PUBLIC_BUCKET_NAME!;
+	const { uploadFile, isUploading: isUploadingToS3 } = useS3Uploader(BUCKET);
+
 	const loadPlants = async () => {
 		if (!session?.user.id) {
 			setLoading(false);
@@ -50,7 +53,6 @@ export function usePlants() {
 		}
 	};
 
-	// Real-time subscription
 	useEffect(() => {
 		if (!session?.user.id || !isOnline) return;
 		loadPlants();
@@ -82,10 +84,11 @@ export function usePlants() {
 				}
 			)
 			.subscribe();
+
 		return () => supabase.removeChannel(channel);
 	}, [session?.user.id, isOnline]);
 
-	// Upload image helper
+	// Upload image via S3
 	const uploadImage = async (uri: string): Promise<string> => {
 		if (!session?.user.id) throw new Error('User not authenticated');
 		setUploadProgress(0);
@@ -93,61 +96,23 @@ export function usePlants() {
 			setUploadProgress(100);
 			return uri;
 		}
-		const timestamp = Date.now();
-		const rand = Math.random().toString(36).substring(7);
-		const ext = uri.split('.').pop()?.toLowerCase() || 'jpg';
-		const filename = `${timestamp}-${rand}.${ext}`;
-		const path = `${session.user.id}/${filename}`;
-		const opts: any = {
-			contentType: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
-			cacheControl: '3600',
-			upsert: false,
-			metadata: {
-				user_id: session.user.id,
-				mime_type: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
-				filename,
-				size: 0,
-				created_at: new Date().toISOString(),
-			},
-		};
+
 		try {
-			let file: Blob | ArrayBuffer;
-			if (Platform.OS === 'web') {
-				const res = await fetch(uri);
-				if (!res.ok) throw new Error(`Failed to fetch: ${res.status}`);
-				file = await res.blob();
-				opts.metadata.size = (file as Blob).size;
-			} else {
-				let fileUri = uri.startsWith('file://')
-					? uri
-					: (await FileSystem.downloadAsync(uri, FileSystem.cacheDirectory + filename))
-							.uri;
-				const info = await FileSystem.getInfoAsync(fileUri);
-				opts.metadata.size = info.size || 0;
-				const b64 = await FileSystem.readAsStringAsync(fileUri, {
-					encoding: FileSystem.EncodingType.Base64,
-				});
-				file = decode(b64);
-				if (!uri.startsWith('file://'))
-					await FileSystem.deleteAsync(fileUri, { idempotent: true });
-			}
-			const { data, error } = await supabase.storage.from('plants').upload(path, file, opts);
-			if (error) throw error;
-			if (!data?.path) throw new Error('No path returned');
-			const { data: urlData } = supabase.storage.from('plants').getPublicUrl(path);
+			const ext = uri.split('.').pop()?.toLowerCase() || 'jpg';
+			const contentType = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+			const { url } = await uploadFile(uri, contentType);
 			setUploadProgress(100);
-			return urlData.publicUrl;
+			return url;
 		} catch (e: any) {
-			console.error('Upload error:', e);
+			console.error('S3 upload error:', e);
 			setUploadProgress(0);
 			throw new Error(`Failed to upload image: ${e.message}`);
 		}
 	};
 
-	// CRUD operations
 	const addPlant = async (plant: PlantIdSuggestionRaw & { nickname: string }) => {
 		try {
-			let imageUrl = plant.capturedImageUri
+			const imageUrl = plant.capturedImageUri
 				? await uploadImage(plant.capturedImageUri)
 				: undefined;
 			const { data, error } = await supabase
@@ -175,8 +140,9 @@ export function usePlants() {
 
 	const updatePlant = async (id: string, updates: Partial<Plant>) => {
 		try {
-			if (updates.image_url && !updates.image_url.startsWith('http'))
-				updates.image_url = await uploadImage(updates.image_url);
+			if (updates.image_url && !updates.image_url.startsWith('http')) {
+				updates.image_url = await uploadImage(updates.image_url as string);
+			}
 			const { data, error } = await supabase
 				.from('plants')
 				.update({ ...updates, updated_at: new Date().toISOString() })
@@ -194,16 +160,7 @@ export function usePlants() {
 
 	const deletePlant = async (id: string) => {
 		try {
-			const plant = plants.find((p) => p.id === id);
-			if (plant?.image_url) {
-				try {
-					const url = new URL(plant.image_url);
-					const fp = url.pathname.split('/').slice(-2).join('/');
-					await supabase.storage.from('plants').remove([fp]);
-				} catch {}
-			}
-			const { error } = await supabase.from('plants').delete().eq('id', id);
-			if (error) throw error;
+			await supabase.from('plants').delete().eq('id', id);
 			await loadPlants();
 		} catch (e) {
 			console.error('deletePlant error:', e);
@@ -213,38 +170,24 @@ export function usePlants() {
 
 	const getPlantById = async (id: string): Promise<Plant | null> => {
 		if (!session?.user.id) throw new Error('User not authenticated');
-		try {
-			if (isOnline) {
-				const { data, error } = await supabase
-					.from('plants')
-					.select('*')
-					.eq('id', id)
-					.single();
-				if (error) throw error;
-				return data;
-			}
-			return plants.find((p) => p.id === id) || null;
-		} catch (e) {
-			console.error('getPlantById error:', e);
-			throw e;
+		if (isOnline) {
+			const { data, error } = await supabase.from('plants').select('*').eq('id', id).single();
+			if (error) throw error;
+			return data;
 		}
+		return plants.find((p) => p.id === id) || null;
 	};
 
-	// Prepare dates
+	// Build watering & fertilizing schedule entries
 	const today = new Date();
 	today.setHours(0, 0, 0, 0);
-
-	// Build schedule entries for watering & fertilizing
 	const entries: any[] = [];
 	plants.forEach((plant) => {
 		if (plant.watering_interval_days) {
-			let due: Date;
-			if (plant.last_watered) {
-				const last = new Date(plant.last_watered);
-				due = new Date(last.getTime() + plant.watering_interval_days * 24 * 60 * 60 * 1000);
-			} else {
-				due = new Date(today);
-			}
+			const last = plant.last_watered ? new Date(plant.last_watered) : today;
+			const due = new Date(
+				last.getTime() + plant.watering_interval_days * 24 * 60 * 60 * 1000
+			);
 			entries.push({
 				id: `${plant.id}-water`,
 				plantId: plant.id,
@@ -255,15 +198,10 @@ export function usePlants() {
 			});
 		}
 		if (plant.fertilize_interval_days) {
-			let due: Date;
-			if (plant.last_fertilized) {
-				const last = new Date(plant.last_fertilized);
-				due = new Date(
-					last.getTime() + plant.fertilize_interval_days * 24 * 60 * 60 * 1000
-				);
-			} else {
-				due = new Date(today);
-			}
+			const last = plant.last_fertilized ? new Date(plant.last_fertilized) : today;
+			const due = new Date(
+				last.getTime() + plant.fertilize_interval_days * 24 * 60 * 60 * 1000
+			);
 			entries.push({
 				id: `${plant.id}-fertilize`,
 				plantId: plant.id,
@@ -283,12 +221,12 @@ export function usePlants() {
 		error,
 		addPlant,
 		updatePlant,
-		uploadImage,
 		deletePlant,
 		getPlantById,
+		refreshPlants: loadPlants,
 		isOnline,
 		uploadProgress,
+		isUploadingToS3,
 		scheduleEntries: sortedEntries,
-		refreshPlants: loadPlants,
 	};
 }

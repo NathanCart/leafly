@@ -10,6 +10,7 @@ import { Quicksand_500Medium } from '@expo-google-fonts/quicksand/500Medium';
 import { Quicksand_600SemiBold } from '@expo-google-fonts/quicksand/600SemiBold';
 import { Quicksand_700Bold } from '@expo-google-fonts/quicksand/700Bold';
 import { View } from 'react-native';
+import 'react-native-get-random-values';
 
 function RootLayoutNav() {
 	const { session, loading } = useAuth();

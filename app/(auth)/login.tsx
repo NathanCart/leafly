@@ -203,6 +203,8 @@ const styles = StyleSheet.create({
 		borderRadius: 12,
 		paddingHorizontal: 16,
 		gap: 12,
+		borderWidth: 2,
+		borderColor: COLORS.border,
 	},
 	inputText: {
 		flex: 1,

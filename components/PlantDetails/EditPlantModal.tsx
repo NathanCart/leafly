@@ -1,4 +1,8 @@
-// EditPlantModal.tsx — styled to match AddPlantModal UI, with indoor/outdoor select, haptics on dice, and success animation
+// hooks/useS3Uploader.ts
+import { s3Client } from '@/lib/s3Client';
+import { PutObjectCommand } from '@aws-sdk/client-s3';
+
+// EditPlantModal.tsx
 import React, { useEffect, useRef, useState } from 'react';
 import {
 	View,
@@ -19,6 +23,11 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import { SuccessAnimation } from '../PlantIdentification/SuccessAnimation';
 import { Text } from '@/components/Text';
+import { useS3Uploader } from '../useS3Uploader';
+
+// ←— NEW: import the hook
+
+const BUCKET = process.env.EXPO_PUBLIC_BUCKET_NAME!;
 
 interface EditPlantModalProps {
 	visible: boolean;
@@ -47,6 +56,9 @@ export function EditPlantModal({ visible, onClose, onSave, plant, isDark }: Edit
 	const [hasError, setHasError] = useState(false);
 	const [showSuccess, setShowSuccess] = useState(false);
 
+	// ←— NEW: use the uploader hook
+	const { uploadFile, isUploading, error: uploadError } = useS3Uploader(BUCKET);
+
 	// Animations
 	const spinValue = useRef(new Animated.Value(0)).current;
 	const inputScale = useRef(new Animated.Value(1)).current;
@@ -63,7 +75,7 @@ export function EditPlantModal({ visible, onClose, onSave, plant, isDark }: Edit
 		}
 	}, [visible, plant]);
 
-	const currentImage = customImage || plant.image_url;
+	const spin = spinValue.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '1440deg'] });
 
 	const triggerHaptics = () => {
 		if (Platform.OS !== 'web') {
@@ -84,12 +96,10 @@ export function EditPlantModal({ visible, onClose, onSave, plant, isDark }: Edit
 			easing: Easing.out(Easing.cubic),
 			useNativeDriver: true,
 		}).start(() => spinValue.setValue(0));
-
 		Animated.sequence([
 			Animated.timing(inputScale, { toValue: 1.05, duration: 100, useNativeDriver: true }),
 			Animated.timing(inputScale, { toValue: 1, duration: 100, useNativeDriver: true }),
 		]).start();
-
 		const name = uniqueNamesGenerator({
 			dictionaries: [adjectives, colors, animals],
 			length: 2,
@@ -98,24 +108,6 @@ export function EditPlantModal({ visible, onClose, onSave, plant, isDark }: Edit
 		});
 		setNickname(name);
 		setHasError(false);
-	};
-	const spin = spinValue.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '1440deg'] });
-
-	const pickImage = async () => {
-		try {
-			const res = await ImagePicker.launchImageLibraryAsync({
-				mediaTypes: ImagePicker.MediaTypeOptions.images,
-				allowsEditing: true,
-				aspect: [1, 1],
-				quality: 0.6,
-			});
-			if (!res.canceled && res.assets[0].uri) {
-				setCustomImage(res.assets[0].uri);
-				if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-			}
-		} catch (e) {
-			console.error(e);
-		}
 	};
 
 	const shake = () => {
@@ -131,6 +123,29 @@ export function EditPlantModal({ visible, onClose, onSave, plant, isDark }: Edit
 		);
 	};
 
+	const currentImage = customImage || plant.image_url;
+
+	// ←— UPDATED: pickImage now uses the hook
+	const pickImage = async () => {
+		try {
+			const res = await ImagePicker.launchImageLibraryAsync({
+				mediaTypes: ImagePicker.MediaTypeOptions.images,
+				allowsEditing: true,
+				aspect: [1, 1],
+				quality: 0.6,
+			});
+			if (res.canceled || !res.assets.length) return;
+
+			const localUri = res.assets[0].uri!;
+			if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+			const { url } = await uploadFile(localUri, res.assets[0].type || 'image/jpeg');
+			setCustomImage(url);
+		} catch (err) {
+			console.error('Image pick/upload failed', err);
+		}
+	};
+
 	const handleSave = () => {
 		if (!nickname.trim()) {
 			setHasError(true);
@@ -141,18 +156,16 @@ export function EditPlantModal({ visible, onClose, onSave, plant, isDark }: Edit
 	};
 
 	const finish = () => {
-		setShowSuccess(false);
 		onSave({ nickname: nickname.trim(), location, imageUri: customImage || undefined });
 		onClose();
 	};
 
 	return (
 		<Modal visible={visible} animationType="slide" transparent={false} onRequestClose={onClose}>
-			<View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#FFFFFF' }]}>
+			<View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#FFF' }]}>
 				{showSuccess && (
 					<SuccessAnimation onAnimationComplete={finish} title="Plant Edited!" />
 				)}
-
 				<TouchableOpacity
 					style={[styles.closeBtn, { top: Platform.OS === 'ios' ? 50 : 20 }]}
 					onPress={onClose}
@@ -181,26 +194,22 @@ export function EditPlantModal({ visible, onClose, onSave, plant, isDark }: Edit
 					<View
 						style={[
 							styles.plantBadge,
-							{
-								backgroundColor: isDark ? '#2A3A30' : '#E6F2E8',
-								display: 'flex',
-							},
+							{ backgroundColor: isDark ? '#2A3A30' : '#E6F2E8' },
 						]}
 					>
 						<Leaf color={COLORS.primary} size={20} />
 						<Text
-							style={[
-								styles.badgeText,
-								{
-									color: isDark ? '#E0E0E0' : '#283618',
-									maxWidth: 110,
-								},
-							]}
 							numberOfLines={1}
+							style={[styles.badgeText, { color: isDark ? '#E0E0E0' : '#283618' }]}
 						>
 							{plant.name}
 						</Text>
 					</View>
+					{isUploading && (
+						<View style={styles.uploadingOverlay}>
+							<Text>Uploading…</Text>
+						</View>
+					)}
 				</TouchableOpacity>
 
 				<View style={styles.form}>
@@ -222,7 +231,7 @@ export function EditPlantModal({ visible, onClose, onSave, plant, isDark }: Edit
 								style={[
 									styles.input,
 									{
-										backgroundColor: isDark ? '#2A2A2A' : '#fff',
+										backgroundColor: isDark ? '#2A2A2A' : '#FFF',
 										color: isDark ? '#E0E0E0' : '#283618',
 										borderColor: hasError ? '#D27D4C' : COLORS.border,
 										borderWidth: 2,
@@ -289,8 +298,8 @@ export function EditPlantModal({ visible, onClose, onSave, plant, isDark }: Edit
 				</View>
 
 				<View style={styles.buttonContainer}>
-					<Button onPress={handleSave} fullWidth size="large">
-						Save Changes
+					<Button onPress={handleSave} fullWidth size="large" disabled={isUploading}>
+						{isUploading ? 'Uploading…' : 'Save Changes'}
 					</Button>
 				</View>
 			</View>
@@ -316,7 +325,6 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		zIndex: 10,
 	},
-
 	imageContainer: { position: 'relative', marginBottom: 32, ...COLORS.shadowLg },
 	avatar: {
 		width: 180,
@@ -337,7 +345,7 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		opacity: 0,
 	},
-	overlayText: { color: '#FFF', fontSize: 14, fontWeight: '600', marginTop: 8, maxWidth: 20 },
+	overlayText: { color: '#FFF', fontSize: 14, fontWeight: '600', marginTop: 8 },
 	editIndicator: {
 		position: 'absolute',
 		top: 10,
@@ -361,16 +369,18 @@ const styles = StyleSheet.create({
 		gap: 8,
 	},
 	badgeText: { fontSize: 14, fontWeight: '600' },
+	uploadingOverlay: {
+		...StyleSheet.absoluteFillObject,
+		backgroundColor: 'rgba(255,255,255,0.8)',
+		justifyContent: 'center',
+		alignItems: 'center',
+		borderRadius: 24,
+	},
 	form: { width: '100%', alignItems: 'center', gap: 24 },
 	title: { fontSize: 24, fontWeight: '700', textAlign: 'center' },
 	subtitle: { fontSize: 16, textAlign: 'center' },
 	inputRow: { width: '100%', flexDirection: 'row', gap: 12 },
-	input: {
-		height: 56,
-		borderRadius: 16,
-		paddingHorizontal: 16,
-		fontSize: 16,
-	},
+	input: { height: 56, borderRadius: 16, paddingHorizontal: 16, fontSize: 16 },
 	errorText: { fontSize: 12, marginTop: 4, marginLeft: 4 },
 	diceButton: {
 		width: 56,
@@ -379,7 +389,7 @@ const styles = StyleSheet.create({
 		justifyContent: 'center',
 		alignItems: 'center',
 	},
-	locationSelect: { flexDirection: 'row', gap: 12, marginTop: 0 },
+	locationSelect: { flexDirection: 'row', gap: 12 },
 	locationButton: {
 		flex: 1,
 		flexDirection: 'row',
