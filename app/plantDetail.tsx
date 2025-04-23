@@ -328,17 +328,17 @@ export default function PlantDetail() {
 						<ExpandableCard
 							title="Watering"
 							content={plant.raw?.details?.best_watering || 'No watering info'}
-							icon={<Droplet size={24} color="#33A1FF" />}
+							icon={<Droplet fill="#33A1FF" size={32} color="#33A1FF" />}
 						/>
 						<ExpandableCard
 							title="Light"
 							content={plant.raw?.details?.best_light_condition || 'No light info'}
-							icon={<Sun size={24} color="#FFC43D" />}
+							icon={<Sun fill="#FFC43D" size={32} color="#FFC43D" />}
 						/>
 						<ExpandableCard
 							title="Soil"
 							content={plant.raw?.details?.best_soil_type || 'No soil info'}
-							icon={<Leaf size={24} color="#4CAF50" />}
+							icon={<Leaf fill="#4CAF50" size={32} color="#4CAF50" />}
 						/>
 					</Section>
 
@@ -383,7 +383,7 @@ export default function PlantDetail() {
 
 const Section = ({ title, children }: { title?: string; children: React.ReactNode }) => (
 	<View style={styles.section}>
-		{title ? <Text style={styles.sectionTitle}>{title}</Text> : null}
+		{title ? <Text style={[COLORS.titleMd, { marginBottom: 8 }]}>{title}</Text> : null}
 		{children}
 	</View>
 );
@@ -509,16 +509,12 @@ const styles = StyleSheet.create({
 
 	cardOuter: {
 		flexDirection: 'row',
-		alignItems: 'flex-start',
+		alignItems: 'center',
 		padding: 16,
 		borderRadius: 16,
-		backgroundColor: COLORS.card.light,
+		borderColor: COLORS.border,
 		marginBottom: 12,
-		shadowColor: '#000',
-		shadowOffset: { width: 0, height: 2 },
-		shadowOpacity: 0.1,
-		shadowRadius: 4,
-		elevation: 2,
+		borderWidth: 2,
 	},
 	cardIcon: {
 		width: 48,

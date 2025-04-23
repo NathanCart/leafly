@@ -104,7 +104,7 @@ export const ScheduleModal = ({
 						<View style={styles.scheduleSection}>
 							<View style={styles.sectionHeader}>
 								<View style={styles.sectionIconContainer}>
-									<Droplet size={20} color="#33A1FF" />
+									<Droplet fill="#33A1FF" size={20} color="#33A1FF" />
 								</View>
 								<Text style={[styles.sectionTitle, { color: textColor }]}>
 									Watering Schedule
@@ -134,7 +134,11 @@ export const ScheduleModal = ({
 											}
 										>
 											<View style={styles.autoScheduleLeft}>
-												<Sparkles size={18} color="#33A1FF" />
+												<Sparkles
+													fill="#33A1FF"
+													size={18}
+													color="#33A1FF"
+												/>
 												<Text
 													style={[
 														styles.optionLabel,
@@ -196,7 +200,7 @@ export const ScheduleModal = ({
 						<View style={styles.scheduleSection}>
 							<View style={styles.sectionHeader}>
 								<View style={styles.sectionIconContainer}>
-									<Leaf size={20} color="#4CAF50" />
+									<Leaf size={20} color="#4CAF50" fill="#4CAF50" />
 								</View>
 								<Text style={[styles.sectionTitle, { color: textColor }]}>
 									Fertilizing Schedule
@@ -226,7 +230,11 @@ export const ScheduleModal = ({
 											}
 										>
 											<View style={styles.autoScheduleLeft}>
-												<Sparkles size={18} color="#4CAF50" />
+												<Sparkles
+													size={18}
+													color="#4CAF50"
+													fill="#4CAF50"
+												/>
 												<Text
 													style={[
 														styles.optionLabel,
@@ -355,11 +363,8 @@ const styles = StyleSheet.create({
 		backgroundColor: COLORS.card.light,
 		borderRadius: 16,
 		padding: 16,
-		shadowColor: '#000',
-		shadowOffset: { width: 0, height: 2 },
-		shadowOpacity: 0.05,
-		shadowRadius: 4,
-		elevation: 1,
+		borderWidth: 2,
+		borderColor: COLORS.border,
 	},
 	sectionHeader: {
 		flexDirection: 'row',

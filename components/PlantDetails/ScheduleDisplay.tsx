@@ -109,14 +109,9 @@ const styles = StyleSheet.create({
 		backgroundColor: COLORS.card.light,
 		borderRadius: 16,
 		padding: 16,
-		shadowColor: '#000',
-		shadowOffset: { width: 0, height: 2 },
-		shadowOpacity: 0.1,
-		shadowRadius: 4,
-		elevation: 2,
-		borderStyle: 'dashed',
-		borderWidth: 1,
-		borderColor: 'rgba(0,0,0,0.1)',
+
+		borderWidth: 2,
+		borderColor: COLORS.border,
 	},
 	placeholderContent: {
 		alignItems: 'center',

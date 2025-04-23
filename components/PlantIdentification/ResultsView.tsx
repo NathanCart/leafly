@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
 import { Button } from '@/components/Button';
 import { PlantIdClassificationResponse } from '@/types/plants';
+import { COLORS } from '@/app/constants/colors';
 
 interface Props {
 	results: PlantIdClassificationResponse;
@@ -63,7 +64,9 @@ export function ResultsView({ results, onReset, onSelectPlant, scrollY, imageUri
 				</View>
 
 				<View style={styles.resultsContent}>
-					<Text style={styles.selectionTitle}>Choose Your Plant Match</Text>
+					<Text style={[styles.selectionTitle, COLORS.titleMd]}>
+						Choose Your Plant Match
+					</Text>
 					<View style={{ marginVertical: 10 }}>
 						<Button onPress={onReset} variant="secondary">
 							Try Another Photo
@@ -143,20 +146,14 @@ const styles = StyleSheet.create({
 		marginTop: -20,
 	},
 	selectionTitle: {
-		fontSize: 22,
-		fontWeight: '700',
 		marginBottom: 12,
 	},
 	resultCard: {
 		borderRadius: 20,
-		backgroundColor: '#fff',
 		marginBottom: 20,
 		overflow: 'hidden',
-		elevation: 2,
-		shadowColor: '#000',
-		shadowOffset: { width: 0, height: 2 },
-		shadowOpacity: 0.1,
-		shadowRadius: 4,
+		borderWidth: 2,
+		borderColor: COLORS.border,
 	},
 	resultImage: {
 		width: '100%',

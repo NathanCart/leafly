@@ -205,7 +205,7 @@ export function AddPlantModal({ visible, onClose, plant, onConfirm, isDark }: Pr
 							onPress={pickImage}
 							activeOpacity={0.8}
 						>
-							<Image source={{ uri: currentImage }} style={styles.plantImage} />
+							<Image source={{ uri: currentImage }} style={styles.avatar} />
 							<View
 								style={[
 									styles.imageOverlay,
@@ -393,11 +393,14 @@ const styles = StyleSheet.create({
 	imageContainer: {
 		position: 'relative',
 		marginBottom: 32,
+		...COLORS.shadowLg,
 	},
-	plantImage: {
+	avatar: {
 		width: 180,
 		height: 180,
-		borderRadius: 90,
+		borderRadius: 24,
+		borderWidth: 2,
+		borderColor: COLORS.border,
 	},
 	imageOverlay: {
 		position: 'absolute',
@@ -472,6 +475,9 @@ const styles = StyleSheet.create({
 	},
 	inputWrapper: {
 		flex: 1,
+		borderWidth: 2,
+		borderColor: COLORS.border,
+		borderRadius: 16,
 	},
 	input: {
 		height: 56,

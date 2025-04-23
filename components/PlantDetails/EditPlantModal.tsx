@@ -224,8 +224,8 @@ export function EditPlantModal({ visible, onClose, onSave, plant, isDark }: Edit
 									{
 										backgroundColor: isDark ? '#2A2A2A' : '#fff',
 										color: isDark ? '#E0E0E0' : '#283618',
-										borderColor: hasError ? '#D27D4C' : 'transparent',
-										borderWidth: hasError ? 1 : 0,
+										borderColor: hasError ? '#D27D4C' : COLORS.border,
+										borderWidth: 2,
 									},
 								]}
 								placeholder="Enter nickname"
@@ -262,7 +262,6 @@ export function EditPlantModal({ visible, onClose, onSave, plant, isDark }: Edit
 								style={[
 									styles.locationButton,
 									location === val && styles.locationButtonActive,
-									{ backgroundColor: isDark ? '#2A2A2A' : '#fff' },
 								]}
 								onPress={() => setLocation(val)}
 							>
@@ -317,8 +316,15 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		zIndex: 10,
 	},
-	imageContainer: { position: 'relative', marginBottom: 32 },
-	avatar: { width: 180, height: 180, borderRadius: 90 },
+
+	imageContainer: { position: 'relative', marginBottom: 32, ...COLORS.shadowLg },
+	avatar: {
+		width: 180,
+		height: 180,
+		borderRadius: 24,
+		borderWidth: 2,
+		borderColor: COLORS.border,
+	},
 	overlayContainer: {
 		position: 'absolute',
 		top: 0,
@@ -359,7 +365,12 @@ const styles = StyleSheet.create({
 	title: { fontSize: 24, fontWeight: '700', textAlign: 'center' },
 	subtitle: { fontSize: 16, textAlign: 'center' },
 	inputRow: { width: '100%', flexDirection: 'row', gap: 12 },
-	input: { height: 56, borderRadius: 16, paddingHorizontal: 16, fontSize: 16 },
+	input: {
+		height: 56,
+		borderRadius: 16,
+		paddingHorizontal: 16,
+		fontSize: 16,
+	},
 	errorText: { fontSize: 12, marginTop: 4, marginLeft: 4 },
 	diceButton: {
 		width: 56,
@@ -376,6 +387,8 @@ const styles = StyleSheet.create({
 		justifyContent: 'center',
 		height: 56,
 		borderRadius: 16,
+		borderColor: COLORS.border,
+		borderWidth: 2,
 		gap: 8,
 	},
 	locationButtonActive: { backgroundColor: '#E6F2E8' },

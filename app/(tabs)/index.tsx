@@ -145,7 +145,7 @@ const CloudShape = ({ style, size = 1, rotation = 0 }) => (
 			style,
 		]}
 	>
-		<Cloud color={COLORS.background.light} size={30} style={styles.cloudBase} />
+		<Cloud color={COLORS.background.light} size={30} style={styles.cloudBase} fill="#fff" />
 	</View>
 );
 
@@ -425,7 +425,7 @@ export default function HomeScreen() {
 							<View style={styles.sectionHeader}>
 								<Text
 									style={[
-										styles.sectionTitle,
+										COLORS.titleMd,
 										{
 											color: isDark
 												? COLORS.text.primary.dark
@@ -458,6 +458,7 @@ export default function HomeScreen() {
 								ItemSeparatorComponent={() => <View style={{ width: 8 }} />}
 								renderItem={({ item, index }) => (
 									<ScalePressable
+										key={index}
 										style={[
 											styles.plantCard,
 											{
@@ -510,7 +511,7 @@ export default function HomeScreen() {
 							<View style={[styles.sectionHeader, { marginBottom: 0 }]}>
 								<Text
 									style={[
-										styles.sectionTitle,
+										COLORS.titleMd,
 										{
 											color: isDark
 												? COLORS.text.primary.dark

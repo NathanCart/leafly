@@ -452,20 +452,11 @@ const styles = StyleSheet.create({
 	inlinePromoCard: {
 		margin: 16,
 		padding: 16,
-		backgroundColor: '#F3F4F6',
-		borderRadius: 0,
+		borderWidth: 2,
+		borderRadius: 16,
+
+		borderColor: COLORS.border,
 		alignItems: 'center',
-		...Platform.select({
-			ios: {
-				shadowColor: '#000',
-				shadowOffset: { width: 0, height: 1 },
-				shadowOpacity: 0.1,
-				shadowRadius: 2,
-			},
-			android: {
-				elevation: 2,
-			},
-		}),
 	},
 	promoCloseButton: {
 		position: 'absolute',

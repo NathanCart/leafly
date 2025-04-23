@@ -32,7 +32,7 @@ interface GalleryModalProps {
 export function GalleryModal({ visible, onClose, plantId, mainImage, isDark }: GalleryModalProps) {
 	const insets = useSafeAreaInsets();
 	const { width, height } = useWindowDimensions();
-	const imageSize = (width - 48) / 2;
+	const imageSize = (width - 36) / 2;
 
 	const [uploading, setUploading] = useState(false);
 	const [viewerVisible, setViewerVisible] = useState(false);
@@ -160,9 +160,9 @@ export function GalleryModal({ visible, onClose, plantId, mainImage, isDark }: G
 										style={{
 											width: imageSize,
 											height: imageSize,
-											borderRadius: 12,
+											borderRadius: 2,
 											overflow: 'hidden',
-											marginBottom: 8,
+											marginBottom: 0,
 											backgroundColor: isDark ? '#121212' : '#FFFFFF',
 										}}
 									>
@@ -293,7 +293,7 @@ const styles = StyleSheet.create({
 	grid: {
 		flexDirection: 'row',
 		flexWrap: 'wrap',
-		gap: 8,
+		gap: 2,
 	},
 	image: {
 		width: '100%',

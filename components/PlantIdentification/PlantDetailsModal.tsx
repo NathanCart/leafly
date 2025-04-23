@@ -322,7 +322,7 @@ export function PlantDetailsModal({ visible, onClose, plant, onConfirm, isDark }
 										content={`${
 											plant.details?.best_watering || 'No watering info'
 										}`}
-										icon={<Droplet color="#33A1FF" size={24} />}
+										icon={<Droplet color="#33A1FF" fill="#33A1FF" size={32} />}
 										isDark={isDark}
 									/>
 								)}
@@ -333,7 +333,7 @@ export function PlantDetailsModal({ visible, onClose, plant, onConfirm, isDark }
 										content={
 											plant?.details?.best_light_condition ?? 'No light info'
 										}
-										icon={<Sun color="#FFC43D" size={24} />}
+										icon={<Sun color="#FFC43D" fill="#FFC43D" size={32} />}
 										isDark={isDark}
 									/>
 								)}
@@ -342,7 +342,7 @@ export function PlantDetailsModal({ visible, onClose, plant, onConfirm, isDark }
 									<ExpandableCard
 										title="Soil"
 										content={plant?.details?.best_soil_type ?? 'No soil info'}
-										icon={<Leaf color="#4CAF50" size={24} />}
+										icon={<Leaf color="#4CAF50" fill="#4CAF50" size={32} />}
 										isDark={isDark}
 									/>
 								)}
@@ -365,7 +365,9 @@ export function PlantDetailsModal({ visible, onClose, plant, onConfirm, isDark }
 										<ExpandableCard
 											title="Edible Parts"
 											content={plant?.details?.edible_parts?.join(', ')!}
-											icon={<Apple color="#4CAF50" size={24} />}
+											icon={
+												<Apple color="#4CAF50" fill="#4CAF50" size={32} />
+											}
 											isDark={isDark}
 										/>
 									)}
@@ -374,7 +376,7 @@ export function PlantDetailsModal({ visible, onClose, plant, onConfirm, isDark }
 										<ExpandableCard
 											title="Toxicity"
 											content={plant?.details?.toxicity ?? ''}
-											icon={<AlertTriangle color="#FF6B6B" size={24} />}
+											icon={<AlertTriangle color="#FF6B6B" size={32} />}
 											isDark={isDark}
 										/>
 									)}
@@ -413,19 +415,15 @@ export function PlantDetailsModal({ visible, onClose, plant, onConfirm, isDark }
 }
 
 const styles = StyleSheet.create({
-	careInstructions: {
-		gap: 16,
-	},
+	careInstructions: {},
 	careItem: {
 		flexDirection: 'row',
-		alignItems: 'flex-start',
+		alignItems: 'center',
 		padding: 16,
 		borderRadius: 16,
-		shadowColor: '#000',
-		shadowOffset: { width: 0, height: 2 },
-		shadowOpacity: 0.1,
-		shadowRadius: 4,
-		elevation: 2,
+		borderColor: COLORS.border,
+		marginBottom: 12,
+		borderWidth: 2,
 	},
 	careIconContainer: {
 		width: 48,
@@ -514,7 +512,7 @@ const styles = StyleSheet.create({
 		justifyContent: 'space-between',
 		alignItems: 'flex-start',
 		marginBottom: 28,
-		gap: 16,
+		gap: 8,
 	},
 	titleWrapper: {
 		flex: 1,
@@ -534,10 +532,8 @@ const styles = StyleSheet.create({
 		marginBottom: 32,
 	},
 	sectionTitle: {
-		fontSize: 20,
-		fontWeight: '600',
-		marginBottom: 16,
-		letterSpacing: 0.5,
+		...COLORS.titleMd,
+		marginBottom: 8,
 	},
 	descriptionContainer: {
 		marginBottom: 8,

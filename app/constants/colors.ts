@@ -39,6 +39,7 @@ export const COLORS = {
 		dark: '#111111',
 	},
 	title: '#1D1D1D',
+	titleMd: { fontSize: 20, fontWeight: '700' as any },
 	surface: {
 		light: '#fff',
 		dark: '#1A1A1A',
