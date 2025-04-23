@@ -50,7 +50,7 @@ const getRelativeDate = (date: any) => {
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const HEADER_HEIGHT = 220;
 const CARD_GAP = 8;
-const CARD_WIDTH = (SCREEN_WIDTH - 14 * 3) / 2;
+const CARD_WIDTH = (SCREEN_WIDTH - 12 * 3) / 2.5; // Show 2.5 cards
 
 // ScalePressable for tap feedback
 function ScalePressable({ children, style, onPress, ...props }) {
@@ -268,7 +268,7 @@ export default function HomeScreen() {
 
 	const recentlyIdentified = plants
 		?.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-		.slice(0, 2)
+		.slice(0, 20)
 		.map((p) => ({
 			id: p.id,
 			name: p.nickname,
@@ -287,7 +287,7 @@ export default function HomeScreen() {
 
 	if (plantsLoading || loading) {
 		return (
-			<View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#F5F5F5' }]}>
+			<View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#fff' }]}>
 				<View style={styles.loadingContainer}>
 					<ActivityIndicator size="large" color={COLORS.primary} />
 					<Text
@@ -308,7 +308,7 @@ export default function HomeScreen() {
 	}
 
 	return (
-		<View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#F5F5F5' }]}>
+		<View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#fff' }]}>
 			<AnimatedLib.View
 				style={[
 					styles.headerContainer,
@@ -362,9 +362,8 @@ export default function HomeScreen() {
 						style={[
 							styles.greeting,
 							{
-								color: isDark
-									? COLORS.text.primary.dark
-									: COLORS.text.primary.light,
+								color: COLORS.border,
+								...COLORS.shadow,
 							},
 						]}
 					>
@@ -415,7 +414,7 @@ export default function HomeScreen() {
 					style={[
 						styles.contentCard,
 						{
-							backgroundColor: isDark ? '#121212' : '#F5F5F5',
+							backgroundColor: isDark ? '#121212' : '#fff',
 							transform: [{ translateY: scrollY.value }],
 						},
 					]}
@@ -447,56 +446,68 @@ export default function HomeScreen() {
 									</Text>
 								</TouchableOpacity>
 							</View>
-							<View style={styles.grid}>
-								{recentlyIdentified.map((p) => (
+
+							<AnimatedLib.FlatList
+								data={recentlyIdentified}
+								keyExtractor={(item) => item.id}
+								horizontal
+								contentContainerStyle={{ paddingHorizontal: 16 }}
+								showsHorizontalScrollIndicator={false}
+								snapToInterval={CARD_WIDTH + 8} // + margin for spacing
+								decelerationRate="fast"
+								ItemSeparatorComponent={() => <View style={{ width: 8 }} />}
+								renderItem={({ item, index }) => (
 									<ScalePressable
-										key={p.id}
 										style={[
 											styles.plantCard,
 											{
-												width: CARD_WIDTH,
 												backgroundColor: isDark ? '#2A3A30' : '#FFFFFF',
+												width: CARD_WIDTH,
 											},
 										]}
 										onPress={() =>
 											router.push({
 												pathname: '/plantDetail',
-												params: { id: p.id },
+												params: { id: item.id },
 											})
 										}
 									>
-										<Image
-											source={{ uri: p.image }}
-											style={styles.plantImage}
-										/>
-										<View style={styles.plantCardContent}>
-											<Text
-												numberOfLines={1}
-												style={[
-													styles.plantName,
-													{ color: isDark ? '#E0E0E0' : '#283618' },
-												]}
-											>
-												{p.name}
-											</Text>
-											<Text
-												style={[
-													styles.plantSpecies,
-													{ color: COLORS.tabBar.inactive },
-												]}
-												numberOfLines={1}
-											>
-												{p.date}
-											</Text>
+										<View style={styles.imageContainer}>
+											<Image
+												source={{ uri: item.image }}
+												style={{
+													width: '100%',
+													height: '100%',
+													resizeMode: 'cover',
+												}}
+											/>
+											<View style={styles.overlay} />
+											<View style={styles.overlayContent}>
+												<Text
+													style={[styles.plantName, { color: '#FFFFFF' }]}
+													numberOfLines={1}
+												>
+													{item.name}
+												</Text>
+												<Text
+													style={[
+														styles.plantSpecies,
+														{ color: '#DDDDDD' },
+													]}
+													numberOfLines={1}
+												>
+													{item.date}
+												</Text>
+											</View>
 										</View>
 									</ScalePressable>
-								))}
-							</View>
+								)}
+							/>
 						</View>
 					)}
 					{upcomingTasks.length > 0 && (
-						<View style={styles.section}>
-							<View style={styles.sectionHeader}>
+						<View style={[styles.section]}>
+							<View style={[styles.sectionHeader, { marginBottom: 0 }]}>
 								<Text
 									style={[
 										styles.sectionTitle,
@@ -510,69 +521,76 @@ export default function HomeScreen() {
 									Upcoming Care
 								</Text>
 							</View>
-							{upcomingTasks.map((task) => {
-								const isWater = task.type === 'Water';
-								const accent = isWater ? '#33A1FF' : '#4CAF50';
-								const rel = getRelativeDate(task.dueDate);
-								const overdue = task.dueDate < today;
-								return (
-									<ScalePressable
-										key={task.id}
-										style={styles.card}
-										onPress={() =>
-											router.push({
-												pathname: '/plantDetail',
-												params: { id: task.plantId },
-											})
-										}
-									>
-										<Image
-											source={{ uri: task?.plantImage ?? '' }}
-											style={styles.carePlantImage}
-										/>
-										<View style={styles.cardContent}>
-											<View style={styles.cardHeader}>
-												<Text style={styles.cardPlant}>
-													{task.plantName}
-												</Text>
-												<View
-													style={[
-														styles.cardIcon,
-														{ backgroundColor: accent + '10' },
-													]}
-												>
-													{isWater ? (
-														<Droplet
-															fill={accent}
-															color={accent}
-															size={16}
-														/>
-													) : (
-														<Leaf
-															fill={accent}
-															color={accent}
-															size={16}
-														/>
-													)}
+							<View style={{ paddingHorizontal: 16 }}>
+								{upcomingTasks.map((task) => {
+									const isWater = task.type === 'Water';
+									const accent = isWater ? '#33A1FF' : '#4CAF50';
+									const rel = getRelativeDate(task.dueDate);
+									const overdue = task.dueDate < today;
+									return (
+										<ScalePressable
+											key={task.id}
+											style={{
+												flexDirection: 'row',
+												alignItems: 'center',
+												backgroundColor: '#FFF',
+												padding: 12,
+												marginBottom: 12,
+												borderBottomWidth: 2,
+												borderColor: COLORS.border,
+											}}
+											onPress={() =>
+												router.push({
+													pathname: '/plantDetail',
+													params: { id: task.plantId },
+												})
+											}
+										>
+											<View style={COLORS.shadowLg}>
+												<Image
+													source={{ uri: task?.plantImage ?? '' }}
+													style={styles.plantImage}
+												/>
+											</View>
+											<View style={styles.cardContent}>
+												<View style={styles.cardHeader}>
+													<Text style={styles.cardPlant}>
+														{task.plantName}
+													</Text>
+													<View
+														style={[
+															styles.cardIcon,
+															{ backgroundColor: accent + '10' },
+														]}
+													>
+														{isWater ? (
+															<Droplet
+																fill={accent}
+																color={accent}
+																size={16}
+															/>
+														) : (
+															<Leaf
+																fill={accent}
+																color={accent}
+																size={16}
+															/>
+														)}
+													</View>
+												</View>
+												<View style={styles.cardRow}>
+													<Text
+														style={[styles.cardType, { color: accent }]}
+													>
+														{task.type}
+													</Text>
+													<Text style={[styles.cardDate]}>{rel}</Text>
 												</View>
 											</View>
-											<View style={styles.cardRow}>
-												<Text style={[styles.cardType, { color: accent }]}>
-													{task.type}
-												</Text>
-												<Text
-													style={[
-														styles.cardDate,
-														overdue && { color: COLORS.error },
-													]}
-												>
-													{rel}
-												</Text>
-											</View>
-										</View>
-									</ScalePressable>
-								);
-							})}
+										</ScalePressable>
+									);
+								})}
+							</View>
 						</View>
 					)}
 					{/* Health Alerts */}
@@ -653,6 +671,32 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
+	imageContainer: {
+		position: 'relative',
+		width: '100%',
+		height: 160,
+		justifyContent: 'flex-end',
+	},
+	overlay: {
+		...StyleSheet.absoluteFillObject,
+		backgroundColor: 'rgba(0, 0, 0, 0.2)',
+		borderRadius: 16,
+	},
+	overlayContent: {
+		position: 'absolute',
+		bottom: 0,
+		left: 0,
+		right: 0,
+		padding: 12,
+	},
+	plantCard: {
+		borderRadius: 20,
+		borderWidth: 2,
+		borderColor: COLORS.border,
+		overflow: 'hidden',
+		marginBottom: CARD_GAP,
+		...COLORS.shadowLg,
+	},
 	card: {
 		flexDirection: 'row',
 		alignItems: 'center',
@@ -710,6 +754,7 @@ const styles = StyleSheet.create({
 		fontSize: 14,
 		color: '#6B7280',
 	},
+
 	container: { flex: 1 },
 	headerContainer: {
 		position: 'absolute',
@@ -780,32 +825,32 @@ const styles = StyleSheet.create({
 			android: { elevation: 4 },
 		}),
 	},
-	section: { marginTop: 24, paddingHorizontal: 16 },
+	section: { marginTop: 24 },
 	sectionHeader: {
+		paddingHorizontal: 16,
+
 		flexDirection: 'row',
 		justifyContent: 'space-between',
 		alignItems: 'center',
 		marginBottom: 8,
+		color: COLORS.title,
 	},
-	sectionTitle: { fontSize: 18, fontWeight: '600' },
-	seeAll: { fontSize: 14, fontWeight: '600' },
+	sectionTitle: { fontSize: 20, fontWeight: '700' },
+	seeAll: { fontSize: 16, fontWeight: '700' },
 	grid: {
 		flexDirection: 'row',
 		flexWrap: 'wrap',
 		justifyContent: 'space-between',
 		gap: CARD_GAP,
 	},
-	plantCard: {
-		borderRadius: 16,
-		overflow: 'hidden',
-		marginBottom: CARD_GAP,
-		shadowColor: '#000',
-		shadowOffset: { width: 0, height: 2 },
-		shadowOpacity: 0.1,
-		shadowRadius: 4,
-		elevation: 2,
+
+	plantImage: {
+		width: 56,
+		height: 56,
+		borderRadius: 14,
+
+		marginRight: 12,
 	},
-	plantImage: { width: '100%', height: 120, resizeMode: 'cover' },
 	plantCardContent: { padding: 12 },
 	plantName: { fontSize: 16, fontWeight: '600' },
 	plantSpecies: { fontSize: 12, marginTop: 2 },

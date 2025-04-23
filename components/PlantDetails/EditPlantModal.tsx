@@ -222,7 +222,7 @@ export function EditPlantModal({ visible, onClose, onSave, plant, isDark }: Edit
 								style={[
 									styles.input,
 									{
-										backgroundColor: isDark ? '#2A2A2A' : '#F5F5F5',
+										backgroundColor: isDark ? '#2A2A2A' : '#fff',
 										color: isDark ? '#E0E0E0' : '#283618',
 										borderColor: hasError ? '#D27D4C' : 'transparent',
 										borderWidth: hasError ? 1 : 0,
@@ -262,7 +262,7 @@ export function EditPlantModal({ visible, onClose, onSave, plant, isDark }: Edit
 								style={[
 									styles.locationButton,
 									location === val && styles.locationButtonActive,
-									{ backgroundColor: isDark ? '#2A2A2A' : '#F5F5F5' },
+									{ backgroundColor: isDark ? '#2A2A2A' : '#fff' },
 								]}
 								onPress={() => setLocation(val)}
 							>

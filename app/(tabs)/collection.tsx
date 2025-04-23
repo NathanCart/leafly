@@ -91,65 +91,47 @@ export default function CollectionScreen() {
 			]}
 			onPress={() => router.push({ pathname: '/plantDetail', params: { id: item.id } })}
 		>
-			{item.image_url ? (
-				<Image source={{ uri: item.image_url }} style={styles.plantImage} />
-			) : (
-				<View
-					style={[
-						styles.plantImagePlaceholder,
-						{ backgroundColor: isDark ? '#1A2A20' : '#E6F2E8' },
-					]}
-				>
-					<Leaf color={COLORS.tabBar.active} size={32} />
-				</View>
-			)}
-
-			<View style={styles.plantCardContent}>
-				<Text
-					style={[styles.plantName, { color: isDark ? '#E0E0E0' : '#283618' }]}
-					numberOfLines={1}
-				>
-					{item.nickname || item.name}
-				</Text>
-				<Text
-					style={[styles.plantSpecies, { color: COLORS.tabBar.inactive }]}
-					numberOfLines={1}
-				>
-					{item.name}
-				</Text>
-
-				<View style={styles.plantCardFooter}>
+			<View style={styles.imageContainer}>
+				{item.image_url ? (
+					<Image source={{ uri: item.image_url }} style={styles.plantImage} />
+				) : (
 					<View
 						style={[
-							styles.healthIndicator,
-							{ backgroundColor: getHealthColor(item.health_status, isDark) },
+							styles.plantImagePlaceholder,
+							{ backgroundColor: isDark ? '#1A2A20' : '#E6F2E8' },
 						]}
 					>
-						<Text
-							style={[styles.healthText, { color: isDark ? '#E0E0E0' : '#283618' }]}
-						>
-							{' '}
-							{item.health_status || 'Healthy'}
-						</Text>
+						<Leaf color={COLORS.tabBar.active} size={32} />
 					</View>
-					{item.next_watering && (
-						<View
-							style={[
-								styles.waterIndicator,
-								{ backgroundColor: isDark ? '#2A4256' : '#E0F2FF' },
-							]}
-						>
-							<Droplet size={12} color={isDark ? '#88CCFF' : '#0080FF'} />
-							<Text
+				)}
+
+				{/* Dark overlay */}
+				<View style={styles.overlay} />
+
+				{/* Card content inside the overlay */}
+				<View style={styles.overlayContent}>
+					<Text style={[styles.plantName, { color: '#FFFFFF' }]} numberOfLines={1}>
+						{item.nickname || item.name}
+					</Text>
+					<Text style={[styles.plantSpecies, { color: '#DDDDDD' }]} numberOfLines={1}>
+						{item.name}
+					</Text>
+
+					<View style={styles.plantCardFooter}>
+						{item.next_watering && (
+							<View
 								style={[
-									styles.waterText,
-									{ color: isDark ? '#88CCFF' : '#0080FF' },
+									styles.waterIndicator,
+									{ backgroundColor: 'rgba(255, 255, 255, 0.2)' },
 								]}
 							>
-								{item.next_watering}
-							</Text>
-						</View>
-					)}
+								<Droplet size={12} color="#88CCFF" />
+								<Text style={[styles.waterText, { color: '#88CCFF' }]}>
+									{item.next_watering}
+								</Text>
+							</View>
+						)}
+					</View>
 				</View>
 			</View>
 		</ScalePressable>
@@ -173,7 +155,7 @@ export default function CollectionScreen() {
 			<View
 				style={[
 					styles.container,
-					{ backgroundColor: isDark ? '#121212' : '#F5F5F5' },
+					{ backgroundColor: isDark ? '#121212' : '#fff' },
 					{ paddingTop: insets.top + 8 },
 				]}
 			>
@@ -190,7 +172,7 @@ export default function CollectionScreen() {
 		<View
 			style={[
 				styles.container,
-				{ backgroundColor: isDark ? '#121212' : '#F5F5F5' },
+				{ backgroundColor: isDark ? '#121212' : '#fff' },
 				{ paddingTop: insets.top + 8 },
 			]}
 		>
@@ -279,6 +261,24 @@ export default function CollectionScreen() {
 }
 
 const styles = StyleSheet.create({
+	imageContainer: {
+		position: 'relative',
+		width: '100%',
+		height: 160,
+		justifyContent: 'flex-end',
+	},
+	overlay: {
+		...StyleSheet.absoluteFillObject,
+		backgroundColor: 'rgba(0, 0, 0, 0.2)',
+		borderRadius: 16,
+	},
+	overlayContent: {
+		position: 'absolute',
+		bottom: 0,
+		left: 0,
+		right: 0,
+		padding: 12,
+	},
 	container: { flex: 1 },
 	header: {
 		flexDirection: 'row',
@@ -299,6 +299,8 @@ const styles = StyleSheet.create({
 		borderRadius: 22,
 		paddingHorizontal: 16,
 		marginRight: 12,
+		borderWidth: 2,
+		borderColor: COLORS.border,
 	},
 	searchInput: { flex: 1, height: '100%', marginLeft: 8, fontSize: 16 },
 
@@ -313,17 +315,15 @@ const styles = StyleSheet.create({
 
 	plantList: { paddingHorizontal: 12, paddingBottom: 100 },
 	plantCard: {
-		borderRadius: 16,
+		borderWidth: 2,
+		borderColor: COLORS.border,
+		...COLORS.shadowLg,
+		borderRadius: 20,
 		overflow: 'hidden',
-		marginBottom: 20,
+		marginBottom: 10,
 		marginHorizontal: 5,
-		elevation: 2,
-		shadowColor: '#000',
-		shadowOffset: { width: 0, height: 2 },
-		shadowOpacity: 0.1,
-		shadowRadius: 4,
 	},
-	plantImage: { width: '100%', height: 120, resizeMode: 'cover' },
+	plantImage: { width: '100%', height: '100%', resizeMode: 'cover' },
 	plantImagePlaceholder: {
 		width: '100%',
 		height: 120,

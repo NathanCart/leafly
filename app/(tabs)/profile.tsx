@@ -73,7 +73,7 @@ export default function ProfileScreen() {
 		<View
 			style={[
 				styles.container,
-				{ backgroundColor: isDark ? '#121212' : '#F5F5F5', paddingTop: insets.top + 8 },
+				{ backgroundColor: isDark ? '#121212' : '#fff', paddingTop: insets.top + 8 },
 			]}
 		>
 			<StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		paddingHorizontal: 16,
 		marginBottom: 8,
-		backgroundColor: '#F5F5F5',
+		backgroundColor: '#fff',
 	},
 	headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
 	headerTitle: { fontSize: 24, fontWeight: '700', color: '#111827' },

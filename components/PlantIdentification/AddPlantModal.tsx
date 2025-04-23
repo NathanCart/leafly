@@ -274,7 +274,7 @@ export function AddPlantModal({ visible, onClose, plant, onConfirm, isDark }: Pr
 															: '#FFE8E0'
 														: isDark
 														? '#2A2A2A'
-														: '#F5F5F5',
+														: '#fff',
 													color: isDark ? '#E0E0E0' : '#283618',
 													borderColor: hasError
 														? '#D27D4C'

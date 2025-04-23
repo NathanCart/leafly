@@ -172,7 +172,9 @@ const CareSchedule = () => {
 
 		return (
 			<TouchableOpacity style={styles.card} onPress={() => setSelectedTask(item)}>
-				<Image source={{ uri: item.plantImage }} style={styles.plantImage} />
+				<View style={COLORS.shadowLg}>
+					<Image source={{ uri: item.plantImage }} style={styles.plantImage} />
+				</View>
 				<View style={styles.cardContent}>
 					<View style={styles.cardHeader}>
 						<Text style={styles.cardPlant}>{item.plantName}</Text>
@@ -196,9 +198,7 @@ const CareSchedule = () => {
 	};
 
 	return (
-		<View
-			style={[styles.container, { paddingTop: insets.top + 8, backgroundColor: '#F5F5F5' }]}
-		>
+		<View style={[styles.container, { paddingTop: insets.top + 8, backgroundColor: '#fff' }]}>
 			<StatusBar barStyle="dark-content" />
 
 			{/* Info Modal */}
@@ -337,7 +337,7 @@ const styles = StyleSheet.create({
 
 	tabContainer: {
 		paddingTop: 8,
-		borderBottomWidth: 1,
+		borderBottomWidth: 2,
 		borderBottomColor: '#E5E7EB',
 	},
 	tabsWrapper: {
@@ -352,11 +352,11 @@ const styles = StyleSheet.create({
 	tabText: {
 		color: '#6B7280',
 		fontSize: 16,
-		fontWeight: '500',
+		fontWeight: '700',
 	},
 	activeTabText: {
 		color: COLORS.primary,
-		fontWeight: '600',
+		fontWeight: '700',
 	},
 	activeTabIndicator: {
 		position: 'absolute',
@@ -379,24 +379,15 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		backgroundColor: '#FFF',
 		padding: 12,
-		borderRadius: 12,
 		marginBottom: 12,
-		...Platform.select({
-			ios: {
-				shadowColor: '#000',
-				shadowOffset: { width: 0, height: 1 },
-				shadowOpacity: 0.1,
-				shadowRadius: 2,
-			},
-			android: {
-				elevation: 2,
-			},
-		}),
+		borderBottomWidth: 2,
+		borderColor: COLORS.border,
 	},
 	plantImage: {
 		width: 56,
 		height: 56,
-		borderRadius: 8,
+		borderRadius: 14,
+
 		marginRight: 12,
 	},
 	cardContent: {
@@ -462,7 +453,7 @@ const styles = StyleSheet.create({
 		margin: 16,
 		padding: 16,
 		backgroundColor: '#F3F4F6',
-		borderRadius: 12,
+		borderRadius: 0,
 		alignItems: 'center',
 		...Platform.select({
 			ios: {

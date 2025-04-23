@@ -1,6 +1,34 @@
+import { Platform } from 'react-native';
+
 // App-wide color scheme
 export const COLORS = {
 	// Primary Colors
+	shadow: {
+		...Platform.select({
+			ios: {
+				shadowColor: '#000',
+				shadowOffset: { width: 0, height: 1 },
+				shadowOpacity: 0.1,
+				shadowRadius: 2,
+			},
+			android: {
+				elevation: 2,
+			},
+		}),
+	},
+	shadowLg: {
+		...Platform.select({
+			ios: {
+				shadowColor: '#000',
+				shadowOffset: { width: 1, height: 2 },
+				shadowOpacity: 0.3,
+				shadowRadius: 2,
+			},
+			android: {
+				elevation: 2,
+			},
+		}),
+	},
 	primary: '#58CC02', // Main green
 	secondary: '#89E219', // Light green
 	tertiary: '#1CB0F6', // Accent blue
@@ -10,8 +38,9 @@ export const COLORS = {
 		light: '#FFFFFF',
 		dark: '#111111',
 	},
+	title: '#1D1D1D',
 	surface: {
-		light: '#F5F5F5',
+		light: '#fff',
 		dark: '#1A1A1A',
 	},
 	card: {
@@ -43,7 +72,7 @@ export const COLORS = {
 		secondary: '#89E219',
 		disabled: '#E5E5E5',
 	},
-
+	border: '#f1f3f7',
 	// Tab Bar
 	tabBar: {
 		active: '#58CC02',

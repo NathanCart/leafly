@@ -112,7 +112,7 @@ export default function IdentifyScreen() {
 	// 1) Permission loading
 	if (!permission) {
 		return (
-			<View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#F5F5F5' }]}>
+			<View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#fff' }]}>
 				<TouchableOpacity style={styles.closeButton} onPress={handleClose}>
 					<X color={isDark ? '#E0E0E0' : '#283618'} size={24} />
 				</TouchableOpacity>
@@ -160,7 +160,7 @@ export default function IdentifyScreen() {
 	// 2) Permission denied
 	if (!permission.granted) {
 		return (
-			<View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#F5F5F5' }]}>
+			<View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#fff' }]}>
 				<TouchableOpacity style={styles.closeButton} onPress={handleClose}>
 					<X color={isDark ? '#E0E0E0' : '#283618'} size={24} />
 				</TouchableOpacity>
