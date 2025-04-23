@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Droplet, Leaf, CalendarDays, AlertCircle } from 'lucide-react-native';
 import { COLORS } from '@/app/constants/colors';
+import { Text } from '@/components/Text';
 
 type ScheduleSettings = {
 	watering: {

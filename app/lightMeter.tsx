@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform, useColorScheme } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Platform, useColorScheme } from 'react-native';
 import { router } from 'expo-router';
 import { ChevronLeft, Info, Sun } from 'lucide-react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Text } from '@/components/Text';
 
 export default function LightMeter() {
 	const [permission, requestPermission] = useCameraPermissions();

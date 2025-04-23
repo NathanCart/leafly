@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
 	View,
-	Text,
 	StyleSheet,
 	Dimensions,
 	Platform,
@@ -12,6 +11,7 @@ import {
 	ActivityIndicator,
 	useColorScheme,
 } from 'react-native';
+import { Text } from '@/components/Text';
 import { router } from 'expo-router';
 import {
 	Sun,

@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, Dimensions, Platform } from 'react-native';
+import { View, StyleSheet, Dimensions, Platform } from 'react-native';
 import Animated, {
 	useAnimatedStyle,
 	useSharedValue,
@@ -15,6 +15,7 @@ import Animated, {
 import { Leaf } from 'lucide-react-native';
 import { COLORS } from '@/app/constants/colors';
 import * as Haptics from 'expo-haptics';
+import { Text } from '@/components/Text';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 

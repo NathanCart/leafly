@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
 	Modal,
 	View,
-	Text,
 	StyleSheet,
 	TouchableOpacity,
 	ScrollView,
@@ -20,6 +19,7 @@ import { usePlantImages } from '@/hooks/usePlantImages';
 import { usePlants } from '@/hooks/usePlants';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '@/app/constants/colors';
+import { Text } from '@/components/Text';
 
 interface GalleryModalProps {
 	visible: boolean;

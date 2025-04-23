@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
 	View,
-	Text,
 	StyleSheet,
 	Modal,
 	TouchableOpacity,
@@ -14,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '../Button';
 import { TaskSuccessAnimation } from './TaskSuccessAnimation';
 import { COLORS } from '@/app/constants/colors';
+import { Text } from '@/components/Text';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 

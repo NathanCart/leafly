@@ -1,8 +1,9 @@
 import { COLORS } from '@/app/constants/colors';
 import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useRef } from 'react';
-import { View, StyleSheet, Animated, Text } from 'react-native';
+import { View, StyleSheet, Animated } from 'react-native';
 import { Path, Svg } from 'react-native-svg';
+import { Text } from '@/components/Text';
 
 export const PlantIllustration = ({ size = 120, color = COLORS.primary }) => {
 	const scaleAnim = useRef(new Animated.Value(0)).current;

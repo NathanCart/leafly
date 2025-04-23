@@ -1,7 +1,6 @@
 import React, { useState, useRef } from 'react';
 import {
 	View,
-	Text,
 	StyleSheet,
 	FlatList,
 	Pressable,
@@ -18,6 +17,7 @@ import * as Haptics from 'expo-haptics';
 import { Search, Leaf, Droplet } from 'lucide-react-native';
 import { useMyPlants } from '@/data/plants';
 import { COLORS } from '@/app/constants/colors';
+import { Text } from '@/components/Text';
 
 // Reusable component for press animations and haptic feedback
 function ScalePressable({ children, style, onPress, ...props }) {

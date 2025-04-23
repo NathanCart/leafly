@@ -16,13 +16,13 @@ import {
 	Platform,
 	ScrollView,
 	StyleSheet,
-	Text,
 	TextInput,
 	TouchableOpacity,
 	View,
 } from 'react-native';
 import { adjectives, animals, colors, uniqueNamesGenerator } from 'unique-names-generator';
 import { SuccessAnimation } from './SuccessAnimation';
+import { Text } from '@/components/Text';
 
 interface Props {
 	visible: boolean;

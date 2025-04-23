@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
 	View,
-	Text,
 	TouchableOpacity,
 	StyleSheet,
 	Platform,
@@ -21,6 +20,7 @@ import { TaskCompletionModal } from '@/components/Care/TaskCompletionModal';
 import { COLORS } from '../constants/colors';
 import { usePlants } from '@/hooks/usePlants';
 import { PlantIllustration } from '@/components/PlantIllustation';
+import { Text } from '@/components/Text';
 
 // Entry interface
 interface Entry {

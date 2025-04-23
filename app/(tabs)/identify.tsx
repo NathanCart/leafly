@@ -3,7 +3,6 @@
 import React, { useState, useRef } from 'react';
 import {
 	View,
-	Text,
 	StyleSheet,
 	TouchableOpacity,
 	Platform,
@@ -23,6 +22,7 @@ import { useCameraPermissions } from 'expo-camera';
 import { usePlantIdentification } from '@/hooks/usePlantIdentification';
 import { usePlants } from '@/hooks/usePlants';
 import { PlantIdClassificationResponse } from '@/types/plants';
+import { Text } from '@/components/Text';
 
 export default function IdentifyScreen() {
 	const [permission, requestPermission] = useCameraPermissions();

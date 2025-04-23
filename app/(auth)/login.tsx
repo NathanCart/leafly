@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
 	View,
-	Text,
 	TextInput,
 	StyleSheet,
 	useColorScheme,
@@ -13,6 +12,7 @@ import { Leaf, Mail, Lock } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/Button';
 import { COLORS } from '@/app/constants/colors';
+import { Text } from '@/components/Text';
 
 export default function LoginScreen() {
 	const [email, setEmail] = useState('');

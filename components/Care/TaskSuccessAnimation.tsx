@@ -1,9 +1,10 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Easing, Dimensions } from 'react-native';
+import { View, StyleSheet, Animated, Easing, Dimensions } from 'react-native';
 import { Droplet, Sparkle } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { PlantIllustration } from '../PlantIllustation';
 import { COLORS } from '@/app/constants/colors';
+import { Text } from '@/components/Text';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const NUM_PARTICLES = 30; // Increased number of particles

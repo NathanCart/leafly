@@ -2,7 +2,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
 	View,
-	Text,
 	StyleSheet,
 	Modal,
 	Image,
@@ -19,6 +18,7 @@ import { uniqueNamesGenerator, adjectives, colors, animals } from 'unique-names-
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import { SuccessAnimation } from '../PlantIdentification/SuccessAnimation';
+import { Text } from '@/components/Text';
 
 interface EditPlantModalProps {
 	visible: boolean;

@@ -11,6 +11,8 @@ export interface Database {
 					username: string | null;
 					avatar_url: string | null;
 					created_at: string;
+					email: string | null;
+
 					updated_at: string;
 				};
 				Insert: {

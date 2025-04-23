@@ -115,6 +115,7 @@ export default function TabLayout() {
 				name="collection"
 				options={{
 					title: 'My Plants',
+
 					tabBarIcon: ({ color, focused }) =>
 						focused ? (
 							<LeafIcon fill={color} color={color} size={24} />

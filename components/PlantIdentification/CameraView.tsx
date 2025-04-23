@@ -1,9 +1,10 @@
 import React, { useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { CameraView as ExpoCamera, CameraType } from 'expo-camera';
 import { Image as ImageIcon, RotateCcw } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
+import { Text } from '@/components/Text';
 
 interface Props {
 	onCapture: (uri: string) => void;

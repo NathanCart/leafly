@@ -9,6 +9,7 @@
     "lint": "expo lint"
   },
   "dependencies": {
+    "@expo-google-fonts/quicksand": "^0.3.0",
     "@expo/vector-icons": "^14.0.2",
     "@google-cloud/vision": "^4.0.2",
     "@lucide/lab": "^0.1.2",
@@ -24,7 +25,7 @@
     "expo-constants": "^17.0.5",
     "expo-device": "^7.0.3",
     "expo-file-system": "~16.0.8",
-    "expo-font": "^13.0.3",
+    "expo-font": "~13.0.4",
     "expo-haptics": "^14.0.1",
     "expo-image-manipulator": "^11.8.0",
     "expo-image-picker": "~14.7.1",

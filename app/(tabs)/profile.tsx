@@ -1,7 +1,6 @@
 import React from 'react';
 import {
 	View,
-	Text,
 	StyleSheet,
 	Image,
 	TouchableOpacity,
@@ -21,19 +20,25 @@ import {
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '@/app/constants/colors';
+import { Text } from '@/components/Text';
+import { usePlants } from '@/hooks/usePlants';
+import { useProfile } from '@/hooks/useProfile';
 
 export default function ProfileScreen() {
 	const colorScheme = useColorScheme();
 	const isDark = colorScheme === 'dark';
 	const insets = useSafeAreaInsets();
 
+	const { plants } = usePlants();
+	const { profile } = useProfile();
+
 	const userProfile = {
-		name: 'Alex Johnson',
-		email: 'alex@example.com',
-		avatar: 'https://images.pexels.com/photos/614810/pexels-photo-614810.jpeg?auto=compress&cs=tinysrgb&h=350',
-		plantCount: 12,
-		streakDays: 7,
-		level: 'Plant Explorer',
+		name: profile?.username ?? '-',
+		email: profile?.email ?? '-',
+		avatar: profile?.avatar ?? '',
+		plantCount: plants?.length || 0,
+		streakDays: '-',
+		level: '-',
 	};
 
 	const menuItems = [
@@ -43,12 +48,7 @@ export default function ProfileScreen() {
 			title: 'Account Settings',
 			screen: '/accountSettings',
 		},
-		{
-			id: 'notifications',
-			icon: <Bell size={20} color={COLORS.tabBar.active} />,
-			title: 'Notifications',
-			screen: '/notifications',
-		},
+
 		{
 			id: 'help',
 			icon: <HelpCircle size={20} color={COLORS.tabBar.active} />,
@@ -60,12 +60,6 @@ export default function ProfileScreen() {
 			icon: <Share2 size={20} color={COLORS.tabBar.active} />,
 			title: 'Share with Friends',
 			screen: '/share',
-		},
-		{
-			id: 'about',
-			icon: <Heart size={20} color={COLORS.tabBar.active} />,
-			title: 'About Leafy',
-			screen: '/about',
 		},
 	];
 
@@ -95,7 +89,9 @@ export default function ProfileScreen() {
 						{ backgroundColor: isDark ? '#2A3A30' : '#FFFFFF' },
 					]}
 				>
-					<Image source={{ uri: userProfile.avatar }} style={styles.avatar} />
+					<View style={COLORS.shadowLg}>
+						<Image source={{ uri: userProfile.avatar }} style={styles.avatar} />
+					</View>
 					<Text style={[styles.profileName, { color: isDark ? '#E0E0E0' : '#283618' }]}>
 						{userProfile.name}
 					</Text>
@@ -171,18 +167,6 @@ export default function ProfileScreen() {
 							</Text>
 						</View>
 					</View>
-
-					<TouchableOpacity
-						style={[
-							styles.editButton,
-							{ backgroundColor: isDark ? '#3A5042' : '#E6F2E8' },
-						]}
-						onPress={() => router.push('/editProfile')}
-					>
-						<Text style={[styles.editButtonText, { color: '#3A8349' }]}>
-							Edit Profile
-						</Text>
-					</TouchableOpacity>
 				</View>
 
 				<View style={styles.menuContainer}>
@@ -246,13 +230,16 @@ const styles = StyleSheet.create({
 		padding: 20,
 		alignItems: 'center',
 		marginBottom: 24,
-		shadowColor: '#000',
-		shadowOffset: { width: 0, height: 2 },
-		shadowOpacity: 0.1,
-		shadowRadius: 4,
-		elevation: 2,
+		borderWidth: 2,
+		borderColor: COLORS.border,
 	},
-	avatar: { width: 80, height: 80, borderRadius: 40, marginBottom: 16 },
+	avatar: {
+		width: 80,
+		height: 80,
+		borderRadius: 14,
+
+		marginBottom: 12,
+	},
 	profileName: { fontSize: 20, fontWeight: '600', marginBottom: 4 },
 	profileEmail: { fontSize: 14, marginBottom: 12 },
 	statsContainer: {
@@ -283,12 +270,9 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		padding: 16,
 		borderRadius: 12,
-		marginBottom: 12,
-		shadowColor: '#000',
-		shadowOffset: { width: 0, height: 1 },
-		shadowOpacity: 0.1,
-		shadowRadius: 2,
-		elevation: 1,
+		marginBottom: 8,
+		borderWidth: 2,
+		borderColor: COLORS.border,
 	},
 	menuIconContainer: {
 		width: 32,

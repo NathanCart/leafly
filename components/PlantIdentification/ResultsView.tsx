@@ -1,7 +1,6 @@
 import React from 'react';
 import {
 	View,
-	Text,
 	StyleSheet,
 	TouchableOpacity,
 	Image,
@@ -14,6 +13,7 @@ import { X } from 'lucide-react-native';
 import { Button } from '@/components/Button';
 import { PlantIdClassificationResponse } from '@/types/plants';
 import { COLORS } from '@/app/constants/colors';
+import { Text } from '@/components/Text';
 
 interface Props {
 	results: PlantIdClassificationResponse;

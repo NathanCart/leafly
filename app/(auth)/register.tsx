@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
 	View,
-	Text,
 	TextInput,
 	TouchableOpacity,
 	StyleSheet,
@@ -14,6 +13,7 @@ import { router } from 'expo-router';
 import { Leaf, Mail, Lock, User, ChevronLeft } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { Text } from '@/components/Text';
 
 export default function RegisterScreen() {
 	const [username, setUsername] = useState('');
@@ -57,6 +57,7 @@ export default function RegisterScreen() {
 				options: {
 					data: {
 						username,
+						email,
 					},
 				},
 			});

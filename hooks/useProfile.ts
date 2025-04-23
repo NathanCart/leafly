@@ -21,7 +21,7 @@ export function useProfile() {
 			try {
 				const { data: existingProfile, error: fetchError } = await supabase
 					.from('profiles')
-					.select('id, username, updated_at')
+					.select('id, username, updated_at, email, avatar_url')
 					.eq('id', session?.user.id)
 					.maybeSingle();
 

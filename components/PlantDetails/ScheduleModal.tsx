@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
 	View,
-	Text,
 	StyleSheet,
 	Modal,
 	TouchableOpacity,
@@ -13,6 +12,7 @@ import { X, Droplet, Leaf, Bell, Sparkles } from 'lucide-react-native';
 import { COLORS } from '@/app/constants/colors';
 import { Button } from '../Button';
 import { Plant } from '@/data/plants';
+import { Text } from '@/components/Text';
 
 export type ScheduleSettings = {
 	watering: {

@@ -1,7 +1,6 @@
 import React, { useState, useRef } from 'react';
 import {
 	View,
-	Text,
 	StyleSheet,
 	TouchableOpacity,
 	Modal,
@@ -26,6 +25,7 @@ import {
 import { Button } from '@/components/Button';
 import { COLORS } from '@/app/constants/colors';
 import { PlantIdClassificationResponse } from '@/types/plants';
+import { Text } from '@/components/Text';
 
 interface Props {
 	visible: boolean;
