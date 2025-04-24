@@ -1,4 +1,6 @@
 import { Text } from '@/components/Text';
+import { TourHighlight } from '@/components/Tour/TourHighlight';
+import { useTour } from '@/contexts/TourContext';
 import { usePlants } from '@/hooks/usePlants';
 import { useProfile } from '@/hooks/useProfile';
 import * as Haptics from 'expo-haptics';
@@ -37,6 +39,7 @@ import AnimatedLib, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '../constants/colors';
+
 const getRelativeDate = (date: any) => {
 	const now = new Date();
 	const diffDays = Math.ceil((date - now) / (1000 * 60 * 60 * 24));
@@ -45,12 +48,12 @@ const getRelativeDate = (date: any) => {
 	if (diffDays < 0) return `${Math.abs(diffDays)} days overdue`;
 	return `Due in ${diffDays} days`;
 };
+
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const HEADER_HEIGHT = 220;
 const CARD_GAP = 8;
-const CARD_WIDTH = (SCREEN_WIDTH - 12 * 3) / 2.5; // Show 2.5 cards
+const CARD_WIDTH = (SCREEN_WIDTH - 12 * 3) / 2.5;
 
-// ScalePressable for tap feedback
 function ScalePressable({ children, style, onPress, ...props }) {
 	const scale = useRef(new Animated.Value(1)).current;
 	const handlePressIn = () => {
@@ -82,7 +85,6 @@ function ScalePressable({ children, style, onPress, ...props }) {
 	);
 }
 
-// Animated Sun and Clouds
 const AnimatedSun = () => {
 	const rotation = useSharedValue(0);
 	const scale = useSharedValue(1);
@@ -215,17 +217,16 @@ export default function HomeScreen() {
 	const insets = useSafeAreaInsets();
 	const colorScheme = useColorScheme();
 	const isDark = colorScheme === 'dark';
+	const { currentStep, setCurrentStep, completeTour } = useTour();
+
+	console.log('currentStep', currentStep);
 
 	const [greeting, setGreeting] = useState('');
 	const [weather, setWeather] = useState<any>(null);
 	const [loading, setLoading] = useState(true);
 
 	const scrollY = useSharedValue(0);
-
 	const { profile } = useProfile();
-
-	console.log('Profile:', profile);
-
 	const { plants, loading: plantsLoading, scheduleEntries } = usePlants();
 
 	const headerStyle = useAnimatedStyle(() => ({ transform: [{ translateY: scrollY.value }] }));
@@ -256,12 +257,10 @@ export default function HomeScreen() {
 		}
 	};
 
-	// Data prep
 	const today = new Date();
 	today.setHours(0, 0, 0, 0);
 	const todayStr = today.toISOString().split('T')[0];
 
-	// inside HomeScreen(), replace your upcomingCare mapping:
 	const upcomingTasks = scheduleEntries?.splice(0, 3);
 
 	const recentlyIdentified = plants
@@ -283,23 +282,20 @@ export default function HomeScreen() {
 		?.filter((p) => ['Needs Attention', 'Unhealthy'].includes(p?.health_status || ''))
 		.map((p) => ({ id: p.id, plant: p.name, issue: p.health_status }));
 
+	const handleTourNext = () => {
+		if (currentStep === 'add-plant') {
+			setCurrentStep('schedule');
+		} else if (currentStep === 'schedule') {
+			completeTour();
+		}
+	};
+
 	if (plantsLoading || loading) {
 		return (
 			<View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#fff' }]}>
 				<View style={styles.loadingContainer}>
 					<ActivityIndicator size="large" color={COLORS.primary} />
-					<Text
-						style={[
-							styles.loadingText,
-							{
-								color: isDark
-									? COLORS.text.secondary.dark
-									: COLORS.text.secondary.light,
-							},
-						]}
-					>
-						Loading your garden...
-					</Text>
+					<Text style={styles.loadingText}>Loading your garden...</Text>
 				</View>
 			</View>
 		);
@@ -417,7 +413,6 @@ export default function HomeScreen() {
 						},
 					]}
 				>
-					{/* Recently Added */}
 					{recentlyIdentified.length > 0 && (
 						<View style={styles.section}>
 							<View style={styles.sectionHeader}>
@@ -451,7 +446,7 @@ export default function HomeScreen() {
 								horizontal
 								contentContainerStyle={{ paddingHorizontal: 16 }}
 								showsHorizontalScrollIndicator={false}
-								snapToInterval={CARD_WIDTH + 8} // + margin for spacing
+								snapToInterval={CARD_WIDTH + 8}
 								decelerationRate="fast"
 								ItemSeparatorComponent={() => <View style={{ width: 8 }} />}
 								renderItem={({ item, index }) => (
@@ -592,7 +587,6 @@ export default function HomeScreen() {
 							</View>
 						</View>
 					)}
-					{/* Health Alerts */}
 					{plantHealthAlerts.length > 0 && (
 						<View style={styles.section}>
 							<View style={styles.sectionHeader}>
@@ -665,6 +659,22 @@ export default function HomeScreen() {
 					<View style={styles.bottomPadding} />
 				</AnimatedLib.View>
 			</AnimatedLib.ScrollView>
+
+			<TourHighlight
+				visible={currentStep === 'add-plant'}
+				position="bottom"
+				title="Welcome to Your Garden!"
+				description="Start by adding your first plant. Tap the + button in the tab bar to identify and add a new plant to your collection."
+				onNext={handleTourNext}
+			/>
+
+			<TourHighlight
+				visible={currentStep === 'schedule'}
+				position="top"
+				title="Care Schedule"
+				description="After adding a plant, set up watering and care schedules to keep your plants healthy and thriving."
+				onNext={handleTourNext}
+			/>
 		</View>
 	);
 }
@@ -753,7 +763,6 @@ const styles = StyleSheet.create({
 		fontSize: 14,
 		color: '#6B7280',
 	},
-
 	container: { flex: 1 },
 	headerContainer: {
 		position: 'absolute',
@@ -827,7 +836,6 @@ const styles = StyleSheet.create({
 	section: { marginTop: 24 },
 	sectionHeader: {
 		paddingHorizontal: 16,
-
 		flexDirection: 'row',
 		justifyContent: 'space-between',
 		alignItems: 'center',
@@ -842,12 +850,10 @@ const styles = StyleSheet.create({
 		justifyContent: 'space-between',
 		gap: CARD_GAP,
 	},
-
 	plantImage: {
 		width: 56,
 		height: 56,
 		borderRadius: 14,
-
 		marginRight: 12,
 	},
 	plantCardContent: { padding: 12 },

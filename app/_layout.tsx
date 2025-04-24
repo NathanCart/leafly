@@ -11,6 +11,7 @@ import { Quicksand_600SemiBold } from '@expo-google-fonts/quicksand/600SemiBold'
 import { Quicksand_700Bold } from '@expo-google-fonts/quicksand/700Bold';
 import { View } from 'react-native';
 import 'react-native-get-random-values';
+import { TourProvider } from '@/contexts/TourContext';
 
 function RootLayoutNav() {
 	const { session, loading } = useAuth();
@@ -23,10 +24,8 @@ function RootLayoutNav() {
 		const inAuthGroup = segments[0] === '(auth)';
 
 		if (!session && !inAuthGroup) {
-			// Redirect to login if not authenticated
 			router.replace('/login');
 		} else if (session && inAuthGroup) {
-			// Redirect to home if authenticated
 			router.replace('/(tabs)');
 		}
 	}, [session, loading, segments]);
@@ -53,8 +52,10 @@ export default function RootLayout() {
 
 	return (
 		<AuthProvider>
-			<RootLayoutNav />
-			<StatusBar style="auto" />
+			<TourProvider>
+				<RootLayoutNav />
+				<StatusBar style="auto" />
+			</TourProvider>
 		</AuthProvider>
 	);
 }
