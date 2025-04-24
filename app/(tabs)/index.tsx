@@ -1,44 +1,42 @@
-import React, { useState, useEffect, useRef } from 'react';
-import {
-	View,
-	StyleSheet,
-	Dimensions,
-	Platform,
-	TouchableOpacity,
-	Image,
-	Pressable,
-	Animated,
-	ActivityIndicator,
-	useColorScheme,
-} from 'react-native';
 import { Text } from '@/components/Text';
+import { usePlants } from '@/hooks/usePlants';
+import { useProfile } from '@/hooks/useProfile';
+import * as Haptics from 'expo-haptics';
+import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import {
-	Sun,
-	Cloud,
 	CircleAlert as AlertCircle,
 	CircleArrowRight,
-	Wind,
+	Cloud,
 	Droplet,
 	Leaf,
+	Sun,
+	Wind,
 } from 'lucide-react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+	ActivityIndicator,
+	Animated,
+	Dimensions,
+	Image,
+	Platform,
+	Pressable,
+	StyleSheet,
+	TouchableOpacity,
+	useColorScheme,
+	View,
+} from 'react-native';
 import AnimatedLib, {
-	useAnimatedStyle,
-	withRepeat,
-	withTiming,
-	withSequence,
-	withDelay,
 	Easing,
+	useAnimatedStyle,
 	useSharedValue,
+	withDelay,
+	withRepeat,
+	withSequence,
+	withTiming,
 } from 'react-native-reanimated';
-import * as Location from 'expo-location';
-import * as Haptics from 'expo-haptics';
-import { useMyPlants } from '@/data/plants';
-import { useCareSchedules } from '@/data/careSchedule';
-import { useProfile } from '@/hooks/useProfile';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '../constants/colors';
-import { usePlants } from '@/hooks/usePlants';
 const getRelativeDate = (date: any) => {
 	const now = new Date();
 	const diffDays = Math.ceil((date - now) / (1000 * 60 * 60 * 24));

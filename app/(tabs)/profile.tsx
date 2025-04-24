@@ -8,7 +8,7 @@ import {
 	useColorScheme,
 	StatusBar,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import {
 	Leaf,
 	Bell,
@@ -32,7 +32,13 @@ export default function ProfileScreen() {
 	const { signOut, session } = useAuth();
 
 	const { plants } = usePlants();
-	const { profile } = useProfile();
+	const { profile, refreshProfile } = useProfile();
+
+	useFocusEffect(
+		React.useCallback(() => {
+			refreshProfile();
+		}, [refreshProfile])
+	);
 
 	const userProfile = {
 		name: profile?.username ?? '-',

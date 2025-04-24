@@ -18,6 +18,8 @@ import { Button } from '@/components/Button';
 import { COLORS } from './constants/colors';
 import { Text } from '@/components/Text';
 import { opacity } from 'react-native-reanimated/lib/typescript/Colors';
+import { supabase } from '@/lib/supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function AccountSettingsScreen() {
 	const insets = useSafeAreaInsets();
@@ -40,11 +42,15 @@ export default function AccountSettingsScreen() {
 	const handleSave = async () => {
 		try {
 			setLoading(true);
-			router.back();
 
-			await updateProfile({
-				username,
-			});
+			// 1) Update on the server AND in your local hook state
+			await updateProfile({ username });
+
+			// 2) Force a fresh pull from Supabase so EVERY subscriber (including ProfileScreen) sees it
+			await refreshProfile();
+
+			// 3) Now go back
+			router.back();
 		} catch (error) {
 			Alert.alert('Error', 'Failed to update profile');
 		} finally {
@@ -62,14 +68,44 @@ export default function AccountSettingsScreen() {
 					text: 'Delete',
 					style: 'destructive',
 					onPress: async () => {
+						const {
+							data: { session },
+						} = await supabase.auth.getSession();
+
+						if (!session) {
+							console.error('No active session found.');
+							return;
+						}
+
+						const token = session.access_token;
+
 						try {
-							setLoading(true);
-							await signOut();
-							router.replace('/login');
+							const response = await fetch(
+								// 'https://cvzlxhofbajslcgbtdvx.supabase.co/functions/v1/delete-user-account',
+								'https://kvjaxrtgtjbqopegbshw.supabase.co/functions/v1/delete-account',
+								{
+									method: 'POST',
+									headers: {
+										'Content-Type': 'application/json',
+										Authorization: `Bearer ${token}`, // Pass the Bearer token here
+									},
+									body: JSON.stringify({
+										user_id: session.user.id,
+									}),
+								}
+							);
+
+							const data = await response.json();
+
+							if (data.error) {
+								console.error('Error deleting user:', data.error); // Handle error message from backend
+							} else {
+								await AsyncStorage.clear();
+								await supabase.auth.signOut();
+								router.push('/');
+							}
 						} catch (error) {
-							Alert.alert('Error', 'Failed to delete account');
-						} finally {
-							setLoading(false);
+							console.error('Error in fetch request:', error); // Handle any network or fetch errors
 						}
 					},
 				},

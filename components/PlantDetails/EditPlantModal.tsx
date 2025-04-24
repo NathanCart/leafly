@@ -139,8 +139,7 @@ export function EditPlantModal({ visible, onClose, onSave, plant, isDark }: Edit
 			const localUri = res.assets[0].uri!;
 			if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-			const { url } = await uploadFile(localUri, res.assets[0].type || 'image/jpeg');
-			setCustomImage(url);
+			setCustomImage(localUri);
 		} catch (err) {
 			console.error('Image pick/upload failed', err);
 		}
