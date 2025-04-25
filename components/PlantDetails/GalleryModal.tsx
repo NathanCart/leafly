@@ -281,7 +281,7 @@ const styles = StyleSheet.create({
 	gallery: {},
 	grid: { flexDirection: 'row', flexWrap: 'wrap' },
 	image: { width: '100%', height: '100%', resizeMode: 'cover' },
-	buttonContainer: { paddingHorizontal: 16, paddingBottom: 16, marginTop: 'auto' },
+	buttonContainer: { paddingHorizontal: 16, paddingBottom: 16, marginTop: 'auto', gap: 8 },
 	viewerContainer: { flex: 1, backgroundColor: 'rgba(0,0,0,0.9)' },
 	viewerActions: {
 		position: 'absolute',

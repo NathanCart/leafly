@@ -27,6 +27,7 @@ import {
 	Leaf,
 	ChevronDown,
 	Pencil,
+	Heart,
 } from 'lucide-react-native';
 import { usePlants } from '@/hooks/usePlants';
 import { Button } from '@/components/Button';
@@ -300,14 +301,10 @@ export default function PlantDetail() {
 
 						<View>
 							<TouchableOpacity
-								style={{
-									padding: 8,
-									backgroundColor: 'rgba(0,0,0,0.05)',
-									borderRadius: 20,
-								}}
+								style={styles.editBtn}
 								onPress={() => setShowEditModal(true)}
 							>
-								<Pencil size={20} color={COLORS.primary} />
+								<Pencil size={18} color="#fff" />
 							</TouchableOpacity>
 						</View>
 					</View>
@@ -317,6 +314,12 @@ export default function PlantDetail() {
 							<ExpandableCard icon={<></>} title="" content={plant.notes} />
 						</Section>
 					)}
+
+					<Section title="Plant Health">
+						<Button variant="primary" onPress={() => router.push('/health')}>
+							Check plant health
+						</Button>
+					</Section>
 
 					<Section title="">
 						<ScheduleDisplay
@@ -390,6 +393,32 @@ const Section = ({ title, children }: { title?: string; children: React.ReactNod
 );
 
 const styles = StyleSheet.create({
+	scanBtn: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'center',
+		backgroundColor: COLORS.primary,
+		padding: 14,
+		borderRadius: 12,
+	},
+	scanText: {
+		color: '#fff',
+		fontSize: 16,
+		fontWeight: '600',
+		marginLeft: 8,
+	},
+	editBtn: {
+		padding: 10,
+		backgroundColor: COLORS.primary,
+		borderRadius: 20,
+		elevation: 3, // Android shadow
+		shadowColor: '#000',
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.2,
+		shadowRadius: 3,
+		alignItems: 'center',
+		justifyContent: 'center',
+	},
 	container: { flex: 1, backgroundColor: COLORS.surface.light },
 	scrollView: { flex: 1 },
 

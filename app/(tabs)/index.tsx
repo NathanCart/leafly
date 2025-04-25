@@ -286,6 +286,8 @@ export default function HomeScreen() {
 		if (currentStep === 'add-plant') {
 			setCurrentStep('schedule');
 		} else if (currentStep === 'schedule') {
+			setCurrentStep('health');
+		} else if (currentStep === 'health') {
 			completeTour();
 		}
 	};
@@ -673,6 +675,13 @@ export default function HomeScreen() {
 				position="top"
 				title="Care Schedule"
 				description="After adding a plant, set up watering and care schedules to keep your plants healthy and thriving."
+				onNext={handleTourNext}
+			/>
+			<TourHighlight
+				visible={currentStep === 'health'}
+				position="top"
+				title="Health Checks"
+				description="Keep an eye on your plants' health. Tap on any plant and scan it to check its health status and get care tips."
 				onNext={handleTourNext}
 			/>
 		</View>
