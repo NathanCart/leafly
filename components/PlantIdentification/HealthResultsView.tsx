@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
 	View,
 	StyleSheet,
@@ -9,7 +9,13 @@ import {
 	StatusBar,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Heart, HeartCrack, X } from 'lucide-react-native';
+import {
+	Heart,
+	HeartCrack,
+	X,
+	CircleCheck as CheckCircle,
+	Plane as Plant,
+} from 'lucide-react-native';
 import { COLORS } from '@/app/constants/colors';
 import { Button } from '@/components/Button';
 import { Text } from '@/components/Text';
@@ -24,11 +30,43 @@ interface Props {
 
 export function PlantHealthResultsView({ report, onReset, scrollY, imageUri }: Props) {
 	const insets = useSafeAreaInsets();
+	const healthyAnimation = new Animated.Value(0);
+
+	// Filter diseases with probability >= 50%
+	const significantDiseases = report.result.disease.suggestions.filter(
+		(disease) => disease.probability >= 0.2
+	);
+
+	console.log(report.result.is_healthy.binary, 'is_healthy.probability');
+
+	const isHealthy = report.result.is_healthy.probability > 0.66;
+
+	// Animation for healthy plant screen
+	useEffect(() => {
+		if (isHealthy) {
+			Animated.spring(healthyAnimation, {
+				toValue: 1,
+				tension: 50,
+				friction: 7,
+				useNativeDriver: true,
+			}).start();
+		}
+	}, [isHealthy]);
 
 	const imageTranslateY = scrollY.interpolate({
 		inputRange: [0, 200],
 		outputRange: [0, 100],
 		extrapolate: 'clamp',
+	});
+
+	const healthyScale = healthyAnimation.interpolate({
+		inputRange: [0, 1],
+		outputRange: [0.8, 1],
+	});
+
+	const healthyOpacity = healthyAnimation.interpolate({
+		inputRange: [0, 1],
+		outputRange: [0, 1],
 	});
 
 	return (
@@ -57,52 +95,121 @@ export function PlantHealthResultsView({ report, onReset, scrollY, imageUri }: P
 				</View>
 
 				<View style={styles.resultsContent}>
-					<View
-						style={{
-							flexDirection: 'row',
-							alignItems: 'center',
-							display: 'flex',
-							gap: 8,
-						}}
-					>
-						<Text style={[COLORS.titleMd]}>Health Report</Text>
-
-						<Text style={styles.label}>
-							{report?.result?.is_healthy?.binary ? (
-								<Heart color="#FF0000" fill="#FF0000" />
+					{/* Health Status Section */}
+					<View style={styles.healthStatusContainer}>
+						<View style={styles.healthIconContainer}>
+							{report.result.is_healthy.binary ? (
+								<Heart size={28} color="#FF0000" fill="#FF0000" />
 							) : (
-								<HeartCrack color="#FF0000" />
+								<HeartCrack size={28} color="#FF0000" />
 							)}
-							{(report.result.is_healthy.probability * 100).toFixed(1)}%
-						</Text>
+						</View>
+						<View style={styles.healthTextContainer}>
+							<Text style={styles.healthTitle}>Plant Health</Text>
+							<View
+								style={[
+									styles.healthPercentageBadge,
+									{
+										backgroundColor: isHealthy
+											? COLORS.primary
+											: COLORS.warning,
+									},
+								]}
+							>
+								<Text style={styles.healthPercentageText}>
+									{(report.result.is_healthy.probability * 100).toFixed(1)}%
+									Healthy
+								</Text>
+							</View>
+						</View>
 					</View>
 
-					<Text style={[styles.selectionTitle, { marginTop: 20 }]}>Possible Issues</Text>
-					{report.result.disease.suggestions.map((disease, index) => (
-						<View key={index} style={styles.resultCard}>
-							{disease.similar_images[0] && (
-								<Image
-									source={{ uri: disease.similar_images[0].url }}
-									style={styles.resultImage}
-								/>
-							)}
-							<View style={styles.resultContent}>
-								<Text style={styles.resultName}>{disease.name}</Text>
-								<Text style={styles.resultScientific}>
-									Probability: {(disease.probability * 100).toFixed(1)}%
-								</Text>
-								<View style={styles.confidenceBadge}>
-									<Text style={styles.confidenceText}>
-										#{index + 1} Suggestion
+					{/* Healthy Plant Screen */}
+					{isHealthy ? (
+						<Animated.View
+							style={[
+								styles.healthyContainer,
+								{
+									transform: [{ scale: healthyScale }],
+									opacity: healthyOpacity,
+								},
+							]}
+						>
+							<CheckCircle size={64} color="#3A8349" />
+							<Text style={styles.healthyTitle}>Your Plant is Healthy!</Text>
+							<Text style={styles.healthyDescription}>
+								We couldn't detect any significant issues with your plant. Keep up
+								the good work!
+							</Text>
+							<View style={styles.healthyTipsContainer}>
+								<View style={styles.healthyTipItem}>
+									<Plant size={22} color="#3A8349" />
+									<Text style={styles.healthyTipText}>
+										Continue your regular care routine
 									</Text>
 								</View>
 							</View>
-						</View>
-					))}
+						</Animated.View>
+					) : (
+						<>
+							{/* Disease Suggestions Section */}
+							<Text style={styles.selectionTitle}>Possible Issues</Text>
 
-					<Button onPress={onReset} variant="secondary" style={{ marginTop: 20 }}>
-						Scan Another Plant
-					</Button>
+							{significantDiseases.length > 0 ? (
+								significantDiseases.map((disease, index) => (
+									<View key={index} style={styles.resultCard}>
+										{disease.similar_images[0] && (
+											<Image
+												source={{ uri: disease.similar_images[0].url }}
+												style={styles.resultImage}
+											/>
+										)}
+										<View style={styles.resultContent}>
+											<Text style={styles.resultName}>{disease.name}</Text>
+
+											{/* Probability Bar */}
+											<View style={styles.probabilityContainer}>
+												<Text style={styles.probabilityLabel}>
+													Probability:{' '}
+													{(disease.probability * 100).toFixed(1)}%
+												</Text>
+												<View style={styles.probabilityBarBackground}>
+													<View
+														style={[
+															styles.probabilityBarFill,
+															{
+																width: `${
+																	disease.probability * 100
+																}%`,
+																backgroundColor:
+																	disease.probability > 0.7
+																		? '#E57C23'
+																		: disease.probability > 0.5
+																		? '#F9A826'
+																		: '#3A8349',
+															},
+														]}
+													/>
+												</View>
+											</View>
+
+											<View style={styles.confidenceBadge}>
+												<Text style={styles.confidenceText}>
+													#{index + 1} Potential Issue
+												</Text>
+											</View>
+										</View>
+									</View>
+								))
+							) : (
+								<View style={styles.noIssuesContainer}>
+									<Text style={styles.noIssuesText}>
+										No significant issues detected with your plant.
+									</Text>
+								</View>
+							)}
+						</>
+					)}
 				</View>
 			</Animated.ScrollView>
 		</View>
@@ -140,28 +247,78 @@ const styles = StyleSheet.create({
 	},
 	topImage: {
 		width: '100%',
-		height: 420,
+		height: 320,
 		position: 'absolute',
 	},
 	resultsContent: {
-		padding: 20,
+		padding: 24,
 		backgroundColor: '#fff',
-		borderTopLeftRadius: 20,
-		borderTopRightRadius: 20,
-		marginTop: -20,
+		borderTopLeftRadius: 30,
+		borderTopRightRadius: 30,
+		marginTop: -120,
+	},
+	healthStatusContainer: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		backgroundColor: '#F8F9FA',
+		borderRadius: 16,
+		padding: 16,
+		shadowColor: '#000',
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.05,
+		shadowRadius: 5,
+		elevation: 3,
+	},
+	healthIconContainer: {
+		width: 56,
+		height: 56,
+		borderRadius: 28,
+		backgroundColor: '#FFF',
+		justifyContent: 'center',
+		alignItems: 'center',
+		shadowColor: '#000',
+		shadowOffset: { width: 0, height: 1 },
+		shadowOpacity: 0.1,
+		shadowRadius: 2,
+		elevation: 2,
+		marginRight: 16,
+	},
+	healthTextContainer: {
+		flex: 1,
+	},
+	healthTitle: {
+		fontSize: 18,
+		fontWeight: '600',
+		color: '#283618',
+		marginBottom: 6,
+	},
+	healthPercentageBadge: {
+		alignSelf: 'flex-start',
+		paddingHorizontal: 12,
+		paddingVertical: 6,
+		borderRadius: 20,
+	},
+	healthPercentageText: {
+		color: '#fff',
+		fontWeight: '600',
+		fontSize: 14,
 	},
 	selectionTitle: {
-		fontSize: 20,
-		fontWeight: '700',
 		color: '#283618',
-	},
-	label: {
-		fontSize: 16,
+		...COLORS.titleMd,
+		marginTop: 16,
+		marginBottom: 8,
 	},
 	resultCard: {
 		borderRadius: 20,
-		marginBottom: 20,
+		marginBottom: 24,
 		overflow: 'hidden',
+		backgroundColor: 'white',
+		shadowColor: '#000',
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.1,
+		shadowRadius: 8,
+		elevation: 4,
 		borderWidth: 2,
 		borderColor: COLORS.border,
 	},
@@ -170,27 +327,99 @@ const styles = StyleSheet.create({
 		height: 200,
 	},
 	resultContent: {
-		padding: 16,
+		padding: 20,
 	},
 	resultName: {
 		fontSize: 18,
 		fontWeight: '700',
 		color: '#283618',
+		marginBottom: 12,
 	},
-	resultScientific: {
+	probabilityContainer: {
+		marginBottom: 16,
+	},
+	probabilityLabel: {
 		fontSize: 14,
-		marginBottom: 8,
+		fontWeight: '500',
 		color: '#555555',
+		marginBottom: 8,
+	},
+	probabilityBarBackground: {
+		width: '100%',
+		height: 8,
+		backgroundColor: '#E9ECEF',
+		borderRadius: 4,
+		overflow: 'hidden',
+	},
+	probabilityBarFill: {
+		height: '100%',
+		borderRadius: 4,
 	},
 	confidenceBadge: {
-		backgroundColor: '#3A8349',
+		backgroundColor: COLORS.warning,
 		borderRadius: 8,
-		padding: 6,
+		padding: 8,
 		alignSelf: 'flex-start',
 	},
 	confidenceText: {
 		color: '#fff',
 		fontSize: 12,
-		fontWeight: '500',
+		fontWeight: '600',
+	},
+	healthyContainer: {
+		alignItems: 'center',
+		marginVertical: 20,
+		padding: 24,
+		backgroundColor: '#F1F8E9',
+		borderRadius: 16,
+		borderWidth: 1,
+		borderColor: '#C5E1A5',
+	},
+	healthyTitle: {
+		fontSize: 22,
+		fontWeight: '700',
+		color: '#2E7D32',
+		marginTop: 16,
+		marginBottom: 8,
+		textAlign: 'center',
+	},
+	healthyDescription: {
+		fontSize: 16,
+		color: '#33691E',
+		textAlign: 'center',
+		marginBottom: 20,
+		lineHeight: 22,
+	},
+	healthyTipsContainer: {
+		width: '100%',
+		backgroundColor: 'white',
+		borderRadius: 12,
+		padding: 16,
+		borderWidth: 1,
+		borderColor: '#DCEDC8',
+	},
+	healthyTipItem: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		marginBottom: 4,
+	},
+	healthyTipText: {
+		marginLeft: 12,
+		fontSize: 15,
+		color: '#33691E',
+	},
+	noIssuesContainer: {
+		padding: 20,
+		alignItems: 'center',
+		backgroundColor: '#EFF6EE',
+		borderRadius: 12,
+		borderWidth: 1,
+		borderColor: '#D8E8D4',
+		marginBottom: 20,
+	},
+	noIssuesText: {
+		fontSize: 16,
+		color: '#3A5A40',
+		textAlign: 'center',
 	},
 });

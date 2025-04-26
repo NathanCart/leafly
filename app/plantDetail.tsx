@@ -37,6 +37,9 @@ import { ScheduleModal, ScheduleSettings } from '@/components/PlantDetails/Sched
 import { COLORS } from './constants/colors';
 import { HeartButton } from '@/components/PlantDetails/HeartButton';
 import { ScheduleDisplay } from '@/components/PlantDetails/ScheduleDisplay';
+import { QuickActions } from '@/components/PlantDetails/QuickActions';
+import { HealthHistorySection } from '@/components/PlantDetails/HealthHistorySection';
+import { usePlantHealth } from '@/hooks/usePlantHealth';
 
 const HEADER_HEIGHT = 300;
 
@@ -315,18 +318,19 @@ export default function PlantDetail() {
 						</Section>
 					)}
 
-					<Section title="Plant Health">
-						<Button variant="primary" onPress={() => router.push('/health')}>
-							Check plant health
-						</Button>
-					</Section>
+					<QuickActions
+						plantId={plantId}
+						onPress={(type) => {
+							if (type === 'Schedule') {
+								setShowScheduleModal(true);
+							}
+							if (type === 'Camera') {
+								setShowGalleryModal(true);
+							}
+						}}
+					/>
 
-					<Section title="">
-						<ScheduleDisplay
-							scheduleSettings={plant.care_schedule}
-							onPress={() => setShowScheduleModal(true)}
-						/>
-					</Section>
+					<HealthHistorySection plantId={plantId} />
 
 					<Section title="Care Instructions">
 						<ExpandableCard

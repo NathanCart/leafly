@@ -1,4 +1,4 @@
-import { PlantIdSuggestionRaw } from './plants';
+import { PlantHealthReport, PlantIdSuggestionRaw } from './plants';
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -96,6 +96,32 @@ export interface Database {
 					image_url: string;
 					notes: string | null;
 					created_at: string;
+				};
+				Insert: {
+					id: string;
+					plant_id: string;
+					user_id: string;
+					created_at: string;
+					image_url: string;
+					raw: PlantHealthReport;
+				};
+				Update: {
+					id: string;
+					plant_id: string;
+					user_id: string;
+					created_at: string;
+					image_url: string;
+					raw: PlantHealthReport;
+				};
+			};
+			plant_health_reports: {
+				Row: {
+					id: string;
+					plant_id: string;
+					user_id: string;
+					created_at: string;
+					image_url: string;
+					raw: PlantHealthReport;
 				};
 				Insert: {
 					id?: string;

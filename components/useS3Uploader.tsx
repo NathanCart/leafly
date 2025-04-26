@@ -7,7 +7,7 @@ interface UploadResult {
 	key: string;
 }
 
-export function useS3Uploader(bucketName: string) {
+export function useS3Uploader(bucketName: string, maxFileSize = 5 * 1024 * 1024) {
 	const [isUploading, setIsUploading] = useState(false);
 	const [error, setError] = useState<Error | null>(null);
 

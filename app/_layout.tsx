@@ -12,6 +12,7 @@ import { Quicksand_700Bold } from '@expo-google-fonts/quicksand/700Bold';
 import { View } from 'react-native';
 import 'react-native-get-random-values';
 import { TourProvider } from '@/contexts/TourContext';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 function RootLayoutNav() {
 	const { session, loading } = useAuth();
@@ -52,10 +53,12 @@ export default function RootLayout() {
 
 	return (
 		<AuthProvider>
-			<TourProvider>
-				<RootLayoutNav />
-				<StatusBar style="auto" />
-			</TourProvider>
+			<GestureHandlerRootView>
+				<TourProvider>
+					<RootLayoutNav />
+					<StatusBar style="auto" />
+				</TourProvider>
+			</GestureHandlerRootView>
 		</AuthProvider>
 	);
 }

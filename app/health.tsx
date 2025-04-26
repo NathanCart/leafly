@@ -9,7 +9,7 @@ import { usePlants } from '@/hooks/usePlants';
 import { PlantIdClassificationResponse } from '@/types/plants';
 import { useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Camera as CameraIcon, X } from 'lucide-react-native';
 import React, { useRef, useState } from 'react';
 import {
@@ -22,21 +22,17 @@ import {
 	View,
 } from 'react-native';
 
-export default function IdentifyScreen() {
+export default function HealthScreen() {
 	const [permission, requestPermission] = useCameraPermissions();
 	const [capturedImage, setCapturedImage] = useState<string | null>(null);
 	const [showResults, setShowResults] = useState(false);
-	const [selectedPlant, setSelectedPlant] = useState<
-		(PlantIdClassificationResponse[0] & { capturedImageUri?: string }) | null
-	>(null);
-	const [showPlantDetails, setShowPlantDetails] = useState(false);
-	const [showAddPlantModal, setShowAddPlantModal] = useState(false);
+
+	const { id: plantId } = useLocalSearchParams<{ id: string }>();
 	const colorScheme = useColorScheme();
 	const isDark = colorScheme === 'dark';
 	const scrollY = useRef(new Animated.Value(0)).current;
 
-	const { identifying, error, results, identifyPlantHealth } = usePlantHealth();
-	const { addPlant } = usePlants();
+	const { identifying, error, results, identifyPlantHealth } = usePlantHealth(plantId);
 
 	const pickImage = async () => {
 		try {
@@ -62,35 +58,6 @@ export default function IdentifyScreen() {
 	const resetIdentification = () => {
 		setCapturedImage(null);
 		setShowResults(false);
-		setSelectedPlant(null);
-		setShowPlantDetails(false);
-		setShowAddPlantModal(false);
-	};
-
-	const handlePlantSelect = (
-		plant: PlantIdClassificationResponse[0] & { capturedImageUri?: string }
-	) => {
-		setSelectedPlant({ ...plant, capturedImageUri: capturedImage! });
-		setShowPlantDetails(true);
-	};
-
-	const handleAddToCollection = () => {
-		setShowPlantDetails(false);
-		setShowAddPlantModal(true);
-	};
-
-	// Only addPlant here—navigation happens AFTER the SuccessAnimation in AddPlantModal
-	const confirmPlantSelection = async (nickname: string) => {
-		if (!selectedPlant) return;
-		try {
-			await addPlant({
-				nickname: nickname || selectedPlant.name,
-				...selectedPlant,
-			});
-			// do NOT navigate here
-		} catch (err) {
-			console.error('Error saving plant:', err);
-		}
 	};
 
 	const startIdentification = async () => {
