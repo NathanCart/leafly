@@ -1,4 +1,4 @@
-import { usePlants } from '@/hooks/usePlants';
+import { usePlants } from '@/contexts/DatabaseContext';
 import { Database } from '@/types/supabase';
 import { useEffect } from 'react';
 import { supabase } from '@/lib/supabase';

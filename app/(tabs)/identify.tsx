@@ -20,7 +20,7 @@ import { PlantDetailsModal } from '@/components/PlantIdentification/PlantDetails
 import { AddPlantModal } from '@/components/PlantIdentification/AddPlantModal';
 import { useCameraPermissions } from 'expo-camera';
 import { usePlantIdentification } from '@/hooks/usePlantIdentification';
-import { usePlants } from '@/hooks/usePlants';
+import { usePlants } from '@/contexts/DatabaseContext';
 import { PlantIdClassificationResponse } from '@/types/plants';
 import { Text } from '@/components/Text';
 
@@ -84,6 +84,7 @@ export default function IdentifyScreen() {
 	// Only addPlant here—navigation happens AFTER the SuccessAnimation in AddPlantModal
 	const confirmPlantSelection = async (nickname: string) => {
 		if (!selectedPlant) return;
+
 		try {
 			await addPlant({
 				nickname: nickname || selectedPlant.name,

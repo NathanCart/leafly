@@ -1,9 +1,9 @@
+import { usePlants } from '@/contexts/DatabaseContext';
 import { PlantIdClassificationResponse } from '@/types/plants';
 import * as FileSystem from 'expo-file-system';
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useOfflineSync } from './useOfflineSync';
-import { usePlants } from './usePlants';
 
 export function usePlantIdentification() {
 	const [identifying, setIdentifying] = useState(false);

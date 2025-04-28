@@ -1,20 +1,11 @@
 import { Text } from '@/components/Text';
 import { TourHighlight } from '@/components/Tour/TourHighlight';
 import { useTour } from '@/contexts/TourContext';
-import { usePlants } from '@/hooks/usePlants';
 import { useProfile } from '@/hooks/useProfile';
 import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
-import {
-	CircleAlert as AlertCircle,
-	CircleArrowRight,
-	Cloud,
-	Droplet,
-	Leaf,
-	Sun,
-	Wind,
-} from 'lucide-react-native';
+import { Cloud, Droplet, Leaf, PlusCircle, Sun, Wind } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import {
 	ActivityIndicator,
@@ -39,10 +30,13 @@ import AnimatedLib, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '../constants/colors';
+import { usePlants } from '@/contexts/DatabaseContext';
 
-const getRelativeDate = (date: any) => {
+const getRelativeDate = (date: Date) => {
 	const now = new Date();
-	const diffDays = Math.ceil((date - now) / (1000 * 60 * 60 * 24));
+	const diffTime = date.getTime() - now.getTime();
+	const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
 	if (diffDays === 0) return 'Due today';
 	if (diffDays === 1) return 'Due tomorrow';
 	if (diffDays < 0) return `${Math.abs(diffDays)} days overdue`;
@@ -213,6 +207,102 @@ const AnimatedCloud = ({
 	);
 };
 
+// Animated icon component for empty states
+const AnimatedIcon = ({ children, size = 60, color = COLORS.primary }) => {
+	const scale = useSharedValue(1);
+	const opacity = useSharedValue(0.8);
+
+	useEffect(() => {
+		scale.value = withRepeat(
+			withSequence(
+				withTiming(1.1, { duration: 2000, easing: Easing.inOut(Easing.ease) }),
+				withTiming(0.9, { duration: 2000, easing: Easing.inOut(Easing.ease) })
+			),
+			-1
+		);
+		opacity.value = withRepeat(
+			withSequence(
+				withTiming(1, { duration: 2000, easing: Easing.inOut(Easing.ease) }),
+				withTiming(0.8, { duration: 2000, easing: Easing.inOut(Easing.ease) })
+			),
+			-1
+		);
+	}, []);
+
+	const iconStyle = useAnimatedStyle(() => ({
+		transform: [{ scale: scale.value }],
+		opacity: opacity.value,
+	}));
+
+	return (
+		<AnimatedLib.View
+			style={[
+				iconStyle,
+				{
+					width: size,
+					height: size,
+					borderRadius: size / 2,
+					backgroundColor: `${color}20`,
+					justifyContent: 'center',
+					alignItems: 'center',
+					marginBottom: 16,
+				},
+			]}
+		>
+			{children}
+		</AnimatedLib.View>
+	);
+};
+
+// Empty state component
+const EmptyState = ({
+	icon,
+	title,
+	subtitle,
+	action,
+	onAction,
+	color = COLORS.primary,
+	isDark,
+}: {
+	icon: React.ReactNode;
+	title: string;
+	subtitle: string;
+	action?: string;
+	onAction?: () => void;
+	color?: string;
+	isDark?: boolean;
+}) => {
+	return (
+		<View style={styles.emptyStateContainer}>
+			<AnimatedIcon color={color}>{icon}</AnimatedIcon>
+			<Text
+				style={[
+					styles.emptyStateTitle,
+					{ color: isDark ? COLORS.text.primary.dark : COLORS.text.primary.light },
+				]}
+			>
+				{title}
+			</Text>
+			<Text
+				style={[
+					styles.emptyStateSubtitle,
+					{ color: isDark ? COLORS.text.secondary.dark : COLORS.text.secondary.light },
+				]}
+			>
+				{subtitle}
+			</Text>
+			{action && (
+				<TouchableOpacity
+					style={[styles.emptyStateButton, { backgroundColor: `${color}20` }]}
+					onPress={onAction}
+				>
+					<Text style={[styles.emptyStateButtonText, { color }]}>{action}</Text>
+				</TouchableOpacity>
+			)}
+		</View>
+	);
+};
+
 export default function HomeScreen() {
 	const insets = useSafeAreaInsets();
 	const colorScheme = useColorScheme();
@@ -231,6 +321,7 @@ export default function HomeScreen() {
 
 	const headerStyle = useAnimatedStyle(() => ({ transform: [{ translateY: scrollY.value }] }));
 
+	console.log(scheduleEntries, 'scheduleEntries');
 	useEffect(() => {
 		const hour = new Date().getHours();
 		setGreeting(hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening');
@@ -261,8 +352,7 @@ export default function HomeScreen() {
 	today.setHours(0, 0, 0, 0);
 	const todayStr = today.toISOString().split('T')[0];
 
-	const upcomingTasks = scheduleEntries?.splice(0, 3);
-
+	const upcomingTasks = scheduleEntries?.slice(0, 3);
 	const recentlyIdentified = plants
 		?.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 		.slice(0, 20)
@@ -379,20 +469,7 @@ export default function HomeScreen() {
 								</View>
 							</View>
 						</View>
-					) : (
-						<Text
-							style={[
-								styles.loadingText,
-								{
-									color: isDark
-										? COLORS.text.secondary.dark
-										: COLORS.text.secondary.light,
-								},
-							]}
-						>
-							Weather unavailable
-						</Text>
-					)}
+					) : null}
 				</View>
 			</AnimatedLib.View>
 
@@ -415,21 +492,21 @@ export default function HomeScreen() {
 						},
 					]}
 				>
-					{recentlyIdentified.length > 0 && (
-						<View style={styles.section}>
-							<View style={styles.sectionHeader}>
-								<Text
-									style={[
-										COLORS.titleMd,
-										{
-											color: isDark
-												? COLORS.text.primary.dark
-												: COLORS.text.primary.light,
-										},
-									]}
-								>
-									Recently Added
-								</Text>
+					<View style={styles.section}>
+						<View style={styles.sectionHeader}>
+							<Text
+								style={[
+									COLORS.titleMd,
+									{
+										color: isDark
+											? COLORS.text.primary.dark
+											: COLORS.text.primary.light,
+									},
+								]}
+							>
+								Recently Added
+							</Text>
+							{recentlyIdentified?.length > 0 && (
 								<TouchableOpacity onPress={() => router.push('/collection')}>
 									<Text
 										style={[
@@ -440,8 +517,10 @@ export default function HomeScreen() {
 										See all
 									</Text>
 								</TouchableOpacity>
-							</View>
+							)}
+						</View>
 
+						{recentlyIdentified?.length > 0 ? (
 							<AnimatedLib.FlatList
 								data={recentlyIdentified}
 								keyExtractor={(item) => item.id}
@@ -499,30 +578,43 @@ export default function HomeScreen() {
 									</ScalePressable>
 								)}
 							/>
+						) : (
+							<EmptyState
+								icon={<PlusCircle size={30} color={COLORS.primary} />}
+								title="Your garden awaits its first plant"
+								subtitle="Add plants to your collection to see them here"
+								action="Add your first plant"
+								onAction={() => router.push('/identify')}
+								color={COLORS.primary}
+								isDark={isDark}
+							/>
+						)}
+					</View>
+
+					<View style={[styles.section]}>
+						<View style={[styles.sectionHeader, { marginBottom: 0 }]}>
+							<Text
+								style={[
+									COLORS.titleMd,
+									{
+										color: isDark
+											? COLORS.text.primary.dark
+											: COLORS.text.primary.light,
+									},
+								]}
+							>
+								Upcoming Care
+							</Text>
 						</View>
-					)}
-					{upcomingTasks.length > 0 && (
-						<View style={[styles.section]}>
-							<View style={[styles.sectionHeader, { marginBottom: 0 }]}>
-								<Text
-									style={[
-										COLORS.titleMd,
-										{
-											color: isDark
-												? COLORS.text.primary.dark
-												: COLORS.text.primary.light,
-										},
-									]}
-								>
-									Upcoming Care
-								</Text>
-							</View>
+
+						{upcomingTasks?.length > 0 ? (
 							<View style={{ paddingHorizontal: 16 }}>
 								{upcomingTasks.map((task) => {
 									const isWater = task.type === 'Water';
 									const accent = isWater ? '#33A1FF' : '#4CAF50';
-									const rel = getRelativeDate(task.dueDate);
-									const overdue = task.dueDate < today;
+									const rel = getRelativeDate(
+										!task?.last?.length ? new Date() : task.dueDate
+									);
 									return (
 										<ScalePressable
 											key={task.id}
@@ -587,78 +679,17 @@ export default function HomeScreen() {
 									);
 								})}
 							</View>
-						</View>
-					)}
-					{plantHealthAlerts.length > 0 && (
-						<View style={styles.section}>
-							<View style={styles.sectionHeader}>
-								<Text
-									style={[
-										styles.sectionTitle,
-										{
-											color: isDark
-												? COLORS.text.primary.dark
-												: COLORS.text.primary.light,
-										},
-									]}
-								>
-									Health Alerts
-								</Text>
-							</View>
-							{plantHealthAlerts.map((a) => (
-								<TouchableOpacity
-									key={a.id}
-									style={[
-										styles.alertCard,
-										{
-											backgroundColor: isDark
-												? COLORS.surface.dark
-												: `${COLORS.error}33`,
-										},
-									]}
-									onPress={() =>
-										router.push({
-											pathname: '/plantDiagnosis',
-											params: { plantId: a.id, issue: a.issue },
-										})
-									}
-								>
-									<AlertCircle color={COLORS.error} size={24} />
-									<View style={styles.alertContent}>
-										<Text
-											style={[
-												styles.alertTitle,
-												{
-													color: isDark
-														? COLORS.text.primary.dark
-														: COLORS.text.primary.light,
-												},
-											]}
-										>
-											{a.plant}: {a.issue}
-										</Text>
-										<Text
-											style={[
-												styles.alertSubtitle,
-												{
-													color: isDark
-														? COLORS.text.secondary.dark
-														: COLORS.text.secondary.light,
-												},
-											]}
-										>
-											Tap to diagnose and treat
-										</Text>
-									</View>
-									<CircleArrowRight
-										color={isDark ? COLORS.secondary : COLORS.primary}
-										size={24}
-									/>
-								</TouchableOpacity>
-							))}
-						</View>
-					)}
-					<View style={styles.bottomPadding} />
+						) : (
+							<EmptyState
+								icon={<Droplet size={30} color="#33A1FF" />}
+								title="No care tasks scheduled"
+								subtitle="Your plants are all taken care of for now"
+								action={plants?.length > 0 ? 'Set up plant care' : null}
+								color="#33A1FF"
+								isDark={isDark}
+							/>
+						)}
+					</View>
 				</AnimatedLib.View>
 			</AnimatedLib.ScrollView>
 
@@ -886,6 +917,7 @@ const styles = StyleSheet.create({
 		padding: 16,
 		borderRadius: 12,
 		marginBottom: 10,
+		marginHorizontal: 16,
 	},
 	alertContent: { flex: 1, marginLeft: 12 },
 	alertTitle: { fontSize: 16, fontWeight: '500' },
@@ -893,4 +925,37 @@ const styles = StyleSheet.create({
 	bottomPadding: { height: 40 },
 	loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 	loadingText: { marginTop: 16, fontSize: 16 },
+	// Empty state styles
+	emptyStateContainer: {
+		alignItems: 'center',
+		justifyContent: 'center',
+		padding: 24,
+		margin: 16,
+		borderRadius: 16,
+		borderWidth: 2,
+		borderColor: COLORS.border,
+	},
+	emptyStateTitle: {
+		fontSize: 18,
+		fontWeight: '600',
+		marginBottom: 4,
+		textAlign: 'center',
+	},
+	emptyStateSubtitle: {
+		fontSize: 14,
+		textAlign: 'center',
+		marginBottom: 16,
+		paddingHorizontal: 20,
+	},
+	emptyStateButton: {
+		paddingHorizontal: 16,
+		paddingVertical: 10,
+		borderRadius: 20,
+		alignItems: 'center',
+		justifyContent: 'center',
+	},
+	emptyStateButtonText: {
+		fontWeight: '600',
+		fontSize: 14,
+	},
 });

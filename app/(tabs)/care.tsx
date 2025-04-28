@@ -18,7 +18,7 @@ import * as Device from 'expo-device';
 import { Button } from '@/components/Button';
 import { TaskCompletionModal } from '@/components/Care/TaskCompletionModal';
 import { COLORS } from '../constants/colors';
-import { usePlants } from '@/hooks/usePlants';
+import { usePlants } from '@/contexts/DatabaseContext';
 import { PlantIllustration } from '@/components/PlantIllustation';
 import { Text } from '@/components/Text';
 

@@ -1,49 +1,74 @@
-import React, { useEffect, useRef, useState } from 'react';
+/* PlantDetail.tsx – full component */
+
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import {
-	View,
+	ActivityIndicator,
+	Alert,
+	Animated,
+	Share,
+	StatusBar,
 	StyleSheet,
 	TouchableOpacity,
-	Animated,
-	useWindowDimensions,
-	StatusBar,
-	Share,
-	Alert,
-	ActivityIndicator,
 	useColorScheme,
+	useWindowDimensions,
+	View,
+	FlatList,
+	Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Text } from '@/components/Text';
-
 import {
-	ChevronLeft,
-	MapPin,
-	Pen,
-	ImagePlus,
-	Share2,
-	Trash2,
-	Droplet,
-	Sun,
-	Leaf,
 	ChevronDown,
+	ChevronLeft,
+	Droplet,
+	ImagePlus,
+	Leaf,
+	MapPin,
 	Pencil,
-	Heart,
+	Share2,
+	Sun,
+	Trash2,
 } from 'lucide-react-native';
-import { usePlants } from '@/hooks/usePlants';
+
 import { Button } from '@/components/Button';
 import { EditPlantModal } from '@/components/PlantDetails/EditPlantModal';
 import { GalleryModal } from '@/components/PlantDetails/GalleryModal';
-import { ScheduleModal, ScheduleSettings } from '@/components/PlantDetails/ScheduleModal';
-import { COLORS } from './constants/colors';
-import { HeartButton } from '@/components/PlantDetails/HeartButton';
-import { ScheduleDisplay } from '@/components/PlantDetails/ScheduleDisplay';
-import { QuickActions } from '@/components/PlantDetails/QuickActions';
 import { HealthHistorySection } from '@/components/PlantDetails/HealthHistorySection';
-import { usePlantHealth } from '@/hooks/usePlantHealth';
+import { HeartButton } from '@/components/PlantDetails/HeartButton';
+import { QuickActions } from '@/components/PlantDetails/QuickActions';
+import { ScheduleModal, ScheduleSettings } from '@/components/PlantDetails/ScheduleModal';
+import { TaskCompletionModal } from '@/components/Care/TaskCompletionModal';
+import { Text } from '@/components/Text';
+import { usePlants } from '@/contexts/DatabaseContext';
+import { COLORS } from './constants/colors';
+import { useAuth } from '@/contexts/AuthContext';
 
+/* -------------------------------------------------
+ * Constants & helper types
+ * -------------------------------------------------*/
 const HEADER_HEIGHT = 300;
 
-// Expandable Card
+type TaskType = 'Water' | 'Fertilize';
+interface TaskEntry {
+	id: string;
+	type: TaskType;
+	dueDate: Date;
+	isOverdue: boolean;
+	accent: string;
+}
+
+const getRelativeDate = (date: Date) => {
+	const now = new Date();
+	const diffDays = Math.ceil((date.getTime() - now.getTime()) / 86_400_000);
+	if (diffDays === 0) return 'Due today';
+	if (diffDays === 1) return 'Due tomorrow';
+	if (diffDays < 0) return `${Math.abs(diffDays)} days overdue`;
+	return `Due in ${diffDays} days`;
+};
+
+/* -------------------------------------------------
+ * ExpandableCard – (unchanged from your code)
+ * -------------------------------------------------*/
 const ExpandableCard = ({
 	title,
 	content,
@@ -93,15 +118,42 @@ const ExpandableCard = ({
 	);
 };
 
+/* -------------------------------------------------
+ * Empty-state view for Tasks section
+ * -------------------------------------------------*/
+/* ────────────────────────────────────────────────
+ * 1.  Replace the old NoTasksToday with this
+ * ────────────────────────────────────────────────*/
+const EmptyTasks = ({ hasSchedule, onSetup }: { hasSchedule: boolean; onSetup: () => void }) => (
+	<View style={styles.emptyState}>
+		<Text style={styles.emptyTitle}>{hasSchedule ? 'No Tasks' : 'Care Not Set Up'}</Text>
+
+		<Text style={styles.emptyText}>
+			{hasSchedule
+				? 'Nothing is due today. 🌿'
+				: 'Create a watering or fertilizing schedule to start seeing tasks here.'}
+		</Text>
+
+		{!hasSchedule && (
+			<Button variant="secondary" onPress={onSetup} style={{ marginTop: 16 }}>
+				Set Up Care
+			</Button>
+		)}
+	</View>
+);
+
+/* -------------------------------------------------
+ * Main component
+ * -------------------------------------------------*/
 export default function PlantDetail() {
-	const { getPlantById, updatePlant, deletePlant, refreshPlants } = usePlants();
 	const { id: plantId } = useLocalSearchParams<{ id: string }>();
+	const { getPlantById, updatePlant, deletePlant, refreshPlants } = usePlants();
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
 	const { width: windowWidth } = useWindowDimensions();
 	const scheme = useColorScheme();
 	const isDark = scheme === 'dark';
-
+	const { session } = useAuth();
 	const [plant, setPlant] = useState<any>(null);
 	const [isFavorite, setIsFavorite] = useState(false);
 	const [loading, setLoading] = useState(true);
@@ -109,21 +161,79 @@ export default function PlantDetail() {
 	const [showGalleryModal, setShowGalleryModal] = useState(false);
 	const [showScheduleModal, setShowScheduleModal] = useState(false);
 	const [deleting, setDeleting] = useState(false);
+	const [selectedTask, setSelectedTask] = useState<TaskEntry | null>(null);
 	const scrollY = useRef(new Animated.Value(0)).current;
 
+	const hasSchedule =
+		Boolean(plant?.watering_interval_days) || Boolean(plant?.fertilize_interval_days);
+
+	/* ---------- load plant ---------- */
 	useEffect(() => {
 		(async () => {
 			try {
 				const data = await getPlantById(plantId!);
 				setPlant(data);
 				setIsFavorite(!!data?.is_favorite);
-			} catch (e) {
-				console.error(e);
+			} catch (err) {
+				console.error(err);
+			} finally {
+				setLoading(false);
 			}
-			setLoading(false);
 		})();
 	}, [plantId]);
 
+	/* ---------- build tasks ---------- */
+	const tasks: TaskEntry[] = useMemo(() => {
+		if (!plant) return [];
+		const today = new Date();
+		today.setHours(0, 0, 0, 0);
+		const out: TaskEntry[] = [];
+
+		// watering
+		if (plant.watering_interval_days) {
+			const last = plant.last_watered ? new Date(plant.last_watered) : null;
+			const due = last
+				? new Date(last.getTime() + plant.watering_interval_days * 86_400_000)
+				: today;
+			out.push({
+				id: `${plant.id}-water`,
+				type: 'Water',
+				dueDate: due,
+				isOverdue: due < today,
+				accent: '#33A1FF',
+			});
+		}
+		// fertilizing
+		if (plant.fertilize_interval_days) {
+			const last = plant.last_fertilized ? new Date(plant.last_fertilized) : null;
+			const due = last
+				? new Date(last.getTime() + plant.fertilize_interval_days * 86_400_000)
+				: today;
+			out.push({
+				id: `${plant.id}-fertilize`,
+				type: 'Fertilize',
+				dueDate: due,
+				isOverdue: due < today,
+				accent: '#4CAF50',
+			});
+		}
+		return out;
+	}, [plant]);
+
+	/* ---------- complete task (invoked from modal) ---------- */
+	const handleCompleteTask = async () => {
+		if (!selectedTask) return;
+		const field = selectedTask.type === 'Water' ? 'last_watered' : 'last_fertilized';
+		try {
+			const updated = await updatePlant(plantId!, { [field]: new Date().toISOString() });
+			setPlant(updated);
+			setSelectedTask(null);
+		} catch (err) {
+			console.error(err);
+		}
+	};
+
+	/* ---------- UI helper fns ---------- */
 	const toggleFavorite = async () => {
 		if (!plant) return;
 		try {
@@ -131,21 +241,10 @@ export default function PlantDetail() {
 			refreshPlants();
 			setIsFavorite(updated.is_favorite);
 			setPlant(updated);
-		} catch (e) {
-			console.error(e);
+		} catch (err) {
+			console.error(err);
 		}
 	};
-
-	const translateY = scrollY.interpolate({
-		inputRange: [0, HEADER_HEIGHT],
-		outputRange: [0, -HEADER_HEIGHT * 0.5],
-		extrapolate: 'clamp',
-	});
-	const scale = scrollY.interpolate({
-		inputRange: [-HEADER_HEIGHT, 0],
-		outputRange: [2, 1],
-		extrapolate: 'clamp',
-	});
 
 	const handleShare = async () => {
 		if (!plant) return;
@@ -155,8 +254,8 @@ export default function PlantDetail() {
 				message: `Check out my ${plant.name}!`,
 				url: plant.image_url,
 			});
-		} catch (e) {
-			console.error(e);
+		} catch (err) {
+			console.error(err);
 		}
 	};
 
@@ -185,25 +284,65 @@ export default function PlantDetail() {
 		const payload: any = { nickname, location };
 		if (imageUri) payload.image_url = imageUri;
 		const updated = await updatePlant(plantId!, payload);
-		refreshPlants;
+		refreshPlants();
 		setPlant(updated);
 		setIsFavorite(!!updated.is_favorite);
 	};
 
-	const handleSaveSchedule = async (scheduleSettings: ScheduleSettings) => {
+	const handleSaveSchedule = async (schedule: ScheduleSettings) => {
 		if (!plant) return;
-		try {
+
+		if (schedule?.fertilizing?.autoSchedule || schedule?.watering?.autoSchedule) {
+			// Call the NEW multi-workout plan function endpoint
+
+			const response = await fetch(
+				'https://kvjaxrtgtjbqopegbshw.supabase.co/functions/v1/get-plant-schedule',
+				{
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						Authorization: `Bearer ${session?.access_token}`,
+					},
+					body: JSON.stringify({
+						...plant,
+						watering_interval_days: null,
+						fertilize_interval_days: null,
+					}),
+				}
+			).then((res) => res.json());
+
 			const updated = await updatePlant(plantId!, {
-				watering_interval_days: scheduleSettings.watering.days,
-				fertilize_interval_days: scheduleSettings.fertilizing.days,
+				watering_interval_days: schedule?.watering?.days ?? response?.waterFrequencyDays,
+				fertilize_interval_days:
+					schedule?.fertilizing?.days ?? response?.fertilizerFrequencyDays,
 			});
 			setPlant(updated);
-			router.push('/(tabs)/care');
-		} catch (e) {
-			console.error(e);
+		} else {
+			try {
+				const updated = await updatePlant(plantId!, {
+					watering_interval_days: schedule.watering.days,
+					fertilize_interval_days: schedule.fertilizing.days,
+				});
+				setPlant(updated);
+			} catch (err) {
+				console.error(err);
+			}
 		}
 	};
 
+	/* ---------- parallax values ---------- */
+	const translateY = scrollY.interpolate({
+		inputRange: [0, HEADER_HEIGHT],
+		outputRange: [0, -HEADER_HEIGHT * 0.5],
+		extrapolate: 'clamp',
+	});
+	const scale = scrollY.interpolate({
+		inputRange: [-HEADER_HEIGHT, 0],
+		outputRange: [2, 1],
+		extrapolate: 'clamp',
+	});
+
+	/* ---------- loading / error states ---------- */
 	if (loading) {
 		return (
 			<View style={styles.center}>
@@ -224,11 +363,12 @@ export default function PlantDetail() {
 		);
 	}
 
+	/* ---------- render ---------- */
 	return (
 		<View style={styles.container}>
 			<StatusBar translucent barStyle="light-content" />
 
-			{/* Parallax Header Image */}
+			{/* Parallax header image */}
 			<Animated.Image
 				source={{ uri: plant.image_url }}
 				style={[
@@ -237,15 +377,13 @@ export default function PlantDetail() {
 				]}
 			/>
 
-			{/* Back */}
+			{/* top buttons */}
 			<TouchableOpacity
 				style={[styles.iconBtn, { left: 16, top: insets.top + 8 }]}
 				onPress={() => router.back()}
 			>
 				<ChevronLeft color="#fff" size={24} />
 			</TouchableOpacity>
-
-			{/* Favorite */}
 			<View style={[styles.iconBtn, { right: 16, top: insets.top + 8 }]}>
 				<HeartButton
 					isFavorite={isFavorite}
@@ -254,16 +392,12 @@ export default function PlantDetail() {
 					style={styles.heartBtnTouchable}
 				/>
 			</View>
-
-			{/* Share */}
 			<TouchableOpacity
 				style={[styles.iconBtn, { right: 64, top: insets.top + 8 }]}
 				onPress={handleShare}
 			>
 				<Share2 color="#fff" size={20} />
 			</TouchableOpacity>
-
-			{/* Gallery Pill (inside header) */}
 			<TouchableOpacity
 				style={[styles.galleryBtn, { right: 16, top: insets.top + 60 }]}
 				onPress={() => setShowGalleryModal(true)}
@@ -272,7 +406,7 @@ export default function PlantDetail() {
 				<Text style={styles.galleryText}>Gallery</Text>
 			</TouchableOpacity>
 
-			{/* Main content */}
+			{/* Scroll content */}
 			<Animated.ScrollView
 				style={styles.scrollView}
 				contentContainerStyle={{ paddingBottom: 80 }}
@@ -285,53 +419,119 @@ export default function PlantDetail() {
 				<View style={{ height: HEADER_HEIGHT }} />
 
 				<View style={styles.contentCard}>
+					{/* location badge */}
 					<View style={styles.locationBadge}>
 						<MapPin size={16} color={COLORS.primary} />
 						<Text style={styles.locationText}>{plant.location || 'Indoor'} Plant</Text>
 					</View>
 
-					<View
-						style={{
-							display: 'flex',
-							flexDirection: 'row',
-							gap: 8,
-						}}
-					>
+					{/* title + edit */}
+					<View style={{ flexDirection: 'row', gap: 8 }}>
 						<View>
 							<Text style={styles.title}>{plant.nickname || plant.name}</Text>
 							<Text style={styles.subtitle}>{plant.name}</Text>
 						</View>
-
-						<View>
-							<TouchableOpacity
-								style={styles.editBtn}
-								onPress={() => setShowEditModal(true)}
-							>
-								<Pencil size={18} color="#fff" />
-							</TouchableOpacity>
-						</View>
+						<TouchableOpacity
+							style={styles.editBtn}
+							onPress={() => setShowEditModal(true)}
+						>
+							<Pencil size={18} color="#fff" />
+						</TouchableOpacity>
 					</View>
 
+					{/* notes */}
 					{plant.notes && (
 						<Section title="Notes">
 							<ExpandableCard icon={<></>} title="" content={plant.notes} />
 						</Section>
 					)}
 
+					{/* quick actions */}
 					<QuickActions
 						plantId={plantId}
 						onPress={(type) => {
-							if (type === 'Schedule') {
-								setShowScheduleModal(true);
-							}
-							if (type === 'Camera') {
-								setShowGalleryModal(true);
-							}
+							if (type === 'Schedule') setShowScheduleModal(true);
+							if (type === 'Camera') setShowGalleryModal(true);
 						}}
 					/>
 
+					{/* ---------- TASKS ---------- */}
+					<Section title={hasSchedule && !!tasks?.length ? 'Plant Care ' : ''}>
+						{tasks.length === 0 ? (
+							<EmptyTasks
+								hasSchedule={hasSchedule}
+								onSetup={() => setShowScheduleModal(true)}
+							/>
+						) : (
+							<FlatList
+								data={tasks}
+								scrollEnabled={false}
+								keyExtractor={(t) => t.id}
+								ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+								renderItem={({ item }) => (
+									<TouchableOpacity
+										style={styles.taskCard}
+										onPress={() => setSelectedTask(item)}
+									>
+										<Image
+											source={{ uri: plant.image_url }}
+											style={styles.plantImage}
+										/>
+										<View style={styles.cardContent}>
+											<View style={styles.cardHeader}>
+												<Text style={styles.cardPlant}>
+													{plant.nickname || plant.name}
+												</Text>
+												<View
+													style={[
+														styles.cardIcon,
+														{ backgroundColor: item.accent + '10' },
+													]}
+												>
+													{item.type === 'Water' ? (
+														<Droplet
+															fill={item.accent}
+															size={16}
+															color={item.accent}
+														/>
+													) : (
+														<Leaf
+															fill={item.accent}
+															size={16}
+															color={item.accent}
+														/>
+													)}
+												</View>
+											</View>
+											<View style={styles.cardRow}>
+												<Text
+													style={[
+														styles.cardType,
+														{ color: item.accent },
+													]}
+												>
+													{item.type}
+												</Text>
+												<Text
+													style={[
+														styles.cardDate,
+														item.isOverdue && { color: COLORS.error },
+													]}
+												>
+													{getRelativeDate(item.dueDate)}
+												</Text>
+											</View>
+										</View>
+									</TouchableOpacity>
+								)}
+							/>
+						)}
+					</Section>
+
+					{/* health history */}
 					<HealthHistorySection plantId={plantId} />
 
+					{/* care instructions */}
 					<Section title="Care Instructions">
 						<ExpandableCard
 							title="Watering"
@@ -350,6 +550,7 @@ export default function PlantDetail() {
 						/>
 					</Section>
 
+					{/* delete */}
 					<TouchableOpacity
 						style={styles.deleteBtn}
 						onPress={confirmDelete}
@@ -363,6 +564,7 @@ export default function PlantDetail() {
 				</View>
 			</Animated.ScrollView>
 
+			{/* ---------- MODALS ---------- */}
 			<EditPlantModal
 				visible={showEditModal}
 				onClose={() => setShowEditModal(false)}
@@ -385,10 +587,22 @@ export default function PlantDetail() {
 				initialSettings={plant.care_schedule}
 				isDark={isDark}
 			/>
+			{selectedTask && (
+				<TaskCompletionModal
+					visible
+					onClose={() => setSelectedTask(null)}
+					onComplete={handleCompleteTask}
+					plantName={plant.nickname || plant.name}
+					taskType={selectedTask.type}
+				/>
+			)}
 		</View>
 	);
 }
 
+/* -------------------------------------------------
+ * Section helper
+ * -------------------------------------------------*/
 const Section = ({ title, children }: { title?: string; children: React.ReactNode }) => (
 	<View style={styles.section}>
 		{title ? <Text style={[COLORS.titleMd, { marginBottom: 8 }]}>{title}</Text> : null}
@@ -396,36 +610,23 @@ const Section = ({ title, children }: { title?: string; children: React.ReactNod
 	</View>
 );
 
+/* -------------------------------------------------
+ * Styles – copied / consolidated from both screens
+ * -------------------------------------------------*/
 const styles = StyleSheet.create({
-	scanBtn: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		justifyContent: 'center',
-		backgroundColor: COLORS.primary,
-		padding: 14,
-		borderRadius: 12,
-	},
-	scanText: {
-		color: '#fff',
-		fontSize: 16,
-		fontWeight: '600',
-		marginLeft: 8,
-	},
-	editBtn: {
-		padding: 10,
-		backgroundColor: COLORS.primary,
-		borderRadius: 20,
-		elevation: 3, // Android shadow
-		shadowColor: '#000',
-		shadowOffset: { width: 0, height: 2 },
-		shadowOpacity: 0.2,
-		shadowRadius: 3,
-		alignItems: 'center',
-		justifyContent: 'center',
-	},
+	/* layout */
 	container: { flex: 1, backgroundColor: COLORS.surface.light },
 	scrollView: { flex: 1 },
 
+	/* loading / error */
+	center: {
+		flex: 1,
+		alignItems: 'center',
+		justifyContent: 'center',
+		backgroundColor: COLORS.surface.light,
+	},
+
+	/* header image & top buttons */
 	headerImage: {
 		position: 'absolute',
 		top: 0,
@@ -433,7 +634,18 @@ const styles = StyleSheet.create({
 		height: HEADER_HEIGHT,
 		resizeMode: 'cover',
 	},
-
+	setupBtn: {
+		marginTop: 16,
+		paddingVertical: 10,
+		paddingHorizontal: 24,
+		borderRadius: 12,
+		backgroundColor: COLORS.primary,
+	},
+	setupText: {
+		color: '#fff',
+		fontSize: 16,
+		fontWeight: '600',
+	},
 	iconBtn: {
 		position: 'absolute',
 		width: 40,
@@ -450,7 +662,6 @@ const styles = StyleSheet.create({
 		justifyContent: 'center',
 		alignItems: 'center',
 	},
-
 	galleryBtn: {
 		position: 'absolute',
 		flexDirection: 'row',
@@ -461,13 +672,9 @@ const styles = StyleSheet.create({
 		backgroundColor: 'rgba(0,0,0,0.4)',
 		zIndex: 10,
 	},
-	galleryText: {
-		color: '#fff',
-		fontSize: 12,
-		fontWeight: '600',
-		marginLeft: 6,
-	},
+	galleryText: { color: '#fff', fontSize: 12, fontWeight: '600', marginLeft: 6 },
 
+	/* white content card */
 	contentCard: {
 		backgroundColor: COLORS.surface.light,
 		borderTopLeftRadius: 20,
@@ -476,13 +683,7 @@ const styles = StyleSheet.create({
 		padding: 16,
 	},
 
-	center: {
-		flex: 1,
-		alignItems: 'center',
-		justifyContent: 'center',
-		backgroundColor: COLORS.surface.light,
-	},
-
+	/* location badge */
 	locationBadge: {
 		flexDirection: 'row',
 		alignItems: 'center',
@@ -495,18 +696,10 @@ const styles = StyleSheet.create({
 		marginTop: -32,
 		marginBottom: 16,
 	},
-	locationText: {
-		fontSize: 14,
-		fontWeight: '600',
-		color: COLORS.text.primary.light,
-	},
+	locationText: { fontSize: 14, fontWeight: '600', color: COLORS.text.primary.light },
 
-	title: {
-		fontSize: 28,
-		fontWeight: '700',
-		color: COLORS.text.primary.light,
-		marginBottom: 4,
-	},
+	/* titles */
+	title: { fontSize: 28, fontWeight: '700', color: COLORS.text.primary.light, marginBottom: 4 },
 	subtitle: {
 		fontSize: 16,
 		fontStyle: 'italic',
@@ -514,41 +707,33 @@ const styles = StyleSheet.create({
 		marginBottom: 24,
 	},
 
-	actionsRow: {
-		flexDirection: 'row',
-		justifyContent: 'space-between',
-		marginBottom: 32,
-	},
-	quickAction: {
+	/* edit pencil */
+	editBtn: {
+		padding: 10,
+		backgroundColor: COLORS.primary,
+		borderRadius: 20,
+		elevation: 3,
+		shadowColor: '#000',
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.2,
+		shadowRadius: 3,
+		height: 40,
 		alignItems: 'center',
-		width: '30%',
-		backgroundColor: COLORS.card.light,
-		padding: 16,
-		borderRadius: 12,
-	},
-	quickLabel: {
-		marginTop: 6,
-		fontSize: 14,
-		fontWeight: '500',
-		color: COLORS.text.primary.light,
+		justifyContent: 'center',
 	},
 
+	/* generic section wrapper */
 	section: { marginBottom: 32 },
-	sectionTitle: {
-		fontSize: 18,
-		fontWeight: '600',
-		color: COLORS.text.primary.light,
-		marginBottom: 12,
-	},
 
+	/* expandable cards (notes, care) */
 	cardOuter: {
 		flexDirection: 'row',
 		alignItems: 'center',
 		padding: 16,
 		borderRadius: 16,
 		borderColor: COLORS.border,
-		marginBottom: 12,
 		borderWidth: 2,
+		marginBottom: 12,
 	},
 	cardIcon: {
 		width: 48,
@@ -566,24 +751,39 @@ const styles = StyleSheet.create({
 		marginBottom: 8,
 		color: COLORS.text.primary.light,
 	},
-	cardText: {
-		fontSize: 14,
-		lineHeight: 20,
-		color: COLORS.text.secondary.light,
-	},
-	expandBtn: {
+	cardText: { fontSize: 14, lineHeight: 20, color: COLORS.text.secondary.light },
+	expandBtn: { flexDirection: 'row', alignItems: 'center', marginTop: 8, paddingVertical: 4 },
+	expandLabel: { fontSize: 14, fontWeight: '600', marginRight: 4, color: COLORS.primary },
+
+	/* task cards (same look as CareSchedule) */
+	taskCard: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		marginTop: 8,
-		paddingVertical: 4,
+		backgroundColor: '#FFF',
+		padding: 12,
+		borderBottomWidth: 2,
+		borderColor: COLORS.border,
 	},
-	expandLabel: {
-		fontSize: 14,
-		fontWeight: '600',
-		marginRight: 4,
-		color: COLORS.primary,
+	plantImage: { width: 56, height: 56, borderRadius: 14, marginRight: 12 },
+	cardContent: { flex: 1 },
+	cardHeader: {
+		flexDirection: 'row',
+		justifyContent: 'space-between',
+		alignItems: 'center',
+		marginBottom: 4,
 	},
 
+	cardPlant: { fontSize: 16, fontWeight: '600', color: '#111827' },
+	cardRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+	cardType: { fontSize: 14, fontWeight: '500' },
+	cardDate: { fontSize: 14, color: '#6B7280' },
+
+	/* empty state (tasks) */
+	emptyState: { alignItems: 'center', paddingVertical: 24 },
+	emptyTitle: { fontSize: 24, fontWeight: '600', color: '#111827', marginBottom: 4 },
+	emptyText: { fontSize: 16, color: '#6B7280', textAlign: 'center' },
+
+	/* delete */
 	deleteBtn: {
 		flexDirection: 'row',
 		alignItems: 'center',
@@ -592,10 +792,5 @@ const styles = StyleSheet.create({
 		padding: 16,
 		borderRadius: 12,
 	},
-	deleteText: {
-		color: COLORS.error,
-		fontSize: 16,
-		fontWeight: '600',
-		marginLeft: 8,
-	},
+	deleteText: { color: COLORS.error, fontSize: 16, fontWeight: '600', marginLeft: 8 },
 });

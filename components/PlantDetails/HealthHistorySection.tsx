@@ -1,18 +1,16 @@
 import React, { useState, useRef } from 'react';
+import { View, StyleSheet, TouchableOpacity, Animated, Image } from 'react-native';
 import {
-	View,
-	StyleSheet,
-	TouchableOpacity,
-	Animated,
-	Image,
-	ScrollView, // ← kept in case you already used it elsewhere
-} from 'react-native';
-import { ChevronDown, AlertTriangle, CheckCircle2 } from 'lucide-react-native';
+	ChevronDown,
+	AlertTriangle,
+	CheckCircle2,
+	Camera, // ← new icon
+} from 'lucide-react-native';
 
 import { Text } from '@/components/Text';
 import { COLORS } from '@/app/constants/colors';
-import { usePlantHealth } from '@/hooks/usePlantHealth';
 import { Database } from '@/types/supabase';
+import { usePlantHealth } from '@/contexts/DatabaseContext';
 
 /* ────────────────────────────────────────────────────────── */
 
@@ -44,7 +42,7 @@ export const HealthHistorySection = ({ plantId }: HealthHistorySectionProps) => 
 		<View style={styles.container}>
 			{/* ───────── Header row ───────── */}
 			<View style={styles.headerRow}>
-				<Text style={styles.sectionTitle}>Health Check History</Text>
+				<Text style={styles.sectionTitle}>Plant Health History</Text>
 
 				<TouchableOpacity onPress={toggleExpanded} style={styles.expandButton}>
 					<Text style={styles.expandText}>{expanded ? 'Show Less' : 'Show All'}</Text>
@@ -57,18 +55,20 @@ export const HealthHistorySection = ({ plantId }: HealthHistorySectionProps) => 
 			{/* ───────── Empty state / list ───────── */}
 			{healthReports.length === 0 ? (
 				<View style={styles.emptyState}>
-					<Text style={styles.emptyText}>No health checks yet</Text>
+					<Text style={styles.emptyTitle}>No health checks yet</Text>
+					<Text style={styles.emptySubtitle}>Tap the heart above to start</Text>
 				</View>
 			) : (
 				<>
 					{/* Always show the latest health check */}
-					<HealthCheckItem healthCheck={healthReports[0]} />
+					{!!healthReports[0] && <HealthCheckItem healthCheck={healthReports[0]} />}
+					{!!healthReports[1] && <HealthCheckItem healthCheck={healthReports[1]} />}
 
 					{/* Show more if expanded */}
 					{expanded &&
 						healthReports.length > 1 &&
 						healthReports
-							.slice(1)
+							.slice(2) // skip the first 3
 							.map((check) => <HealthCheckItem key={check.id} healthCheck={check} />)}
 				</>
 			)}
@@ -87,7 +87,7 @@ const HealthCheckItem = ({
 }) => {
 	/* —— 1. Helpers ——————————————————————— */
 	const getStatusFromProbability = (p: number) =>
-		p > 0.7 ? 'healthy' : p > 0.5 ? 'warning' : 'critical';
+		p > 0.66 ? 'healthy' : p > 0.5 ? 'warning' : 'critical';
 
 	const status = getStatusFromProbability(healthCheck?.raw?.result?.is_healthy?.probability ?? 0);
 	const statusColors = getStatusColors(status);
@@ -96,19 +96,22 @@ const HealthCheckItem = ({
 	const significantDiseases =
 		healthCheck?.raw?.result?.disease?.suggestions.filter((d) => d.probability >= 0.2) ?? [];
 
-	const formattedDate = new Date(healthCheck.created_at).toLocaleDateString('en-US', {
-		year: 'numeric',
-		month: '2-digit',
-		day: '2-digit',
-	});
+	const formattedDate = new Date(healthCheck?.created_at ?? new Date()).toLocaleDateString(
+		'en-US',
+		{
+			year: 'numeric',
+			month: '2-digit',
+			day: '2-digit',
+		}
+	);
 
 	/* —— 2. Render ———————————————————————— */
 	return (
 		<View style={styles.card}>
-			{/* image (shadow supplied by COLORS.shadowLg just like CareSchedule) */}
+			{/* image */}
 			<View style={COLORS.shadowLg}>
 				<Image
-					source={{ uri: healthCheck.image_url }}
+					source={{ uri: healthCheck?.image_url ?? '' }}
 					style={styles.reportImage}
 					resizeMode="cover"
 				/>
@@ -120,12 +123,7 @@ const HealthCheckItem = ({
 				<View style={styles.cardHeader}>
 					<Text style={styles.cardTitle}>Health Check</Text>
 
-					<View
-						style={[
-							styles.cardIcon,
-							{ backgroundColor: statusColors.color + '10' /* 10 % alpha */ },
-						]}
-					>
+					<View style={[styles.cardIcon, { backgroundColor: statusColors.color + '10' }]}>
 						{getStatusIcon(status)}
 					</View>
 				</View>
@@ -143,13 +141,11 @@ const HealthCheckItem = ({
 					<View style={styles.issuesList}>
 						{significantDiseases.map((issue, i) => (
 							<Text key={i} style={styles.issueItem}>
-								• {issue.name}
+								{issue.name} ({Math.round(issue.probability * 100)}%)
 							</Text>
 						))}
 					</View>
-				) : (
-					<Text style={styles.issueItem}>No significant issues detected</Text>
-				)}
+				) : null}
 			</View>
 		</View>
 	);
@@ -196,12 +192,10 @@ const styles = StyleSheet.create({
 		flexDirection: 'row',
 		justifyContent: 'space-between',
 		alignItems: 'center',
-		marginBottom: 16,
+		marginBottom: 8,
 	},
 	sectionTitle: {
-		fontSize: 18,
-		fontWeight: '600',
-		color: COLORS.text.primary.light,
+		...COLORS.titleMd,
 	},
 	expandButton: {
 		flexDirection: 'row',
@@ -213,15 +207,26 @@ const styles = StyleSheet.create({
 		color: COLORS.primary,
 		marginRight: 4,
 	},
+
+	/* —— improved empty state —— */
 	emptyState: {
-		padding: 24,
-		backgroundColor: COLORS.card.light,
-		borderRadius: 12,
+		paddingVertical: 16,
+		borderWidth: 2,
+		borderColor: COLORS.border,
+		borderRadius: 16,
 		alignItems: 'center',
+		justifyContent: 'center',
 	},
-	emptyText: {
+	emptyTitle: {
+		marginTop: 12,
+		fontSize: 18,
+		fontWeight: '600',
+		color: COLORS.text.primary.light,
+	},
+	emptySubtitle: {
+		marginTop: 4,
+		fontSize: 15,
 		color: COLORS.text.secondary.light,
-		fontSize: 16,
 	},
 
 	/* —— card (mirrors CareSchedule) —— */

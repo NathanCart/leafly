@@ -1,21 +1,23 @@
 // hooks/usePlants.ts
-import { useEffect, useState } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase } from '@/lib/supabase';
-import { Database } from '@/types/supabase';
-import { useAuth } from '@/contexts/AuthContext';
-import { useOfflineSync } from './useOfflineSync';
-import { Platform } from 'react-native';
-import type { PlantIdSuggestionRaw } from '@/types/plants';
 import { useS3Uploader } from '@/components/useS3Uploader';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
+import type { PlantIdSuggestionRaw } from '@/types/plants';
+import { Database } from '@/types/supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useEffect, useState } from 'react';
+import { useOfflineSync } from './useOfflineSync';
 
 type Plant = Database['public']['Tables']['plants']['Row'];
 const PLANTS_CACHE_KEY = '@plants_cache';
 
 export function usePlants() {
 	const { session } = useAuth();
+
+	console.log(session, 'session datatatata');
 	const { isOnline } = useOfflineSync();
 	const [plants, setPlants] = useState<Plant[]>([]);
+
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<Error | null>(null);
 	const [uploadProgress, setUploadProgress] = useState(0);
@@ -115,6 +117,21 @@ export function usePlants() {
 			const imageUrl = plant.capturedImageUri
 				? await uploadImage(plant.capturedImageUri)
 				: undefined;
+
+			const response = await fetch(
+				'https://kvjaxrtgtjbqopegbshw.supabase.co/functions/v1/get-plant-schedule',
+				{
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						Authorization: `Bearer ${session?.access_token}`,
+					},
+					body: JSON.stringify({
+						raw: JSON.stringify(plant?.details),
+					}),
+				}
+			).then((res) => res.json());
+
 			const { data, error } = await supabase
 				.from('plants')
 				.insert([
@@ -125,6 +142,8 @@ export function usePlants() {
 						nickname: plant.nickname,
 						location: plant.location,
 						user_id: session!.user.id,
+						watering_interval_days: response?.waterFrequencyDays,
+						fertilize_interval_days: response?.fertilizerFrequencyDays,
 					},
 				])
 				.select()
@@ -194,6 +213,7 @@ export function usePlants() {
 				plantName: plant.nickname,
 				plantImage: plant.image_url,
 				type: 'Water',
+				last: plant?.last_watered ?? new Date(),
 				dueDate: due,
 			});
 		}
@@ -209,6 +229,7 @@ export function usePlants() {
 				plantImage: plant.image_url,
 				type: 'Fertilize',
 				dueDate: due,
+				last: plant?.last_fertilized ?? new Date(),
 			});
 		}
 	});

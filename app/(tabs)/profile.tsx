@@ -21,7 +21,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '@/app/constants/colors';
 import { Text } from '@/components/Text';
-import { usePlants } from '@/hooks/usePlants';
+import { usePlants } from '@/contexts/DatabaseContext';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/contexts/AuthContext';
 

@@ -173,6 +173,33 @@ export type PlantHealthReport = {
 				details: {
 					language: string;
 					entity_id: string;
+					cause: string | null;
+
+					/** Broad category of the problem (biotic / abiotic / ­–---) */
+					classification: string[];
+
+					/** Common names in the current locale */
+					common_names: string[];
+
+					/** Short plain-language explanation of the problem */
+					description: string;
+
+					/** Stable identifier in your data source */
+
+					/** Local, possibly less-formal name (can repeat common_names[0]) */
+					local_name: string;
+
+					/** How to deal with the problem */
+					treatment: {
+						/** Immediate curative actions */
+						biological: string[];
+
+						/** Longer-term / preventive measures */
+						prevention: string[];
+					};
+
+					/** Authoritative external reference */
+					url: string;
 				};
 			}[];
 			question: {

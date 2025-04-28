@@ -1,18 +1,18 @@
-import { useEffect } from 'react';
-import { Stack, useRouter, useSegments } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
-import { useFonts } from '@expo-google-fonts/quicksand/useFonts';
+import { DatabaseProvider } from '@/contexts/DatabaseContext';
+import { TourProvider } from '@/contexts/TourContext';
+import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { Quicksand_300Light } from '@expo-google-fonts/quicksand/300Light';
 import { Quicksand_400Regular } from '@expo-google-fonts/quicksand/400Regular';
 import { Quicksand_500Medium } from '@expo-google-fonts/quicksand/500Medium';
 import { Quicksand_600SemiBold } from '@expo-google-fonts/quicksand/600SemiBold';
 import { Quicksand_700Bold } from '@expo-google-fonts/quicksand/700Bold';
-import { View } from 'react-native';
-import 'react-native-get-random-values';
-import { TourProvider } from '@/contexts/TourContext';
+import { useFonts } from '@expo-google-fonts/quicksand/useFonts';
+import { Stack, useRouter, useSegments } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import 'react-native-get-random-values';
 
 function RootLayoutNav() {
 	const { session, loading } = useAuth();
@@ -54,10 +54,12 @@ export default function RootLayout() {
 	return (
 		<AuthProvider>
 			<GestureHandlerRootView>
-				<TourProvider>
-					<RootLayoutNav />
-					<StatusBar style="auto" />
-				</TourProvider>
+				<DatabaseProvider>
+					<TourProvider>
+						<RootLayoutNav />
+						<StatusBar style="auto" />
+					</TourProvider>
+				</DatabaseProvider>
 			</GestureHandlerRootView>
 		</AuthProvider>
 	);

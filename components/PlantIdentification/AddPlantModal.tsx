@@ -143,6 +143,8 @@ export function AddPlantModal({ visible, onClose, plant, onConfirm, isDark }: Pr
 		setHasError(false);
 
 		try {
+			onConfirm(nickname, currentImage);
+
 			setShowSuccess(true);
 		} catch (err) {
 			console.error('Failed to add plant:', err);
@@ -153,8 +155,6 @@ export function AddPlantModal({ visible, onClose, plant, onConfirm, isDark }: Pr
 	};
 
 	const handleAnimationComplete = () => {
-		onConfirm(nickname, currentImage);
-
 		setShowSuccess(false);
 		onClose();
 
