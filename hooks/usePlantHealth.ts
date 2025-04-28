@@ -8,6 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useOfflineSync } from './useOfflineSync';
 import { usePlantImages } from './usePlantImages';
 import { Database } from '@/types/supabase';
+import { useIsFocused } from '@react-navigation/native';
 
 export function usePlantHealth(plantId: string | null) {
 	const [identifying, setIdentifying] = useState(false);
@@ -16,6 +17,8 @@ export function usePlantHealth(plantId: string | null) {
 	const { session } = useAuth();
 	const { isOnline } = useOfflineSync();
 	const { addImage } = usePlantImages(plantId ?? '');
+	const isFocused = useIsFocused(); // 👈 add
+
 	const [healthReports, setHealthReports] = useState<
 		Database['public']['Tables']['plant_health_reports']['Row'][]
 	>([]);
@@ -93,7 +96,7 @@ export function usePlantHealth(plantId: string | null) {
 			.subscribe();
 
 		return () => supabase.removeChannel(channel);
-	}, [session?.user.id, isOnline]);
+	}, [session?.user.id, isOnline, isFocused]);
 
 	console.log(healthReports?.length, 'healthReports data');
 
