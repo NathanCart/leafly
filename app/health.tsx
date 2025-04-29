@@ -174,6 +174,7 @@ export default function HealthScreen() {
 		return (
 			<View style={styles.container}>
 				<PlantHealthResultsView
+					plantId={plantId}
 					report={results!}
 					onReset={resetIdentification}
 					scrollY={scrollY}

@@ -24,6 +24,7 @@ import { Text } from '@/components/Text';
 import { usePlants } from '@/contexts/DatabaseContext';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/Button';
 
 export default function ProfileScreen() {
 	const colorScheme = useColorScheme();
@@ -102,7 +103,9 @@ export default function ProfileScreen() {
 				<View
 					style={[
 						styles.profileCard,
-						{ backgroundColor: isDark ? '#2A3A30' : '#FFFFFF' },
+						{
+							backgroundColor: isDark ? '#2A3A30' : '#FFFFFF',
+						},
 					]}
 				>
 					{!!userProfile?.avatar && (
@@ -213,21 +216,20 @@ export default function ProfileScreen() {
 					))}
 				</View>
 
-				<TouchableOpacity
-					style={[
-						styles.logoutButton,
+				<View style={{ marginTop: 'auto' }}>
+					<Button onPress={handleLogout} variant="danger" style={styles.editButton}>
+						Log Out
+					</Button>
 
-						{ backgroundColor: isDark ? '#2A2A2A' : '#FFFFFF' },
-					]}
-					onPress={handleLogout}
-				>
-					<LogOut size={24} color={COLORS.warning} />
-					<Text style={[styles.logoutText, { color: COLORS.warning }]}>Log Out</Text>
-				</TouchableOpacity>
-
-				<Text style={[styles.versionText, { color: isDark ? '#BBBBBB' : '#555555' }]}>
-					Version 1.0.0
-				</Text>
+					<Text
+						style={[
+							styles.versionText,
+							{ color: isDark ? '#BBBBBB' : '#555555', marginTop: 12 },
+						]}
+					>
+						Version 1.0.0
+					</Text>
+				</View>
 			</ScrollView>
 		</View>
 	);
@@ -246,7 +248,7 @@ const styles = StyleSheet.create({
 	headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
 	headerTitle: { fontSize: 24, fontWeight: '700', color: '#111827' },
 
-	scrollContent: { padding: 16, paddingBottom: 40 },
+	scrollContent: { padding: 16, paddingBottom: 40, flex: 1, justifyContent: 'space-between' },
 	profileCard: {
 		borderRadius: 16,
 		padding: 20,

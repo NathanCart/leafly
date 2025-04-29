@@ -167,8 +167,10 @@ export default function PlantDetail() {
 	const hasSchedule =
 		Boolean(plant?.watering_interval_days) || Boolean(plant?.fertilize_interval_days);
 
+	console.log(plantId, 'plantId');
 	/* ---------- load plant ---------- */
 	useEffect(() => {
+		if (!plantId) return;
 		(async () => {
 			try {
 				const data = await getPlantById(plantId!);

@@ -9,30 +9,26 @@ import {
 	StatusBar,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {
-	Heart,
-	HeartCrack,
-	X,
-	CircleCheck as CheckCircle,
-	Plane as Plant,
-} from 'lucide-react-native';
+import { Heart, HeartCrack, X, CircleCheck as CheckCircle } from 'lucide-react-native';
 import { COLORS } from '@/app/constants/colors';
 import { Button } from '@/components/Button';
 import { Text } from '@/components/Text';
 import { PlantHealthReport } from '@/types/plants';
+import { router } from 'expo-router';
 
 interface Props {
 	report: PlantHealthReport;
 	onReset: () => void;
 	scrollY: Animated.Value;
 	imageUri: string;
+	plantId: string;
 }
 
-export function PlantHealthResultsView({ report, onReset, scrollY, imageUri }: Props) {
+export function PlantHealthResultsView({ report, onReset, scrollY, imageUri, plantId }: Props) {
 	const insets = useSafeAreaInsets();
 	const healthyAnimation = new Animated.Value(0);
 
-	// Filter diseases with probability >= 1 %
+	// Filter diseases with probability >= 20%
 	const significantDiseases = report.result.disease.suggestions.filter(
 		(disease) => disease.probability >= 0.2
 	);
@@ -78,6 +74,7 @@ export function PlantHealthResultsView({ report, onReset, scrollY, imageUri }: P
 			</TouchableOpacity>
 
 			<Animated.ScrollView
+				contentContainerStyle={{ paddingBottom: 100 + insets.bottom }}
 				style={styles.scrollView}
 				onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
 					useNativeDriver: true,
@@ -133,20 +130,12 @@ export function PlantHealthResultsView({ report, onReset, scrollY, imageUri }: P
 								{ transform: [{ scale: healthyScale }], opacity: healthyOpacity },
 							]}
 						>
-							<CheckCircle size={64} color="#3A8349" />
+							<CheckCircle size={64} color={COLORS.primary} />
 							<Text style={styles.healthyTitle}>Your Plant is Healthy!</Text>
 							<Text style={styles.healthyDescription}>
 								We couldn't detect any significant issues with your plant. Keep up
 								the good work!
 							</Text>
-							<View style={styles.healthyTipsContainer}>
-								<View style={styles.healthyTipItem}>
-									<Plant size={22} color="#3A8349" />
-									<Text style={styles.healthyTipText}>
-										Continue your regular care routine
-									</Text>
-								</View>
-							</View>
 						</Animated.View>
 					) : (
 						<>
@@ -195,24 +184,24 @@ export function PlantHealthResultsView({ report, onReset, scrollY, imageUri }: P
 											<Text style={styles.resultName}>{disease.name}</Text>
 											{!!disease?.details?.description && (
 												<Text style={styles.confidenceText}>
-													{disease?.details?.description}
+													{disease.details.description}
 												</Text>
 											)}
 											{!!disease?.details?.cause && (
 												<Text style={styles.confidenceText}>
-													{disease?.details?.cause}
+													{disease.details.cause}
 												</Text>
 											)}
 											{!!disease?.details?.treatment?.biological?.length && (
 												<Text style={styles.confidenceText}>
-													{disease?.details?.treatment?.biological?.join(
+													{disease.details.treatment.biological.join(
 														', '
 													)}
 												</Text>
 											)}
 											{!!disease?.details?.treatment?.prevention?.length && (
 												<Text style={styles.confidenceText}>
-													{disease?.details?.treatment?.prevention?.join(
+													{disease.details.treatment.prevention.join(
 														', '
 													)}
 												</Text>
@@ -231,16 +220,30 @@ export function PlantHealthResultsView({ report, onReset, scrollY, imageUri }: P
 					)}
 				</View>
 			</Animated.ScrollView>
+
+			{/* ▾ Sticky Go Back Button ▾ */}
+			<View
+				style={[
+					styles.bottomButtonContainer,
+					{ paddingBottom: Platform.OS === 'ios' ? insets.bottom : 16 },
+				]}
+			>
+				<Button
+					onPress={() => {
+						router.dismissTo({
+							pathname: '/plantDetail',
+							params: { id: plantId },
+						});
+					}}
+				>
+					Back to Plant
+				</Button>
+			</View>
 		</View>
 	);
 }
 
-/* ─────────────────────────────────────────────
-   Styles
-   (only card-related definitions were updated)
-   ───────────────────────────────────────────── */
 const styles = StyleSheet.create({
-	/* unchanged styles … */
 	container: {
 		flex: 1,
 		backgroundColor: '#000',
@@ -268,6 +271,7 @@ const styles = StyleSheet.create({
 	resultsContent: {
 		padding: 24,
 		backgroundColor: '#fff',
+		minHeight: '100%',
 		borderTopLeftRadius: 30,
 		borderTopRightRadius: 30,
 		marginTop: -120,
@@ -318,8 +322,7 @@ const styles = StyleSheet.create({
 		marginTop: 16,
 		marginBottom: 8,
 	},
-
-	/* ▾ UPDATED CARD STYLES ▾ */
+	/* Card styles unchanged... */
 	resultCard: {
 		borderWidth: 2,
 		borderColor: COLORS.border,
@@ -328,12 +331,10 @@ const styles = StyleSheet.create({
 		marginHorizontal: 4,
 		overflow: 'hidden',
 		backgroundColor: '#FFFFFF',
-		/* iOS shadow */
 		shadowColor: '#000',
 		shadowOffset: { width: 0, height: 4 },
 		shadowOpacity: 0.08,
 		shadowRadius: 12,
-		/* Android shadow */
 		elevation: 6,
 	},
 	resultImage: {
@@ -373,42 +374,27 @@ const styles = StyleSheet.create({
 		lineHeight: 20,
 		marginBottom: 6,
 	},
-
-	/* unchanged styles … */
 	healthyContainer: {
 		alignItems: 'center',
 		marginVertical: 20,
 		padding: 24,
-		backgroundColor: '#F1F8E9',
 		borderRadius: 16,
-		borderWidth: 1,
-		borderColor: '#C5E1A5',
+		borderWidth: 2,
+		borderColor: COLORS.border,
 	},
 	healthyTitle: {
 		fontSize: 22,
 		fontWeight: '700',
-		color: '#2E7D32',
 		marginTop: 16,
 		marginBottom: 8,
 		textAlign: 'center',
 	},
 	healthyDescription: {
 		fontSize: 16,
-		color: '#33691E',
 		textAlign: 'center',
 		marginBottom: 20,
 		lineHeight: 22,
 	},
-	healthyTipsContainer: {
-		width: '100%',
-		backgroundColor: 'white',
-		borderRadius: 12,
-		padding: 16,
-		borderWidth: 1,
-		borderColor: '#DCEDC8',
-	},
-	healthyTipItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
-	healthyTipText: { marginLeft: 12, fontSize: 15, color: '#33691E' },
 	noIssuesContainer: {
 		padding: 20,
 		alignItems: 'center',
@@ -419,4 +405,15 @@ const styles = StyleSheet.create({
 		marginBottom: 20,
 	},
 	noIssuesText: { fontSize: 16, color: '#3A5A40', textAlign: 'center' },
+	bottomButtonContainer: {
+		position: 'absolute',
+		left: 0,
+		right: 0,
+		bottom: 0,
+		backgroundColor: '#fff',
+		paddingHorizontal: 16,
+		paddingTop: 12,
+		borderTopWidth: 1,
+		borderColor: COLORS.border,
+	},
 });

@@ -32,7 +32,18 @@ export const COLORS = {
 	primary: '#58CC02', // Main green
 	secondary: '#89E219', // Light green
 	tertiary: '#1CB0F6', // Accent blue
-
+	button: {
+		primary: '#58CC02',
+		primaryBorder: '#58A700',
+		secondary: '#FFC800',
+		secondaryBorder: '#E6AC00',
+		tertiary: '#ECECEC',
+		tertiaryBorder: '#DADADA',
+		danger: '#FF4B4B',
+		dangerBorder: '#EA2B2B',
+		disabled: '#E5E5E5',
+		disabledBorder: '#CECECE',
+	},
 	// Background Colors
 	background: {
 		light: '#FFFFFF',
@@ -67,12 +78,6 @@ export const COLORS = {
 	error: '#FF4B4B',
 	info: '#1CB0F6',
 
-	// Interactive Elements
-	button: {
-		primary: '#58CC02',
-		secondary: '#89E219',
-		disabled: '#E5E5E5',
-	},
 	border: '#f1f3f7',
 	// Tab Bar
 	tabBar: {
