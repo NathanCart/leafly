@@ -23,6 +23,7 @@ import { usePlantIdentification } from '@/hooks/usePlantIdentification';
 import { usePlants } from '@/contexts/DatabaseContext';
 import { PlantIdClassificationResponse } from '@/types/plants';
 import { Text } from '@/components/Text';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function IdentifyScreen() {
 	const [permission, requestPermission] = useCameraPermissions();
@@ -36,6 +37,7 @@ export default function IdentifyScreen() {
 	const colorScheme = useColorScheme();
 	const isDark = colorScheme === 'dark';
 	const scrollY = useRef(new Animated.Value(0)).current;
+	const insets = useSafeAreaInsets();
 
 	const { identifying, error, results, identifyPlant } = usePlantIdentification();
 	const { addPlant } = usePlants();
@@ -114,7 +116,10 @@ export default function IdentifyScreen() {
 	if (!permission) {
 		return (
 			<View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#fff' }]}>
-				<TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+				<TouchableOpacity
+					style={[styles.closeButton, { top: insets.top }]}
+					onPress={handleClose}
+				>
 					<X color={isDark ? '#E0E0E0' : '#283618'} size={24} />
 				</TouchableOpacity>
 				<View style={styles.permissionContainer}>
@@ -162,7 +167,10 @@ export default function IdentifyScreen() {
 	if (!permission.granted) {
 		return (
 			<View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#fff' }]}>
-				<TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+				<TouchableOpacity
+					style={[styles.closeButton, { top: insets.top }]}
+					onPress={handleClose}
+				>
 					<X color={isDark ? '#E0E0E0' : '#283618'} size={24} />
 				</TouchableOpacity>
 				<View style={styles.permissionContainer}>
@@ -243,7 +251,10 @@ export default function IdentifyScreen() {
 	if (capturedImage) {
 		return (
 			<View style={styles.container}>
-				<TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+				<TouchableOpacity
+					style={[styles.closeButton, { top: insets.top }]}
+					onPress={handleClose}
+				>
 					<X color="white" size={24} />
 				</TouchableOpacity>
 				<Image source={{ uri: capturedImage }} style={styles.previewImage} />
@@ -272,7 +283,10 @@ export default function IdentifyScreen() {
 	// 5) Default: camera view
 	return (
 		<View style={styles.container}>
-			<TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+			<TouchableOpacity
+				style={[styles.closeButton, { top: insets.top }]}
+				onPress={handleClose}
+			>
 				<X color="white" size={24} />
 			</TouchableOpacity>
 			<CameraViewComponent onCapture={setCapturedImage} onPickImage={pickImage} />

@@ -274,7 +274,7 @@ const EmptyState = ({
 }) => {
 	return (
 		<View style={styles.emptyStateContainer}>
-			<AnimatedIcon color={color}>{icon}</AnimatedIcon>
+			<View style={{ marginBottom: 16 }}>{icon}</View>
 			<Text
 				style={[
 					styles.emptyStateTitle,
@@ -580,7 +580,7 @@ export default function HomeScreen() {
 							/>
 						) : (
 							<EmptyState
-								icon={<PlusCircle size={30} color={COLORS.primary} />}
+								icon={<PlusCircle size={32} color={COLORS.primary} />}
 								title="Your garden awaits its first plant"
 								subtitle="Add plants to your collection to see them here"
 								action="Add your first plant"
@@ -681,7 +681,7 @@ export default function HomeScreen() {
 							</View>
 						) : (
 							<EmptyState
-								icon={<Droplet size={30} color="#33A1FF" />}
+								icon={<Droplet size={32} color="#33A1FF" />}
 								title="No care tasks scheduled"
 								subtitle="Your plants are all taken care of for now"
 								action={plants?.length > 0 ? 'Set up plant care' : null}
