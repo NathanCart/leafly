@@ -18,6 +18,7 @@
 			"supportsTablet": true,
 			"bundleIdentifier": "com.viralreach.leafly",
 			"infoPlist": {
+				"UIBackgroundModes": ["location", "fetch", "remote-notification"],
 				"ITSAppUsesNonExemptEncryption": false,
 				"UIViewControllerBasedStatusBarAppearance": false,
 				"NSLocationWhenInUseUsageDescription": "This app requires access to your location when open.",

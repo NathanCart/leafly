@@ -9,6 +9,8 @@ import {
 	PermissionsAndroid,
 	FlatList,
 	Image,
+	Alert,
+	Linking,
 } from 'react-native';
 import { HelpCircle, Leaf, X, Droplet } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -137,14 +139,51 @@ const CareSchedule = () => {
 
 	const requestPermissions = async () => {
 		let granted = false;
-		if (Device.isDevice) {
+
+		if (Platform.OS === 'ios') {
 			const { status } = await Notifications.requestPermissionsAsync();
 			granted = status === 'granted';
-		} else if (Platform.OS === 'android') {
+
+			if (status === 'denied') {
+				Alert.alert(
+					'Notification Permission Denied',
+					'Please enable notifications in your device settings to receive reminders.',
+					[
+						{ text: 'Cancel', style: 'cancel' },
+						{
+							text: 'Open Settings',
+							onPress: () => {
+								// On iOS, the special URL scheme will open your app’s settings page:
+								Linking.openURL('app-settings:');
+							},
+						},
+					],
+					{ cancelable: true }
+				);
+			}
+		} else {
+			// Android
 			const result = await PermissionsAndroid.request(
 				PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS
 			);
 			granted = result === PermissionsAndroid.RESULTS.GRANTED;
+
+			if (result === PermissionsAndroid.RESULTS.DENIED) {
+				Alert.alert(
+					'Notification Permission Denied',
+					'Please enable notifications in your device settings to receive reminders.',
+					[
+						{ text: 'Cancel', style: 'cancel' },
+						{
+							text: 'Open Settings',
+							onPress: () => {
+								Linking.openURL('app-settings:');
+							},
+						},
+					],
+					{ cancelable: true }
+				);
+			}
 		}
 		setPermissionsGranted(granted);
 	};

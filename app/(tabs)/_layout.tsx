@@ -3,6 +3,9 @@
 import React, { useRef, useEffect } from 'react';
 import { Tabs } from 'expo-router';
 import type { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs';
+import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
+
 import {
 	LayoutGrid,
 	LayoutGrid as LayoutGridIcon,
@@ -24,6 +27,8 @@ import {
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { COLORS } from '../constants/colors';
+import { supabase } from '@/lib/supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 function CustomTabBarButton(props: BottomTabBarButtonProps) {
 	const { children, onPress, accessibilityState, style, ...rest } = props;
@@ -75,6 +80,49 @@ function CustomTabBarButton(props: BottomTabBarButtonProps) {
 
 export default function TabLayout() {
 	const isDark = useColorScheme() === 'dark';
+
+	useEffect(() => {
+		(async () => {
+			const installUUID = await AsyncStorage.getItem('install_uuid');
+			const { data: session } = await supabase.auth.getSession();
+
+			if (!installUUID?.length) return null;
+
+			const { status: existingStatus } = await Notifications.getPermissionsAsync();
+
+			let expoPushToken: string | null = null;
+
+			const projectId =
+				Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
+			if (!projectId) {
+				return { error: 'Project ID not found' };
+			}
+			try {
+				const pushTokenString = (
+					await Notifications.getExpoPushTokenAsync({
+						projectId,
+					})
+				).data;
+				expoPushToken = pushTokenString;
+			} catch (e: unknown) {
+				console.error('Error getting push token:', e);
+			}
+
+			if (existingStatus === 'granted' && !!expoPushToken?.length) {
+				const { data, error } = await supabase
+					.from('user_notifications')
+					.upsert([
+						{
+							id: installUUID,
+							user_id: session?.session?.user?.id ?? null,
+							expo_push_token: expoPushToken,
+						},
+					])
+					.select()
+					.single();
+			}
+		})();
+	}, []);
 
 	return (
 		<Tabs
