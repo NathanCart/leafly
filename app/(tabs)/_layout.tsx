@@ -1,7 +1,7 @@
 // TabLayout.tsx
 
 import React, { useRef, useEffect } from 'react';
-import { Tabs } from 'expo-router';
+import { router, Tabs } from 'expo-router';
 import type { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
@@ -91,7 +91,7 @@ export default function TabLayout() {
 			const { status: existingStatus } = await Notifications.getPermissionsAsync();
 
 			let expoPushToken: string | null = null;
-
+			console.log('testing 1');
 			const projectId =
 				Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
 			if (!projectId) {
@@ -107,8 +107,8 @@ export default function TabLayout() {
 			} catch (e: unknown) {
 				console.error('Error getting push token:', e);
 			}
-
 			if (existingStatus === 'granted' && !!expoPushToken?.length) {
+				console.log(installUUID, 'installUUID');
 				const { data, error } = await supabase
 					.from('user_notifications')
 					.upsert([
@@ -176,6 +176,13 @@ export default function TabLayout() {
 			<Tabs.Screen
 				name="identify"
 				options={{
+					href: null,
+					tabBarStyle: { display: 'none' },
+				}}
+			/>
+			<Tabs.Screen
+				name="identifyOptions"
+				options={{
 					title: '',
 					tabBarIcon: () => (
 						<View style={styles.plusButtonContainer}>
@@ -189,9 +196,17 @@ export default function TabLayout() {
 							</View>
 						</View>
 					),
-					tabBarStyle: { display: 'none' },
+					tabBarButton: (props) => (
+						<CustomTabBarButton
+							{...props}
+							onPress={() => {
+								router.push('/identifyOptions');
+							}}
+						/>
+					),
 				}}
 			/>
+
 			<Tabs.Screen
 				name="care"
 				options={{

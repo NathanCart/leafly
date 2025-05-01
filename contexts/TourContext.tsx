@@ -34,7 +34,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
 
 	const completeTour = async () => {
 		try {
-			await AsyncStorage.setItem('@tour_completed432423', 'true');
+			await AsyncStorage.setItem('@tour_completed', 'true');
 			setIsFirstTime(false);
 			setCurrentStep(null);
 		} catch (error) {

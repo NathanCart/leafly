@@ -30,6 +30,7 @@ export const COLORS = {
 		}),
 	},
 	primary: '#58CC02', // Main green
+	muted: '#606C38', // Muted green
 	secondary: '#89E219', // Light green
 	tertiary: '#1CB0F6', // Accent blue
 	button: {

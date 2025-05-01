@@ -321,7 +321,6 @@ export default function HomeScreen() {
 
 	const headerStyle = useAnimatedStyle(() => ({ transform: [{ translateY: scrollY.value }] }));
 
-	console.log(scheduleEntries, 'scheduleEntries');
 	useEffect(() => {
 		const hour = new Date().getHours();
 		setGreeting(hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening');
