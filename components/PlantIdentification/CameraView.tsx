@@ -5,6 +5,7 @@ import { Image as ImageIcon, RotateCcw } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { Text } from '@/components/Text';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface Props {
 	onCapture: (uri: string) => void;
@@ -15,6 +16,7 @@ export function CameraViewComponent({ onCapture, onPickImage }: Props) {
 	const [cameraType, setCameraType] = useState<CameraType>('back');
 	const [isCapturing, setIsCapturing] = useState(false);
 	const cameraRef = useRef(null);
+	const insets = useSafeAreaInsets();
 
 	const takePicture = async () => {
 		if (cameraRef.current && !isCapturing) {
@@ -40,7 +42,16 @@ export function CameraViewComponent({ onCapture, onPickImage }: Props) {
 	return (
 		<ExpoCamera ref={cameraRef} style={styles.camera} facing={cameraType}>
 			<View style={styles.cameraControls}>
-				<TouchableOpacity onPress={flipCamera} style={styles.flipButton}>
+				<TouchableOpacity
+					onPress={flipCamera}
+					style={[
+						styles.flipButton,
+						{
+							left: 0,
+							top: insets.top - 20,
+						},
+					]}
+				>
 					<RotateCcw color="white" />
 				</TouchableOpacity>
 				<View style={styles.bottomControls}>
@@ -80,9 +91,14 @@ const styles = StyleSheet.create({
 	},
 	flipButton: {
 		alignSelf: 'flex-end',
-		backgroundColor: 'rgba(0,0,0,0.6)',
-		padding: 10,
+		left: 20,
+		width: 40,
+		height: 40,
 		borderRadius: 20,
+		backgroundColor: 'rgba(0,0,0,0.3)',
+		justifyContent: 'center',
+		alignItems: 'center',
+		zIndex: 10,
 	},
 	bottomControls: {
 		flexDirection: 'row',

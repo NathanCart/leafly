@@ -16,6 +16,7 @@ import {
 	Platform,
 	ScrollView,
 	StyleSheet,
+	Switch,
 	TextInput,
 	TouchableOpacity,
 	View,
@@ -38,6 +39,7 @@ export function AddPlantModal({ visible, onClose, plant, onConfirm, isDark }: Pr
 	const [showSuccess, setShowSuccess] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
 	const [customImage, setCustomImage] = useState<string | null>(null);
+	const [switchValue, setSwitchValue] = useState(true);
 
 	const spinValue = useRef(new Animated.Value(0)).current;
 	const inputScaleValue = useRef(new Animated.Value(1)).current;
@@ -46,6 +48,15 @@ export function AddPlantModal({ visible, onClose, plant, onConfirm, isDark }: Pr
 	const hapticInterval = useRef<NodeJS.Timeout | null>(null);
 
 	const currentImage = customImage || plant.capturedImageUri;
+
+	const switchTrack = '#4CAF5050';
+	const switchThumb = '#4CAF50';
+	const onSwitch = (value: boolean) => {
+		setSwitchValue(value);
+		if (Platform.OS !== 'web') {
+			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+		}
+	};
 
 	const pickImage = async () => {
 		try {
@@ -340,7 +351,7 @@ export function AddPlantModal({ visible, onClose, plant, onConfirm, isDark }: Pr
 											{ color: isDark ? '#BBBBBB' : '#555555' },
 										]}
 									>
-										Let&apos;s find the watering rhythm
+										We will remind you when to water your plant.
 									</Text>
 								</View>
 							</View>
@@ -353,7 +364,7 @@ export function AddPlantModal({ visible, onClose, plant, onConfirm, isDark }: Pr
 								size="large"
 								disabled={isLoading}
 							>
-								Add Plant
+								Continue
 							</Button>
 						</View>
 					</View>

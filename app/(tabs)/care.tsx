@@ -109,11 +109,13 @@ const CareSchedule = () => {
 	});
 
 	// Filter for today vs upcoming
-	const scheduleToday = entries.filter((e) => {
-		const d = new Date(e.dueDate);
-		d.setHours(0, 0, 0, 0);
-		return d.getTime() === today.getTime();
-	});
+	const scheduleToday = entries
+		.filter((e) => {
+			const d = new Date(e.dueDate);
+			d.setHours(0, 0, 0, 0);
+			return d.getTime() <= today.getTime();
+		})
+		.sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
 	const scheduleUpcoming = entries
 		.filter((e) => {
 			const d = new Date(e.dueDate);
@@ -209,6 +211,8 @@ const CareSchedule = () => {
 		const isWatering = item.type === 'Water';
 		const accentColor = isWatering ? '#33A1FF' : '#4CAF50';
 		const relativeDate = getRelativeDate(item.dueDate);
+
+		console.log('Relative date:', relativeDate);
 		const isOverdue = item.dueDate.getTime() < today.getTime();
 
 		return (

@@ -277,8 +277,6 @@ export default function IdentifyScreen() {
 	const confirmPlantSelection = async (nickname: string, imageUri: string) => {
 		if (!selectedPlant) return;
 
-		console.log(imageUri, 'selectedPlant data image');
-
 		try {
 			const plant = await getPlantById(selectedPlant?.access_token);
 

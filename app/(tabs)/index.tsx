@@ -21,6 +21,7 @@ import {
 } from 'react-native';
 import AnimatedLib, {
 	Easing,
+	useAnimatedScrollHandler,
 	useAnimatedStyle,
 	useSharedValue,
 	withDelay,
@@ -316,11 +317,31 @@ export default function HomeScreen() {
 	const [loading, setLoading] = useState(true);
 
 	const scrollY = useSharedValue(0);
+
+	const scrollHandler = useAnimatedScrollHandler({
+		onScroll: (event) => {
+			// Ignore the rubber-band region
+			const y = event.contentOffset.y; // keep the sign
+			scrollY.value = y;
+		},
+	});
 	const { profile } = useProfile();
 	const { plants, loading: plantsLoading, scheduleEntries } = usePlants();
 
-	const headerStyle = useAnimatedStyle(() => ({ transform: [{ translateY: scrollY.value }] }));
+	const headerStyle = useAnimatedStyle(() => {
+		const y = scrollY.value;
 
+		// 👉  stretch if y is negative (pulled down)
+		const height = y < 0 ? HEADER_HEIGHT - y : HEADER_HEIGHT;
+
+		// 👉  parallax slide-up if y is positive (scrolled up)
+		const translateY = y > 0 ? -y * 0.5 : 0;
+
+		return {
+			height, // dynamic!
+			transform: [{ translateY }],
+		};
+	});
 	useEffect(() => {
 		const hour = new Date().getHours();
 		setGreeting(hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening');
@@ -478,14 +499,9 @@ export default function HomeScreen() {
 			</AnimatedLib.View>
 
 			<AnimatedLib.ScrollView
-				style={styles.scrollView}
-				contentContainerStyle={{ paddingTop: HEADER_HEIGHT - 20 }}
+				onScroll={scrollHandler}
 				scrollEventThrottle={16}
-				onScroll={(e) => {
-					scrollY.value = withSequence(
-						withTiming(-e.nativeEvent.contentOffset.y * 0.5, { duration: 0 })
-					);
-				}}
+				contentContainerStyle={{ paddingTop: HEADER_HEIGHT - 20 }}
 			>
 				<AnimatedLib.View
 					style={[
@@ -619,6 +635,9 @@ export default function HomeScreen() {
 									const rel = getRelativeDate(
 										!task?.last?.length ? new Date() : task.dueDate
 									);
+
+									const isOverdue = task.dueDate.getTime() < today.getTime();
+
 									return (
 										<ScalePressable
 											key={task.id}
@@ -680,7 +699,14 @@ export default function HomeScreen() {
 															<>({task.amountMl}ml)</>
 														)}
 													</Text>
-													<Text style={[styles.cardDate]}>{rel}</Text>
+													<Text
+														style={[
+															styles.cardDate,
+															isOverdue && { color: COLORS.error },
+														]}
+													>
+														{rel}
+													</Text>
 												</View>
 											</View>
 										</ScalePressable>
