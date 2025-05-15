@@ -14,7 +14,6 @@ const PLANTS_CACHE_KEY = '@plants_cache';
 export function usePlants() {
 	const { session } = useAuth();
 
-	console.log(session, 'session datatatata');
 	const { isOnline } = useOfflineSync();
 	const [plants, setPlants] = useState<Plant[]>([]);
 
@@ -99,6 +98,8 @@ export function usePlants() {
 			return uri;
 		}
 
+		console.log('Uploading image to S3:', uri);
+
 		try {
 			const ext = uri.split('.').pop()?.toLowerCase() || 'jpg';
 			const contentType = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
@@ -116,7 +117,9 @@ export function usePlants() {
 		try {
 			const imageUrl = plant.capturedImageUri
 				? await uploadImage(plant.capturedImageUri)
-				: undefined;
+				: plant?.details?.images?.[0];
+
+			console.log(imageUrl, 'image url data datata');
 
 			const response = await fetch(
 				'https://kvjaxrtgtjbqopegbshw.supabase.co/functions/v1/get-plant-schedule',
@@ -211,7 +214,9 @@ export function usePlants() {
 				id: `${plant.id}-water`,
 				plantId: plant.id,
 				plantName: plant.nickname,
-				plantImage: plant.image_url,
+				plantImage: !!plant?.image_url?.length
+					? plant?.image_url
+					: plant?.raw?.similar_images?.[0]?.url,
 				type: 'Water',
 				last: plant?.last_watered ?? new Date(),
 				dueDate: due,
@@ -226,7 +231,9 @@ export function usePlants() {
 				id: `${plant.id}-fertilize`,
 				plantId: plant.id,
 				plantName: plant.name,
-				plantImage: plant.image_url,
+				plantImage: !!plant?.image_url?.length
+					? plant?.image_url
+					: plant?.raw?.similar_images?.[0]?.url,
 				type: 'Fertilize',
 				dueDate: due,
 				last: plant?.last_fertilized ?? new Date(),

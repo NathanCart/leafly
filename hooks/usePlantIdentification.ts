@@ -58,6 +58,49 @@ export function usePlantIdentification() {
 		return 'Outdoor';
 	};
 
+	const getPlantById = async (accessToken: string) => {
+		try {
+			checkConnectivity();
+
+			const detailKeys = [
+				'common_names',
+				'url',
+				'description',
+				'taxonomy',
+				'rank',
+				'gbif_id',
+				'inaturalist_id',
+				'image',
+				'synonyms',
+				'edible_parts',
+				'watering',
+				'propagation_methods',
+			].join(',');
+
+			const url = `https://plant.id/api/v3/kb/plants/${accessToken}?details=${detailKeys}&language=en`;
+
+			const response = await fetch(url, {
+				headers: {
+					'Api-Key': process.env.EXPO_PUBLIC_PLANT_ID_KEY!,
+				},
+			});
+
+			if (!response.ok) {
+				const txt = await response.text();
+				console.error('Error fetching plant by access token:', response.status, txt);
+				throw new Error(`Failed to fetch plant (${response.status}): ${txt}`);
+			}
+
+			const data = await response.json();
+			console.log('Fetched plant by token:', data);
+			return data;
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : 'Failed to fetch plant by token';
+			setError(msg);
+			throw new Error(msg);
+		}
+	};
+
 	const identifyPlant = async (imageUri: string): Promise<PlantIdClassificationResponse> => {
 		try {
 			setIdentifying(true);
@@ -151,5 +194,5 @@ export function usePlantIdentification() {
 		});
 	};
 
-	return { identifying, error, results, identifyPlant, saveIdentifiedPlant };
+	return { identifying, error, results, identifyPlant, saveIdentifiedPlant, getPlantById };
 }

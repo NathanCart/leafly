@@ -17,9 +17,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Search as SearchIcon, Camera, ChevronRight, X, Leaf } from 'lucide-react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Haptics from 'expo-haptics';
 import { COLORS } from '../constants/colors';
 import { Text } from '@/components/Text';
 import { Button } from '@/components/Button';
+import { AddPlantModal } from '@/components/PlantIdentification/AddPlantModal';
+import { usePlants } from '@/hooks/usePlants';
+import { usePlantIdentification } from '@/hooks/usePlantIdentification';
 
 const categories = [
 	{ id: 'flower', name: 'Flower', icon: '🌺' },
@@ -29,23 +33,52 @@ const categories = [
 	{ id: 'vegetable', name: 'Vegetable', icon: '🥦' },
 ];
 
-// Renders one API "entity" result
-const SearchResultCard = ({ entity, isDark }) => {
+// Renders one API "entity" result with press animation & haptics
+const SearchResultCard = ({ entity, isDark, onPress }) => {
 	const scale = useRef(new Animated.Value(1)).current;
 	const thumbnailUri = entity.thumbnail ? `data:image/png;base64,${entity.thumbnail}` : null;
 
+	const handlePressIn = () => {
+		Animated.spring(scale, {
+			toValue: 0.96,
+			friction: 5,
+			tension: 300,
+			useNativeDriver: true,
+		}).start();
+	};
+	const handlePressOut = () => {
+		Animated.spring(scale, {
+			toValue: 1,
+			friction: 3,
+			tension: 200,
+			useNativeDriver: true,
+		}).start();
+	};
+	const handlePress = () => {
+		Haptics.selectionAsync();
+		onPress(entity);
+	};
+
 	return (
-		<Animated.View style={{ transform: [{ scale }] }}>
-			<TouchableOpacity style={styles.card} onPress={() => {}}>
+		<Animated.View style={{ transform: [{ scale }], marginBottom: 12 }}>
+			<TouchableOpacity
+				style={styles.card}
+				onPress={handlePress}
+				onPressIn={handlePressIn}
+				onPressOut={handlePressOut}
+				activeOpacity={0.9}
+			>
 				<View style={COLORS.shadowLg}>
 					<Image source={{ uri: thumbnailUri ?? '' }} style={styles.plantImageData} />
 				</View>
 				<View style={styles.cardContent}>
 					<View style={styles.cardHeader}>
-						<Text style={styles.cardPlant}>{entity?.entity_name}</Text>
+						<Text style={styles.cardPlant}>{entity.entity_name}</Text>
 					</View>
 					<View style={styles.cardRow}>
-						<Text style={[styles.cardPlant, {}]}>{entity?.matched_in}</Text>
+						<Text style={[styles.cardPlant, { color: COLORS.muted, fontSize: 14 }]}>
+							{entity.matched_in}
+						</Text>
 					</View>
 				</View>
 			</TouchableOpacity>
@@ -55,9 +88,8 @@ const SearchResultCard = ({ entity, isDark }) => {
 
 const CategoryButton = ({ category, isDark, onPress }) => {
 	const scale = useRef(new Animated.Value(1)).current;
-
 	return (
-		<Animated.View style={{ transform: [{ scale }] }}>
+		<Animated.View style={{ transform: [{ scale }], marginRight: 12 }}>
 			<TouchableOpacity
 				onPress={onPress}
 				onPressIn={() =>
@@ -100,23 +132,37 @@ const CategoryButton = ({ category, isDark, onPress }) => {
 
 const RecentSearchItem = ({ term, isDark, onPress }) => {
 	const bg = useRef(new Animated.Value(0)).current;
+	const backgroundColor = bg.interpolate({
+		inputRange: [0, 1],
+		outputRange: ['transparent', isDark ? '#333333' : '#F0F4E4'],
+	});
 	return (
-		<TouchableOpacity
-			style={[styles.recentSearchItem, { borderColor: COLORS.border }]}
-			onPress={onPress}
-			onPressIn={() =>
-				Animated.timing(bg, { toValue: 1, duration: 150, useNativeDriver: false }).start()
-			}
-			onPressOut={() =>
-				Animated.timing(bg, { toValue: 0, duration: 200, useNativeDriver: false }).start()
-			}
-			activeOpacity={0.8}
-		>
-			<SearchIcon size={16} color={isDark ? '#A0A0A0' : COLORS.muted} />
-			<Text style={[styles.recentSearchText, { color: isDark ? '#E0E0E0' : '#283618' }]}>
-				{term}
-			</Text>
-		</TouchableOpacity>
+		<Animated.View style={[styles.recentSearchItem, { backgroundColor }]}>
+			<TouchableOpacity
+				style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}
+				onPress={onPress}
+				onPressIn={() =>
+					Animated.timing(bg, {
+						toValue: 1,
+						duration: 150,
+						useNativeDriver: false,
+					}).start()
+				}
+				onPressOut={() =>
+					Animated.timing(bg, {
+						toValue: 0,
+						duration: 200,
+						useNativeDriver: false,
+					}).start()
+				}
+				activeOpacity={0.8}
+			>
+				<SearchIcon size={16} color={isDark ? '#A0A0A0' : COLORS.muted} />
+				<Text style={[styles.recentSearchText, { color: isDark ? '#E0E0E0' : '#283618' }]}>
+					{term}
+				</Text>
+			</TouchableOpacity>
+		</Animated.View>
 	);
 };
 
@@ -125,6 +171,8 @@ export default function IdentifyScreen() {
 	const [isSearching, setIsSearching] = useState(false);
 	const [searchResults, setSearchResults] = useState([]);
 	const [recentSearches, setRecentSearches] = useState([]);
+	const [selectedPlant, setSelectedPlant] = useState(null);
+	const [showAddPlantModal, setShowAddPlantModal] = useState(false);
 
 	const searchTimer = useRef(null);
 	const recentTimer = useRef(null);
@@ -153,7 +201,6 @@ export default function IdentifyScreen() {
 	const doSearch = async (term) => {
 		setIsSearching(true);
 		Keyboard.dismiss();
-
 		try {
 			const params = new URLSearchParams({
 				q: term,
@@ -161,7 +208,6 @@ export default function IdentifyScreen() {
 				language: 'en',
 				thumbnails: 'true',
 			});
-
 			const res = await fetch(
 				`https://plant.id/api/v3/kb/plants/name_search?${params.toString()}`,
 				{ headers: { 'Api-Key': process.env.EXPO_PUBLIC_PLANT_ID_KEY! } }
@@ -181,9 +227,7 @@ export default function IdentifyScreen() {
 		if (!searchQuery.trim()) {
 			setSearchResults([]);
 		} else {
-			searchTimer.current = setTimeout(() => {
-				doSearch(searchQuery.trim());
-			}, 500);
+			searchTimer.current = setTimeout(() => doSearch(searchQuery.trim()), 500);
 		}
 		return () => clearTimeout(searchTimer.current);
 	}, [searchQuery]);
@@ -217,7 +261,35 @@ export default function IdentifyScreen() {
 	};
 	const handleScanPress = () => router.replace('/identify');
 	const onCategoryPress = (c) => setSearchQuery(c.name);
+	const handleSelectPlant = (plant) => {
+		setSelectedPlant(plant);
+		setShowAddPlantModal(true);
+	};
 
+	const { addPlant } = usePlants();
+	const { getPlantById } = usePlantIdentification();
+
+	// Only addPlant here—navigation happens AFTER the SuccessAnimation in AddPlantModal
+	const confirmPlantSelection = async (nickname: string, imageUri: string) => {
+		if (!selectedPlant) return;
+
+		console.log(imageUri, 'selectedPlant data image');
+
+		try {
+			const plant = await getPlantById(selectedPlant?.access_token);
+
+			console.log(plant, 'plant data found');
+
+			await addPlant({
+				...plant,
+				nickname: nickname || plant?.entity_name,
+				capturedImageUri: !!imageUri ? imageUri : plant?.image?.citation,
+			});
+			// do NOT navigate here
+		} catch (err) {
+			console.error('Error saving plant:', err);
+		}
+	};
 	return (
 		<View
 			style={[
@@ -232,44 +304,51 @@ export default function IdentifyScreen() {
 				showsVerticalScrollIndicator={false}
 				stickyHeaderIndices={[0]}
 			>
-				<View style={{ backgroundColor: isDark ? '#121212' : '#FFFFFF' }}>
-					{/* Header */}
-					<View style={styles.header}>
-						<Leaf color={COLORS.tabBar.active} size={24} />
-						<Text style={[styles.title, { color: isDark ? '#E0E0E0' : '#283618' }]}>
-							Plant Finder
-						</Text>
-					</View>
-
-					{/* Search Bar */}
-					<View style={[styles.searchContainer]}>
-						<View style={[styles.searchBar, { borderColor: COLORS.border }]}>
-							<SearchIcon size={20} color={isDark ? '#A0A0A0' : '#9C9C9C'} />
-							<TextInput
-								ref={inputRef}
-								style={[
-									styles.searchInput,
-									{ color: isDark ? '#E0E0E0' : '#283618' },
-								]}
-								placeholder="Search plant name..."
-								placeholderTextColor={isDark ? '#A0A0A0' : '#9C9C9C'}
-								value={searchQuery}
-								onChangeText={setSearchQuery}
-								returnKeyType="search"
-							/>
-							{!!searchQuery && (
-								<TouchableOpacity onPress={clearSearch}>
-									<X size={20} color={isDark ? '#A0A0A0' : '#A0A0A0'} />
-								</TouchableOpacity>
-							)}
+				<Animated.View
+					style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}
+				>
+					<View style={{ backgroundColor: isDark ? '#121212' : '#FFFFFF' }}>
+						{/* Header */}
+						<View style={styles.header}>
+							<Leaf color={COLORS.tabBar.active} size={24} />
+							<Text style={[styles.title, { color: isDark ? '#E0E0E0' : '#283618' }]}>
+								Plant Finder
+							</Text>
 						</View>
-						<TouchableOpacity style={styles.cameraButton} onPress={handleScanPress}>
-							<Camera size={24} color="#FFFFFF" />
-						</TouchableOpacity>
-					</View>
 
-					{/* Loading */}
-				</View>
+						{/* Search Bar */}
+						<View style={styles.searchContainer}>
+							<View style={[styles.searchBar, { borderColor: COLORS.border }]}>
+								<SearchIcon size={20} color={isDark ? '#A0A0A0' : '#9C9C9C'} />
+								<TextInput
+									ref={inputRef}
+									style={[
+										styles.searchInput,
+										{ color: isDark ? '#E0E0E0' : '#283618' },
+									]}
+									placeholder="Search plant name..."
+									placeholderTextColor={isDark ? '#A0A0A0' : '#9C9C9C'}
+									value={searchQuery}
+									onChangeText={setSearchQuery}
+									returnKeyType="search"
+								/>
+								{!!searchQuery && (
+									<TouchableOpacity onPress={clearSearch}>
+										<X size={20} color={isDark ? '#A0A0A0' : '#A0A0A0'} />
+									</TouchableOpacity>
+								)}
+							</View>
+							<TouchableOpacity
+								style={styles.cameraButton}
+								onPress={handleScanPress}
+								activeOpacity={0.8}
+							>
+								<Camera size={24} color="#FFFFFF" />
+							</TouchableOpacity>
+						</View>
+					</View>
+				</Animated.View>
+
 				{isSearching ? (
 					<View style={styles.loadingContainer}>
 						<ActivityIndicator size="large" color="#606C38" />
@@ -280,28 +359,25 @@ export default function IdentifyScreen() {
 						</Text>
 					</View>
 				) : searchResults.length > 0 ? (
-					<View style={[styles.resultsContainer]}>
+					<View style={styles.resultsContainer}>
 						<Text
 							style={[styles.sectionTitle, { color: isDark ? '#E0E0E0' : '#283618' }]}
 						>
 							Search Results
 						</Text>
-						<View style={{ styles }}>
-							{searchResults.map((entity) => (
-								<SearchResultCard
-									key={entity.access_token}
-									entity={entity}
-									isDark={isDark}
-								/>
-							))}
-						</View>
-
+						{searchResults.map((entity) => (
+							<SearchResultCard
+								key={entity.access_token}
+								entity={entity}
+								isDark={isDark}
+								onPress={handleSelectPlant}
+							/>
+						))}
 						<Button onPress={clearSearch} variant="secondary">
 							Clear Results
 						</Button>
 					</View>
 				) : searchQuery.trim() ? (
-					// ← New “no results” branch
 					<View style={styles.noResultsContainer}>
 						<Text
 							style={[
@@ -318,7 +394,7 @@ export default function IdentifyScreen() {
 				) : (
 					<>
 						{/* Scan */}
-						<View style={[styles.scanContainer]}>
+						<View style={styles.scanContainer}>
 							<TouchableOpacity
 								style={[
 									styles.scanCard,
@@ -354,7 +430,7 @@ export default function IdentifyScreen() {
 						</View>
 
 						{/* Categories */}
-						<View style={[styles.categoriesSection]}>
+						<View style={styles.categoriesSection}>
 							<View style={styles.sectionHeader}>
 								<Text
 									style={[
@@ -383,7 +459,7 @@ export default function IdentifyScreen() {
 
 						{/* Recent Searches */}
 						{recentSearches.length > 0 && (
-							<View style={[styles.recentSearchesSection]}>
+							<View>
 								<View style={styles.sectionHeader}>
 									<Text
 										style={[
@@ -417,6 +493,24 @@ export default function IdentifyScreen() {
 					</>
 				)}
 			</ScrollView>
+
+			{selectedPlant && (
+				<AddPlantModal
+					visible={showAddPlantModal}
+					onClose={() => {
+						setSelectedPlant(null);
+						setShowAddPlantModal(false);
+					}}
+					plant={{
+						name: selectedPlant?.entity_name,
+						capturedImageUri: selectedPlant.thumbnail
+							? `data:image/png;base64,${selectedPlant.thumbnail}`
+							: null,
+					}}
+					isDark={isDark}
+					onConfirm={confirmPlantSelection}
+				/>
+			)}
 		</View>
 	);
 }
@@ -428,7 +522,6 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		marginBottom: 20,
 		paddingHorizontal: 16,
-		display: 'flex',
 	},
 	title: { fontSize: 24, fontWeight: '700', marginLeft: 8 },
 	scrollView: { flex: 1 },
@@ -457,13 +550,14 @@ const styles = StyleSheet.create({
 	loadingContainer: { padding: 40, alignItems: 'center' },
 	loadingText: { marginTop: 16, fontSize: 16 },
 	resultsContainer: { paddingHorizontal: 16 },
-	clearButton: {
-		marginTop: 12,
-		paddingVertical: 12,
-		borderRadius: 8,
-		borderWidth: 1,
+	sectionTitle: { fontSize: 18, fontWeight: '600', marginBottom: 12 },
+	noResultsContainer: {
+		flex: 1,
 		alignItems: 'center',
+		justifyContent: 'center',
+		padding: 40,
 	},
+	noResultsText: { fontSize: 16, marginBottom: 16, textAlign: 'center' },
 	scanContainer: { marginBottom: 24, paddingHorizontal: 16 },
 	scanCard: {
 		flexDirection: 'row',
@@ -483,14 +577,11 @@ const styles = StyleSheet.create({
 		marginBottom: 16,
 		paddingHorizontal: 16,
 	},
-	sectionTitle: { ...COLORS.titleMd, marginBottom: 8 },
-	seeAllButton: { fontSize: 16, fontWeight: '700' },
 	categoriesList: { paddingRight: 8, paddingLeft: 16 },
 	categoryButton: {
 		width: 100,
 		borderRadius: 12,
 		padding: 12,
-		marginRight: 12,
 		alignItems: 'center',
 		borderWidth: 2,
 	},
@@ -502,36 +593,20 @@ const styles = StyleSheet.create({
 		justifyContent: 'center',
 		marginBottom: 8,
 	},
-	noResultsContainer: {
-		flex: 1,
-		alignItems: 'center',
-		justifyContent: 'center',
-		padding: 40,
-	},
-	noResultsText: {
-		fontSize: 16,
-		marginBottom: 16,
-		textAlign: 'center',
-	},
 	categoryIcon: { fontSize: 24 },
 	categoryText: { fontSize: 14, fontWeight: '500', textAlign: 'center' },
-	recentSearchesSection: { marginTop: 24 },
 	recentSearchItem: {
 		flexDirection: 'row',
 		alignItems: 'center',
 		padding: 12,
 		borderRadius: 8,
+		borderColor: COLORS.border,
 		borderWidth: 2,
 		marginBottom: 8,
 		marginHorizontal: 16,
 	},
 	recentSearchText: { fontSize: 15, marginLeft: 8 },
-	plantCard: { borderRadius: 12, overflow: 'hidden', marginBottom: 16 },
-	plantImage: { width: '100%', height: 140 },
-	plantContent: { flexDirection: 'row', padding: 12, alignItems: 'center' },
-	plantInfo: { flex: 1 },
-	plantName: { fontSize: 16, fontWeight: '600', marginBottom: 2 },
-	scientificName: { fontSize: 14, fontStyle: 'italic', marginBottom: 4 },
+	seeAllButton: { fontSize: 16, fontWeight: '700' },
 	card: {
 		flexDirection: 'row',
 		alignItems: 'center',
@@ -540,6 +615,7 @@ const styles = StyleSheet.create({
 		marginBottom: 12,
 		borderBottomWidth: 2,
 		borderColor: COLORS.border,
+		borderRadius: 12,
 	},
 	plantImageData: {
 		width: 56,
@@ -548,38 +624,13 @@ const styles = StyleSheet.create({
 		objectFit: 'cover',
 		marginRight: 12,
 	},
-	cardContent: {
-		flex: 1,
-	},
+	cardContent: { flex: 1 },
 	cardHeader: {
 		flexDirection: 'row',
 		justifyContent: 'space-between',
 		alignItems: 'center',
 		marginBottom: 4,
 	},
-	cardIcon: {
-		width: 28,
-		height: 28,
-		borderRadius: 14,
-		justifyContent: 'center',
-		alignItems: 'center',
-	},
-	cardPlant: {
-		fontSize: 16,
-		fontWeight: '600',
-		color: '#111827',
-	},
-	cardRow: {
-		flexDirection: 'row',
-		justifyContent: 'space-between',
-		alignItems: 'center',
-	},
-	cardType: {
-		fontSize: 14,
-		fontWeight: '500',
-	},
-	cardDate: {
-		fontSize: 14,
-		color: '#6B7280',
-	},
+	cardRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+	cardPlant: { fontSize: 16, fontWeight: '600', color: '#111827' },
 });

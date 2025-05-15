@@ -257,6 +257,7 @@ export function AddPlantModal({ visible, onClose, plant, onConfirm, isDark }: Pr
 										style={[
 											styles.inputWrapper,
 											{
+												borderWidth: hasError ? 0 : 2,
 												transform: [
 													{ scale: inputScaleValue },
 													{ translateX: shakeAnimation },
@@ -475,7 +476,6 @@ const styles = StyleSheet.create({
 	},
 	inputWrapper: {
 		flex: 1,
-		borderWidth: 2,
 		borderColor: COLORS.border,
 		borderRadius: 16,
 	},

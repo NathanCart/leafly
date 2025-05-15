@@ -364,8 +364,12 @@ export default function HomeScreen() {
 				day: 'numeric',
 			}),
 			image:
-				p.image_url || 'https://images.pexels.com/photos/4751978/pexels-photo-4751978.jpeg',
+				p?.image_url ||
+				p?.raw?.capturedImageUri ||
+				'https://images.pexels.com/photos/4751978/pexels-photo-4751978.jpeg',
 		}));
+
+	console.log(recentlyIdentified, 'plants data');
 
 	const plantHealthAlerts = plants
 		?.filter((p) => ['Needs Attention', 'Unhealthy'].includes(p?.health_status || ''))
