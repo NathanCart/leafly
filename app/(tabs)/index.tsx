@@ -367,6 +367,7 @@ export default function HomeScreen() {
 				p?.image_url ||
 				p?.raw?.capturedImageUri ||
 				'https://images.pexels.com/photos/4751978/pexels-photo-4751978.jpeg',
+			amountMl: p?.watering_amount_ml,
 		}));
 
 	console.log(recentlyIdentified, 'plants data');
@@ -587,7 +588,7 @@ export default function HomeScreen() {
 								title="Your garden awaits its first plant"
 								subtitle="Add plants to your collection to see them here"
 								action="Add your first plant"
-								onAction={() => router.push('/identify')}
+								onAction={() => router.push('/identifyOptions')}
 								color={COLORS.primary}
 								isDark={isDark}
 							/>
@@ -643,6 +644,7 @@ export default function HomeScreen() {
 													style={styles.plantImage}
 												/>
 											</View>
+
 											<View style={styles.cardContent}>
 												<View style={styles.cardHeader}>
 													<Text style={styles.cardPlant}>
@@ -673,7 +675,10 @@ export default function HomeScreen() {
 													<Text
 														style={[styles.cardType, { color: accent }]}
 													>
-														{task.type}
+														{task.type}{' '}
+														{!!task.amountMl && (
+															<>({task.amountMl}ml)</>
+														)}
 													</Text>
 													<Text style={[styles.cardDate]}>{rel}</Text>
 												</View>

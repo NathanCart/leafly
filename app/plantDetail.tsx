@@ -55,6 +55,7 @@ interface TaskEntry {
 	dueDate: Date;
 	isOverdue: boolean;
 	accent: string;
+	amountMl?: number;
 }
 
 const getRelativeDate = (date: Date) => {
@@ -200,6 +201,7 @@ export default function PlantDetail() {
 			out.push({
 				id: `${plant.id}-water`,
 				type: 'Water',
+				amountMl: plant.watering_amount_ml,
 				dueDate: due,
 				isOverdue: due < today,
 				accent: '#33A1FF',
@@ -512,7 +514,8 @@ export default function PlantDetail() {
 														{ color: item.accent },
 													]}
 												>
-													{item.type}
+													{item.type}{' '}
+													{!!item.amountMl && <>({item.amountMl}ml)</>}
 												</Text>
 												<Text
 													style={[
@@ -537,17 +540,29 @@ export default function PlantDetail() {
 					<Section title="Care Instructions">
 						<ExpandableCard
 							title="Watering"
-							content={plant.raw?.details?.best_watering || 'No watering info'}
+							content={
+								plant?.watering_details ??
+								plant.raw?.details?.best_watering ??
+								'No watering info'
+							}
 							icon={<Droplet fill="#33A1FF" size={32} color="#33A1FF" />}
 						/>
 						<ExpandableCard
 							title="Light"
-							content={plant.raw?.details?.best_light_condition || 'No light info'}
+							content={
+								plant?.light_details ??
+								plant.raw?.details?.best_light_condition ??
+								'No light info'
+							}
 							icon={<Sun fill="#FFC43D" size={32} color="#FFC43D" />}
 						/>
 						<ExpandableCard
 							title="Soil"
-							content={plant.raw?.details?.best_soil_type || 'No soil info'}
+							content={
+								plant?.soil_details ??
+								plant.raw?.details?.best_soil_type ??
+								'No soil info'
+							}
 							icon={<Leaf fill="#4CAF50" size={32} color="#4CAF50" />}
 						/>
 					</Section>

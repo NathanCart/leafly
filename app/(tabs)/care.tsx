@@ -82,6 +82,7 @@ const CareSchedule = () => {
 				plantName: plant.nickname,
 				plantImage: plant.image_url,
 				type: 'Water',
+				amountMl: plant.watering_amount_ml,
 				dueDate: due,
 			});
 		}
@@ -101,6 +102,7 @@ const CareSchedule = () => {
 				plantName: plant.name,
 				plantImage: plant.image_url,
 				type: 'Fertilize',
+
 				dueDate: due,
 			});
 		}
@@ -226,7 +228,9 @@ const CareSchedule = () => {
 						</View>
 					</View>
 					<View style={styles.cardRow}>
-						<Text style={[styles.cardType, { color: accentColor }]}>{item.type}</Text>
+						<Text style={[styles.cardType, { color: accentColor }]}>
+							{item.type} {!!item.amountMl && <>({item.amountMl}ml)</>}
+						</Text>
 						<Text style={[styles.cardDate, isOverdue && { color: COLORS.error }]}>
 							{relativeDate}
 						</Text>

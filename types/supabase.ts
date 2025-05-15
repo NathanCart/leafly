@@ -32,6 +32,11 @@ export interface Database {
 			};
 			plants: {
 				Row: {
+					watering_details: string;
+					soil_details: string;
+					light_details: string;
+					watering_amount_ml: number;
+
 					id: string;
 					user_id: string;
 					name: string;
@@ -68,6 +73,10 @@ export interface Database {
 					last_fertilized?: string | null;
 					watering_interval_days?: number | null;
 					fertilize_interval_days?: number | null;
+					watering_details: string;
+					soil_details: string;
+					light_details: string;
+					watering_amount_ml: number;
 				};
 				Update: {
 					id?: string;
@@ -87,6 +96,10 @@ export interface Database {
 					last_fertilized?: string | null;
 					watering_interval_days?: number | null;
 					fertilize_interval_days?: number | null;
+					watering_details: string;
+					soil_details: string;
+					light_details: string;
+					watering_amount_ml: number;
 				};
 			};
 			plant_images: {

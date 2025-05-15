@@ -199,8 +199,6 @@ export default function IdentifyScreen() {
 
 	// actual API call
 	const doSearch = async (term) => {
-		setIsSearching(true);
-		Keyboard.dismiss();
 		try {
 			const params = new URLSearchParams({
 				q: term,
@@ -227,9 +225,15 @@ export default function IdentifyScreen() {
 		if (!searchQuery.trim()) {
 			setSearchResults([]);
 		} else {
+			setIsSearching(true);
+
 			searchTimer.current = setTimeout(() => doSearch(searchQuery.trim()), 500);
 		}
-		return () => clearTimeout(searchTimer.current);
+		return () => {
+			setIsSearching(false);
+
+			clearTimeout(searchTimer.current);
+		};
 	}, [searchQuery]);
 
 	// debounce typing → add to recents after 3s
@@ -398,7 +402,10 @@ export default function IdentifyScreen() {
 							<TouchableOpacity
 								style={[
 									styles.scanCard,
-									{ backgroundColor: isDark ? '#2A2A2A' : '#F0F4E4' },
+									{
+										borderWidth: 2,
+										borderColor: COLORS.border,
+									},
 								]}
 								onPress={handleScanPress}
 								activeOpacity={0.8}

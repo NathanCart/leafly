@@ -121,6 +121,10 @@ export function usePlants() {
 
 			console.log(imageUrl, 'image url data datata');
 
+			const raw = {
+				...plant,
+			};
+
 			const response = await fetch(
 				'https://kvjaxrtgtjbqopegbshw.supabase.co/functions/v1/get-plant-schedule',
 				{
@@ -130,10 +134,12 @@ export function usePlants() {
 						Authorization: `Bearer ${session?.access_token}`,
 					},
 					body: JSON.stringify({
-						raw: JSON.stringify(plant?.details),
+						raw: JSON.stringify(raw),
 					}),
 				}
 			).then((res) => res.json());
+
+			console.log('Plant schedule response:', response);
 
 			const { data, error } = await supabase
 				.from('plants')
@@ -147,6 +153,10 @@ export function usePlants() {
 						user_id: session!.user.id,
 						watering_interval_days: response?.waterFrequencyDays,
 						fertilize_interval_days: response?.fertilizerFrequencyDays,
+						watering_amount_ml: response?.waterMlPerWatering,
+						watering_details: response?.wateringDescription,
+						light_details: response?.lightDescription,
+						soil_details: response?.soilDescription,
 					},
 				])
 				.select()
@@ -220,6 +230,7 @@ export function usePlants() {
 				type: 'Water',
 				last: plant?.last_watered ?? new Date(),
 				dueDate: due,
+				amountMl: plant?.watering_amount_ml,
 			});
 		}
 		if (plant.fertilize_interval_days) {
