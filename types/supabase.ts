@@ -54,6 +54,9 @@ export interface Database {
 					last_fertilized?: string | null;
 					watering_interval_days?: number | null;
 					fertilize_interval_days?: number | null;
+					soil_type: string;
+					pot_diameter: string;
+					light_amount: string;
 				};
 				Insert: {
 					id?: string;
@@ -77,6 +80,9 @@ export interface Database {
 					soil_details: string;
 					light_details: string;
 					watering_amount_ml: number;
+					soil_type: string;
+					pot_diameter: string;
+					light_amount: string;
 				};
 				Update: {
 					id?: string;
@@ -100,6 +106,9 @@ export interface Database {
 					soil_details: string;
 					light_details: string;
 					watering_amount_ml: number;
+					soil_type: string;
+					pot_diameter: string;
+					light_amount: string;
 				};
 			};
 			plant_images: {

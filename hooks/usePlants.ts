@@ -113,7 +113,17 @@ export function usePlants() {
 		}
 	};
 
-	const addPlant = async (plant: PlantIdSuggestionRaw & { nickname: string }) => {
+	const addPlant = async (
+		plant: PlantIdSuggestionRaw & {
+			nickname: string;
+			lastWatered: Date;
+			location: 'indoor' | 'outdoor';
+			soil_type: string;
+			pot_diameter: string;
+			light_amount: string;
+			last_watered: string;
+		}
+	) => {
 		try {
 			const imageUrl = plant.capturedImageUri
 				? await uploadImage(plant.capturedImageUri)
@@ -134,6 +144,13 @@ export function usePlants() {
 						Authorization: `Bearer ${session?.access_token}`,
 					},
 					body: JSON.stringify({
+						important_details: JSON.stringify({
+							plant_name: plant?.name,
+							soil_type: plant?.soil_type,
+							pot_diameter: plant?.pot_diameter,
+							light_amount: plant?.light_amount,
+							indoor_or_outdoors: plant?.location,
+						}),
 						raw: JSON.stringify(raw),
 					}),
 				}
@@ -157,6 +174,11 @@ export function usePlants() {
 						watering_details: response?.wateringDescription,
 						light_details: response?.lightDescription,
 						soil_details: response?.soilDescription,
+						soil_type: plant.soil_type,
+						pot_diameter: plant.pot_diameter,
+						light_amount: plant.light_amount,
+						last_watered: plant.last_watered,
+						last_fertilized: plant.last_watered,
 					},
 				])
 				.select()
@@ -170,17 +192,35 @@ export function usePlants() {
 		}
 	};
 
+	// inside updatePlant – replace the first few lines👇
 	const updatePlant = async (id: string, updates: Partial<Plant>) => {
 		try {
-			if (updates.image_url && !updates.image_url.startsWith('http')) {
-				updates.image_url = await uploadImage(updates.image_url as string);
+			/* ----------  NEW: normalise image_url  ---------- */
+			if ('image_url' in updates) {
+				// object from S3 hook → use its url
+				if (updates.image_url && typeof updates.image_url === 'object') {
+					// @ts-ignore because TS can't narrow this union cleanly
+					updates.image_url = (updates.image_url as any).url as unknown as string;
+				}
+				// null → undefined so the later .startsWith guard is skipped
+				if (updates.image_url == null) delete updates.image_url;
 			}
+
+			/* ---------- EXISTING logic (unchanged) ---------- */
+			if (
+				updates.image_url && // <-- now always a string
+				!updates.image_url.startsWith('http')
+			) {
+				updates.image_url = await uploadImage(updates.image_url);
+			}
+
 			const { data, error } = await supabase
 				.from('plants')
 				.update({ ...updates, updated_at: new Date().toISOString() })
 				.eq('id', id)
 				.select()
 				.single();
+
 			if (error) throw error;
 			await loadPlants();
 			return data;

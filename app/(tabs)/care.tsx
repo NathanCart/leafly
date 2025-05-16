@@ -384,12 +384,11 @@ const styles = StyleSheet.create({
 
 	tabContainer: {
 		paddingTop: 8,
-		borderBottomWidth: 2,
+		borderBottomWidth: 4,
 		borderBottomColor: '#E5E7EB',
 	},
 	tabsWrapper: {
 		flexDirection: 'row',
-		paddingHorizontal: 16,
 	},
 	tab: {
 		flex: 1,
@@ -407,10 +406,11 @@ const styles = StyleSheet.create({
 	},
 	activeTabIndicator: {
 		position: 'absolute',
-		bottom: -1,
+		bottom: -4,
+		borderRadius: 8,
 		left: 0,
 		right: 0,
-		height: 2,
+		height: 4,
 		backgroundColor: COLORS.primary,
 	},
 

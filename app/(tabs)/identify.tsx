@@ -1,28 +1,28 @@
 // screens/IdentifyScreen.tsx
 
-import React, { useState, useRef } from 'react';
+import { Button } from '@/components/Button';
+import { AddPlantStepperModal } from '@/components/PlantIdentification/AddPlantModal';
+import { CameraViewComponent } from '@/components/PlantIdentification/CameraView';
+import { PlantDetailsModal } from '@/components/PlantIdentification/PlantDetailsModal';
+import { ResultsView } from '@/components/PlantIdentification/ResultsView';
+import { Text } from '@/components/Text';
+import { usePlants } from '@/contexts/DatabaseContext';
+import { usePlantIdentification } from '@/hooks/usePlantIdentification';
+import { PlantIdClassificationResponse } from '@/types/plants';
+import { useCameraPermissions } from 'expo-camera';
+import * as ImagePicker from 'expo-image-picker';
+import { router } from 'expo-router';
+import { Camera as CameraIcon, X } from 'lucide-react-native';
+import React, { useRef, useState } from 'react';
 import {
-	View,
+	Animated,
+	Image,
+	Platform,
 	StyleSheet,
 	TouchableOpacity,
-	Platform,
-	Image,
 	useColorScheme,
-	Animated,
+	View,
 } from 'react-native';
-import { X, Camera as CameraIcon } from 'lucide-react-native';
-import { router } from 'expo-router';
-import * as ImagePicker from 'expo-image-picker';
-import { Button } from '@/components/Button';
-import { CameraViewComponent } from '@/components/PlantIdentification/CameraView';
-import { ResultsView } from '@/components/PlantIdentification/ResultsView';
-import { PlantDetailsModal } from '@/components/PlantIdentification/PlantDetailsModal';
-import { AddPlantModal } from '@/components/PlantIdentification/AddPlantModal';
-import { useCameraPermissions } from 'expo-camera';
-import { usePlantIdentification } from '@/hooks/usePlantIdentification';
-import { usePlants } from '@/contexts/DatabaseContext';
-import { PlantIdClassificationResponse } from '@/types/plants';
-import { Text } from '@/components/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function IdentifyScreen() {
@@ -83,14 +83,31 @@ export default function IdentifyScreen() {
 		setShowAddPlantModal(true);
 	};
 
-	// Only addPlant here—navigation happens AFTER the SuccessAnimation in AddPlantModal
-	const confirmPlantSelection = async (nickname: string) => {
+	const confirmPlantSelection = async (
+		customImage: boolean,
+		nickname: string,
+		imageUri: string | undefined,
+		lastWatered: Date,
+		location: 'indoor' | 'outdoor',
+		soilType: string,
+		potDiameter: string,
+		lightAmount: string
+	) => {
 		if (!selectedPlant) return;
 
 		try {
 			await addPlant({
-				nickname: nickname || selectedPlant.name,
 				...selectedPlant,
+				nickname: nickname || selectedPlant?.name,
+				capturedImageUri: !!imageUri
+					? imageUri
+					: selectedPlant?.details?.image?.value ?? '',
+				soil_type: soilType,
+				pot_diameter: potDiameter,
+				light_amount: lightAmount,
+				last_watered: lastWatered.toISOString(),
+				lastWatered: lastWatered,
+				location: location,
 			});
 			// do NOT navigate here
 		} catch (err) {
@@ -233,7 +250,7 @@ export default function IdentifyScreen() {
 					isDark={isDark}
 				/>
 				{selectedPlant && (
-					<AddPlantModal
+					<AddPlantStepperModal
 						visible={showAddPlantModal}
 						onClose={() => {
 							setShowAddPlantModal(false);

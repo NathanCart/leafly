@@ -1,29 +1,28 @@
-import React, { useState, useRef, useEffect } from 'react';
-import {
-	View,
-	StyleSheet,
-	ScrollView,
-	TextInput,
-	TouchableOpacity,
-	Image,
-	FlatList,
-	ActivityIndicator,
-	Keyboard,
-	Platform,
-	Animated,
-	useColorScheme,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Search as SearchIcon, Camera, ChevronRight, X, Leaf } from 'lucide-react-native';
-import { router } from 'expo-router';
+import { Button } from '@/components/Button';
+import { AddPlantStepperModal } from '@/components/PlantIdentification/AddPlantModal';
+import { Text } from '@/components/Text';
+import { usePlantIdentification } from '@/hooks/usePlantIdentification';
+import { usePlants } from '@/hooks/usePlants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
+import { router } from 'expo-router';
+import { Camera, ChevronRight, Leaf, Search as SearchIcon, X } from 'lucide-react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+	ActivityIndicator,
+	Animated,
+	FlatList,
+	Image,
+	Platform,
+	ScrollView,
+	StyleSheet,
+	TextInput,
+	TouchableOpacity,
+	useColorScheme,
+	View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '../constants/colors';
-import { Text } from '@/components/Text';
-import { Button } from '@/components/Button';
-import { AddPlantModal } from '@/components/PlantIdentification/AddPlantModal';
-import { usePlants } from '@/hooks/usePlants';
-import { usePlantIdentification } from '@/hooks/usePlantIdentification';
 
 const categories = [
 	{ id: 'flower', name: 'Flower', icon: '🌺' },
@@ -274,7 +273,16 @@ export default function IdentifyScreen() {
 	const { getPlantById } = usePlantIdentification();
 
 	// Only addPlant here—navigation happens AFTER the SuccessAnimation in AddPlantModal
-	const confirmPlantSelection = async (nickname: string, imageUri: string) => {
+	const confirmPlantSelection = async (
+		customImage: boolean,
+		nickname: string,
+		imageUri: string | undefined,
+		lastWatered: Date,
+		location: 'indoor' | 'outdoor',
+		soilType: string,
+		potDiameter: string,
+		lightAmount: string
+	) => {
 		if (!selectedPlant) return;
 
 		try {
@@ -282,10 +290,18 @@ export default function IdentifyScreen() {
 
 			console.log(plant, 'plant data found');
 
+			console.log(imageUri, 'image uri');
+			console.log(plant?.image?.value, 'plant image value');
+
 			await addPlant({
 				...plant,
 				nickname: nickname || plant?.entity_name,
-				capturedImageUri: !!imageUri ? imageUri : plant?.image?.citation,
+				capturedImageUri: customImage ? imageUri : plant?.image?.value,
+				soil_type: soilType,
+				pot_diameter: potDiameter,
+				light_amount: lightAmount,
+				last_watered: lastWatered.toISOString(),
+				location: location,
 			});
 			// do NOT navigate here
 		} catch (err) {
@@ -500,7 +516,7 @@ export default function IdentifyScreen() {
 			</ScrollView>
 
 			{selectedPlant && (
-				<AddPlantModal
+				<AddPlantStepperModal
 					visible={showAddPlantModal}
 					onClose={() => {
 						setSelectedPlant(null);

@@ -1,10 +1,29 @@
-/* PlantDetail.tsx – full component */
+/* ------------------------------------------------------------------
+   PlantDetail.tsx  –  full component (Duolingo-styled info pills)
+   ------------------------------------------------------------------ */
 
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import {
+	ChevronDown,
+	ChevronLeft,
+	Droplet,
+	Flower2,
+	ImagePlus,
+	Leaf,
+	MapPin,
+	Pencil,
+	Ruler,
+	Share2,
+	Sun,
+	Trash2,
+} from 'lucide-react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
 	ActivityIndicator,
 	Alert,
 	Animated,
+	FlatList,
+	Image,
 	Share,
 	StatusBar,
 	StyleSheet,
@@ -12,41 +31,35 @@ import {
 	useColorScheme,
 	useWindowDimensions,
 	View,
-	FlatList,
-	Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import {
-	ChevronDown,
-	ChevronLeft,
-	Droplet,
-	ImagePlus,
-	Leaf,
-	MapPin,
-	Pencil,
-	Share2,
-	Sun,
-	Trash2,
-} from 'lucide-react-native';
 
 import { Button } from '@/components/Button';
-import { EditPlantModal } from '@/components/PlantDetails/EditPlantModal';
+import { TaskCompletionModal } from '@/components/Care/TaskCompletionModal';
 import { GalleryModal } from '@/components/PlantDetails/GalleryModal';
 import { HealthHistorySection } from '@/components/PlantDetails/HealthHistorySection';
 import { HeartButton } from '@/components/PlantDetails/HeartButton';
 import { QuickActions } from '@/components/PlantDetails/QuickActions';
 import { ScheduleModal, ScheduleSettings } from '@/components/PlantDetails/ScheduleModal';
-import { TaskCompletionModal } from '@/components/Care/TaskCompletionModal';
 import { Text } from '@/components/Text';
+import { useAuth } from '@/contexts/AuthContext';
 import { usePlants } from '@/contexts/DatabaseContext';
 import { COLORS } from './constants/colors';
-import { useAuth } from '@/contexts/AuthContext';
+import { EditPlantStepperModal } from '@/components/PlantDetails/EditPlantModal';
 
 /* -------------------------------------------------
- * Constants & helper types
+ * Constants & helpers
  * -------------------------------------------------*/
 const HEADER_HEIGHT = 300;
+const MS_PER_DAY = 86_400_000;
+
+const LIGHT_LABELS = { low: 'Low', medium: 'Medium', bright: 'Bright', full: 'Full Sun' } as const;
+const SOIL_LABELS = {
+	fast: 'Fast-draining',
+	standard: 'Standard',
+	moist: 'Moist-retentive',
+} as const;
+const PASTELS = ['#D9F8C4', '#C8F4FF', '#FFE4B8', '#EAD7FF']; // Duolingo-ish colours
 
 type TaskType = 'Water' | 'Fertilize';
 interface TaskEntry {
@@ -60,16 +73,44 @@ interface TaskEntry {
 
 const getRelativeDate = (date: Date) => {
 	const now = new Date();
-	const diffDays = Math.ceil((date.getTime() - now.getTime()) / 86_400_000);
-	if (diffDays === 0) return 'Due today';
-	if (diffDays === 1) return 'Due tomorrow';
-	if (diffDays < 0) return `${Math.abs(diffDays)} days overdue`;
-	return `Due in ${diffDays} days`;
+	const diff = Math.ceil((date.getTime() - now.getTime()) / MS_PER_DAY);
+	if (diff === 0) return 'Due today';
+	if (diff === 1) return 'Due tomorrow';
+	if (diff < 0) return `${Math.abs(diff)} days overdue`;
+	return `Due in ${diff} days`;
+};
+
+const formatAgo = (d?: Date | string | null) => {
+	if (!d) return '—';
+	const date = typeof d === 'string' ? new Date(d) : d;
+	const diff = Math.floor((Date.now() - date.getTime()) / MS_PER_DAY);
+	if (diff === 0) return 'Today';
+	if (diff === 1) return 'Yesterday';
+	return `${diff} days ago`;
 };
 
 /* -------------------------------------------------
- * ExpandableCard – (unchanged from your code)
+ * UI helpers
  * -------------------------------------------------*/
+const Pill = ({
+	index,
+	icon,
+	label,
+}: {
+	index: number;
+	icon: React.ReactNode;
+	label: string | number;
+}) => {
+	return (
+		<View style={[styles.pill, { backgroundColor: COLORS.primary + '1A' }]}>
+			<View style={styles.pillIcon}>{icon}</View>
+			<Text numberOfLines={1} style={styles.pillText}>
+				{label}
+			</Text>
+		</View>
+	);
+};
+
 const ExpandableCard = ({
 	title,
 	content,
@@ -83,20 +124,7 @@ const ExpandableCard = ({
 	const anim = useRef(new Animated.Value(0)).current;
 	const needsToggle = content?.length > 64;
 	const displayed = needsToggle && !expanded ? `${content.slice(0, 64)}…` : content;
-	const rotate = anim.interpolate({
-		inputRange: [0, 1],
-		outputRange: ['0deg', '180deg'],
-	});
-
-	const toggle = () => {
-		Animated.spring(anim, {
-			toValue: expanded ? 0 : 1,
-			useNativeDriver: true,
-			tension: 40,
-			friction: 7,
-		}).start();
-		setExpanded(!expanded);
-	};
+	const rotate = anim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '180deg'] });
 
 	return (
 		<View style={styles.cardOuter}>
@@ -105,7 +133,18 @@ const ExpandableCard = ({
 				{title ? <Text style={styles.cardTitle}>{title}</Text> : null}
 				<Text style={styles.cardText}>{displayed}</Text>
 				{needsToggle && (
-					<TouchableOpacity style={styles.expandBtn} onPress={toggle}>
+					<TouchableOpacity
+						style={styles.expandBtn}
+						onPress={() => {
+							Animated.spring(anim, {
+								toValue: expanded ? 0 : 1,
+								useNativeDriver: true,
+								tension: 40,
+								friction: 7,
+							}).start();
+							setExpanded(!expanded);
+						}}
+					>
 						<Text style={styles.expandLabel}>
 							{expanded ? 'Show Less' : 'Read More'}
 						</Text>
@@ -119,22 +158,14 @@ const ExpandableCard = ({
 	);
 };
 
-/* -------------------------------------------------
- * Empty-state view for Tasks section
- * -------------------------------------------------*/
-/* ────────────────────────────────────────────────
- * 1.  Replace the old NoTasksToday with this
- * ────────────────────────────────────────────────*/
 const EmptyTasks = ({ hasSchedule, onSetup }: { hasSchedule: boolean; onSetup: () => void }) => (
 	<View style={styles.emptyState}>
 		<Text style={styles.emptyTitle}>{hasSchedule ? 'No Tasks' : 'Care Not Set Up'}</Text>
-
 		<Text style={styles.emptyText}>
 			{hasSchedule
 				? 'Nothing is due today. 🌿'
 				: 'Create a watering or fertilizing schedule to start seeing tasks here.'}
 		</Text>
-
 		{!hasSchedule && (
 			<Button variant="secondary" onPress={onSetup} style={{ marginTop: 16 }}>
 				Set Up Care
@@ -144,7 +175,7 @@ const EmptyTasks = ({ hasSchedule, onSetup }: { hasSchedule: boolean; onSetup: (
 );
 
 /* -------------------------------------------------
- * Main component
+ * PlantDetail – main component
  * -------------------------------------------------*/
 export default function PlantDetail() {
 	const { id: plantId } = useLocalSearchParams<{ id: string }>();
@@ -152,23 +183,34 @@ export default function PlantDetail() {
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
 	const { width: windowWidth } = useWindowDimensions();
+	const { session } = useAuth();
 	const scheme = useColorScheme();
 	const isDark = scheme === 'dark';
-	const { session } = useAuth();
+
 	const [plant, setPlant] = useState<any>(null);
 	const [isFavorite, setIsFavorite] = useState(false);
 	const [loading, setLoading] = useState(true);
+
+	/* modal flags */
 	const [showEditModal, setShowEditModal] = useState(false);
 	const [showGalleryModal, setShowGalleryModal] = useState(false);
 	const [showScheduleModal, setShowScheduleModal] = useState(false);
 	const [deleting, setDeleting] = useState(false);
 	const [selectedTask, setSelectedTask] = useState<TaskEntry | null>(null);
+
+	/* parallax */
 	const scrollY = useRef(new Animated.Value(0)).current;
+	const translateY = scrollY.interpolate({
+		inputRange: [0, HEADER_HEIGHT],
+		outputRange: [0, -HEADER_HEIGHT * 0.5],
+		extrapolate: 'clamp',
+	});
+	const scale = scrollY.interpolate({
+		inputRange: [-HEADER_HEIGHT, 0],
+		outputRange: [2, 1],
+		extrapolate: 'clamp',
+	});
 
-	const hasSchedule =
-		Boolean(plant?.watering_interval_days) || Boolean(plant?.fertilize_interval_days);
-
-	console.log(plantId, 'plantId');
 	/* ---------- load plant ---------- */
 	useEffect(() => {
 		if (!plantId) return;
@@ -185,18 +227,17 @@ export default function PlantDetail() {
 		})();
 	}, [plantId]);
 
-	/* ---------- build tasks ---------- */
+	/* ---------- tasks ---------- */
 	const tasks: TaskEntry[] = useMemo(() => {
 		if (!plant) return [];
 		const today = new Date();
 		today.setHours(0, 0, 0, 0);
 		const out: TaskEntry[] = [];
 
-		// watering
 		if (plant.watering_interval_days) {
 			const last = plant.last_watered ? new Date(plant.last_watered) : null;
 			const due = last
-				? new Date(last.getTime() + plant.watering_interval_days * 86_400_000)
+				? new Date(last.getTime() + plant.watering_interval_days * MS_PER_DAY)
 				: today;
 			out.push({
 				id: `${plant.id}-water`,
@@ -207,11 +248,10 @@ export default function PlantDetail() {
 				accent: '#33A1FF',
 			});
 		}
-		// fertilizing
 		if (plant.fertilize_interval_days) {
 			const last = plant.last_fertilized ? new Date(plant.last_fertilized) : null;
 			const due = last
-				? new Date(last.getTime() + plant.fertilize_interval_days * 86_400_000)
+				? new Date(last.getTime() + plant.fertilize_interval_days * MS_PER_DAY)
 				: today;
 			out.push({
 				id: `${plant.id}-fertilize`,
@@ -224,43 +264,22 @@ export default function PlantDetail() {
 		return out;
 	}, [plant]);
 
-	/* ---------- complete task (invoked from modal) ---------- */
-	const handleCompleteTask = async () => {
-		if (!selectedTask) return;
-		const field = selectedTask.type === 'Water' ? 'last_watered' : 'last_fertilized';
-		try {
-			const updated = await updatePlant(plantId!, { [field]: new Date().toISOString() });
-			setPlant(updated);
-			setSelectedTask(null);
-		} catch (err) {
-			console.error(err);
-		}
+	/* ---------- helpers ---------- */
+	const handleShare = () => {
+		if (!plant) return;
+		Share.share({
+			title: plant.name,
+			message: `Check out my ${plant.name}!`,
+			url: plant.image_url,
+		});
 	};
 
-	/* ---------- UI helper fns ---------- */
 	const toggleFavorite = async () => {
 		if (!plant) return;
-		try {
-			const updated = await updatePlant(plantId!, { is_favorite: !isFavorite });
-			refreshPlants();
-			setIsFavorite(updated.is_favorite);
-			setPlant(updated);
-		} catch (err) {
-			console.error(err);
-		}
-	};
-
-	const handleShare = async () => {
-		if (!plant) return;
-		try {
-			await Share.share({
-				title: plant.name,
-				message: `Check out my ${plant.name}!`,
-				url: plant.image_url,
-			});
-		} catch (err) {
-			console.error(err);
-		}
+		const updated = await updatePlant(plantId!, { is_favorite: !isFavorite });
+		refreshPlants();
+		setPlant(updated);
+		setIsFavorite(updated.is_favorite);
 	};
 
 	const confirmDelete = () => {
@@ -284,13 +303,28 @@ export default function PlantDetail() {
 		]);
 	};
 
-	const handleSaveUpdates = async ({ nickname, imageUri, location }: any) => {
-		const payload: any = { nickname, location };
-		if (imageUri) payload.image_url = imageUri;
+	const handleSaveUpdates = async ({
+		nickname,
+		imageUri,
+		light,
+		potDiameter,
+		soil,
+		location,
+		lastWatered,
+	}: any) => {
+		const payload: any = {
+			nickname,
+			image_url: imageUri ?? plant.image_url,
+			light_amount: light,
+			pot_diameter: potDiameter,
+			soil_type: soil,
+			location,
+			last_watered: lastWatered?.toISOString?.() ?? plant.last_watered,
+		};
 		const updated = await updatePlant(plantId!, payload);
 		refreshPlants();
 		setPlant(updated);
-		setIsFavorite(!!updated.is_favorite);
+		setIsFavorite(updated.is_favorite);
 	};
 
 	const handleSaveSchedule = async (schedule: ScheduleSettings) => {
@@ -334,17 +368,13 @@ export default function PlantDetail() {
 		}
 	};
 
-	/* ---------- parallax values ---------- */
-	const translateY = scrollY.interpolate({
-		inputRange: [0, HEADER_HEIGHT],
-		outputRange: [0, -HEADER_HEIGHT * 0.5],
-		extrapolate: 'clamp',
-	});
-	const scale = scrollY.interpolate({
-		inputRange: [-HEADER_HEIGHT, 0],
-		outputRange: [2, 1],
-		extrapolate: 'clamp',
-	});
+	const handleCompleteTask = async () => {
+		if (!selectedTask) return;
+		const field = selectedTask.type === 'Water' ? 'last_watered' : 'last_fertilized';
+		const updated = await updatePlant(plantId!, { [field]: new Date().toISOString() });
+		setPlant(updated);
+		setSelectedTask(null);
+	};
 
 	/* ---------- loading / error states ---------- */
 	if (loading) {
@@ -372,7 +402,7 @@ export default function PlantDetail() {
 		<View style={styles.container}>
 			<StatusBar translucent barStyle="light-content" />
 
-			{/* Parallax header image */}
+			{/* Parallax header */}
 			<Animated.Image
 				source={{ uri: plant.image_url }}
 				style={[
@@ -381,13 +411,15 @@ export default function PlantDetail() {
 				]}
 			/>
 
-			{/* top buttons */}
+			{/* Top-left navigation */}
 			<TouchableOpacity
 				style={[styles.iconBtn, { left: 16, top: insets.top + 8 }]}
 				onPress={() => router.back()}
 			>
 				<ChevronLeft color="#fff" size={24} />
 			</TouchableOpacity>
+
+			{/* Top-right favourite / share */}
 			<View style={[styles.iconBtn, { right: 16, top: insets.top + 8 }]}>
 				<HeartButton
 					isFavorite={isFavorite}
@@ -402,6 +434,8 @@ export default function PlantDetail() {
 			>
 				<Share2 color="#fff" size={20} />
 			</TouchableOpacity>
+
+			{/* Gallery shortcut */}
 			<TouchableOpacity
 				style={[styles.galleryBtn, { right: 16, top: insets.top + 60 }]}
 				onPress={() => setShowGalleryModal(true)}
@@ -410,7 +444,7 @@ export default function PlantDetail() {
 				<Text style={styles.galleryText}>Gallery</Text>
 			</TouchableOpacity>
 
-			{/* Scroll content */}
+			{/* Scrollable content */}
 			<Animated.ScrollView
 				style={styles.scrollView}
 				contentContainerStyle={{ paddingBottom: 80 }}
@@ -422,14 +456,17 @@ export default function PlantDetail() {
 			>
 				<View style={{ height: HEADER_HEIGHT }} />
 
+				{/* White content card */}
 				<View style={styles.contentCard}>
-					{/* location badge */}
+					{/* Location badge */}
 					<View style={styles.locationBadge}>
 						<MapPin size={16} color={COLORS.primary} />
-						<Text style={styles.locationText}>{plant.location || 'Indoor'} Plant</Text>
+						<Text style={styles.locationText}>
+							{plant.environment ?? plant.location ?? 'Indoor'} Plant
+						</Text>
 					</View>
 
-					{/* title + edit */}
+					{/* Title row */}
 					<View style={{ flexDirection: 'row', gap: 8 }}>
 						<View>
 							<Text style={styles.title}>{plant.nickname || plant.name}</Text>
@@ -443,14 +480,38 @@ export default function PlantDetail() {
 						</TouchableOpacity>
 					</View>
 
-					{/* notes */}
+					{/* ---------- DUOLINGO-STYLE PILL ROW ---------- */}
+					<View style={styles.pillRow}>
+						<Pill
+							index={0}
+							icon={<Sun size={14} color="#00000080" />}
+							label={LIGHT_LABELS[plant.light_amount] ?? '—'}
+						/>
+						<Pill
+							index={1}
+							icon={<Ruler size={14} color="#00000080" />}
+							label={`${plant.pot_diameter ?? '—'} in`}
+						/>
+						<Pill
+							index={2}
+							icon={<Flower2 size={14} color="#00000080" />}
+							label={SOIL_LABELS[plant.soil_type] ?? 'Soil —'}
+						/>
+						<Pill
+							index={3}
+							icon={<Droplet size={14} color="#00000080" />}
+							label={formatAgo(plant.last_watered)}
+						/>
+					</View>
+
+					{/* Notes */}
 					{plant.notes && (
 						<Section title="Notes">
-							<ExpandableCard icon={<></>} title="" content={plant.notes} />
+							<ExpandableCard title="" content={plant.notes} icon={null} />
 						</Section>
 					)}
 
-					{/* quick actions */}
+					{/* Quick actions */}
 					<QuickActions
 						plantId={plantId}
 						onPress={(type) => {
@@ -459,11 +520,13 @@ export default function PlantDetail() {
 						}}
 					/>
 
-					{/* ---------- TASKS ---------- */}
-					<Section title={hasSchedule && !!tasks?.length ? 'Plant Care ' : ''}>
+					{/* Tasks */}
+					<Section title={tasks.length ? 'Plant Care' : undefined}>
 						{tasks.length === 0 ? (
 							<EmptyTasks
-								hasSchedule={hasSchedule}
+								hasSchedule={Boolean(
+									plant.watering_interval_days || plant.fertilize_interval_days
+								)}
 								onSetup={() => setShowScheduleModal(true)}
 							/>
 						) : (
@@ -515,7 +578,7 @@ export default function PlantDetail() {
 													]}
 												>
 													{item.type}{' '}
-													{!!item.amountMl && <>({item.amountMl}ml)</>}
+													{!!item.amountMl && `(${item.amountMl}ml)`}
 												</Text>
 												<Text
 													style={[
@@ -533,15 +596,15 @@ export default function PlantDetail() {
 						)}
 					</Section>
 
-					{/* health history */}
+					{/* Health history */}
 					<HealthHistorySection plantId={plantId} />
 
-					{/* care instructions */}
+					{/* Care instructions */}
 					<Section title="Care Instructions">
 						<ExpandableCard
 							title="Watering"
 							content={
-								plant?.watering_details ??
+								plant.watering_details ??
 								plant.raw?.details?.best_watering ??
 								'No watering info'
 							}
@@ -550,7 +613,7 @@ export default function PlantDetail() {
 						<ExpandableCard
 							title="Light"
 							content={
-								plant?.light_details ??
+								plant.light_details ??
 								plant.raw?.details?.best_light_condition ??
 								'No light info'
 							}
@@ -559,7 +622,7 @@ export default function PlantDetail() {
 						<ExpandableCard
 							title="Soil"
 							content={
-								plant?.soil_details ??
+								plant.soil_details ??
 								plant.raw?.details?.best_soil_type ??
 								'No soil info'
 							}
@@ -567,7 +630,7 @@ export default function PlantDetail() {
 						/>
 					</Section>
 
-					{/* delete */}
+					{/* Delete */}
 					<TouchableOpacity
 						style={styles.deleteBtn}
 						onPress={confirmDelete}
@@ -582,7 +645,7 @@ export default function PlantDetail() {
 			</Animated.ScrollView>
 
 			{/* ---------- MODALS ---------- */}
-			<EditPlantModal
+			<EditPlantStepperModal
 				visible={showEditModal}
 				onClose={() => setShowEditModal(false)}
 				onSave={handleSaveUpdates}
@@ -617,9 +680,7 @@ export default function PlantDetail() {
 	);
 }
 
-/* -------------------------------------------------
- * Section helper
- * -------------------------------------------------*/
+/* ---------- Section wrapper ---------- */
 const Section = ({ title, children }: { title?: string; children: React.ReactNode }) => (
 	<View style={styles.section}>
 		{title ? <Text style={[COLORS.titleMd, { marginBottom: 8 }]}>{title}</Text> : null}
@@ -628,7 +689,7 @@ const Section = ({ title, children }: { title?: string; children: React.ReactNod
 );
 
 /* -------------------------------------------------
- * Styles – copied / consolidated from both screens
+ * Styles
  * -------------------------------------------------*/
 const styles = StyleSheet.create({
 	/* layout */
@@ -643,7 +704,7 @@ const styles = StyleSheet.create({
 		backgroundColor: COLORS.surface.light,
 	},
 
-	/* header image & top buttons */
+	/* header */
 	headerImage: {
 		position: 'absolute',
 		top: 0,
@@ -651,18 +712,8 @@ const styles = StyleSheet.create({
 		height: HEADER_HEIGHT,
 		resizeMode: 'cover',
 	},
-	setupBtn: {
-		marginTop: 16,
-		paddingVertical: 10,
-		paddingHorizontal: 24,
-		borderRadius: 12,
-		backgroundColor: COLORS.primary,
-	},
-	setupText: {
-		color: '#fff',
-		fontSize: 16,
-		fontWeight: '600',
-	},
+
+	/* top buttons */
 	iconBtn: {
 		position: 'absolute',
 		width: 40,
@@ -673,12 +724,7 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		zIndex: 10,
 	},
-	heartBtnTouchable: {
-		width: '100%',
-		height: '100%',
-		justifyContent: 'center',
-		alignItems: 'center',
-	},
+	heartBtnTouchable: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 	galleryBtn: {
 		position: 'absolute',
 		flexDirection: 'row',
@@ -691,7 +737,7 @@ const styles = StyleSheet.create({
 	},
 	galleryText: { color: '#fff', fontSize: 12, fontWeight: '600', marginLeft: 6 },
 
-	/* white content card */
+	/* content card */
 	contentCard: {
 		backgroundColor: COLORS.surface.light,
 		borderTopLeftRadius: 20,
@@ -715,7 +761,7 @@ const styles = StyleSheet.create({
 	},
 	locationText: { fontSize: 14, fontWeight: '600', color: COLORS.text.primary.light },
 
-	/* titles */
+	/* title */
 	title: { fontSize: 28, fontWeight: '700', color: COLORS.text.primary.light, marginBottom: 4 },
 	subtitle: {
 		fontSize: 16,
@@ -724,25 +770,45 @@ const styles = StyleSheet.create({
 		marginBottom: 24,
 	},
 
-	/* edit pencil */
 	editBtn: {
 		padding: 10,
 		backgroundColor: COLORS.primary,
 		borderRadius: 20,
-		elevation: 3,
-		shadowColor: '#000',
-		shadowOffset: { width: 0, height: 2 },
-		shadowOpacity: 0.2,
-		shadowRadius: 3,
 		height: 40,
 		alignItems: 'center',
 		justifyContent: 'center',
+		elevation: 3,
 	},
 
-	/* generic section wrapper */
+	/* ---------- pills ---------- */
+	pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 28 },
+	pill: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		paddingHorizontal: 14,
+		paddingVertical: 8,
+		borderRadius: 22,
+		shadowColor: '#000',
+		shadowOpacity: 0.06,
+		shadowRadius: 4,
+		elevation: 2,
+		maxWidth: '48%',
+	},
+	pillIcon: {
+		width: 22,
+		height: 22,
+		borderRadius: 11,
+		backgroundColor: '#ffffffb0',
+		justifyContent: 'center',
+		alignItems: 'center',
+		marginRight: 8,
+	},
+	pillText: { fontSize: 14, fontWeight: '700', color: '#222' },
+
+	/* section */
 	section: { marginBottom: 32 },
 
-	/* expandable cards (notes, care) */
+	/* expandable card */
 	cardOuter: {
 		flexDirection: 'row',
 		alignItems: 'center',
@@ -772,7 +838,7 @@ const styles = StyleSheet.create({
 	expandBtn: { flexDirection: 'row', alignItems: 'center', marginTop: 8, paddingVertical: 4 },
 	expandLabel: { fontSize: 14, fontWeight: '600', marginRight: 4, color: COLORS.primary },
 
-	/* task cards (same look as CareSchedule) */
+	/* tasks */
 	taskCard: {
 		flexDirection: 'row',
 		alignItems: 'center',
@@ -789,13 +855,12 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		marginBottom: 4,
 	},
-
-	cardPlant: { fontSize: 16, fontWeight: '600', color: '#111827' },
 	cardRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+	cardPlant: { fontSize: 16, fontWeight: '600', color: '#111827' },
 	cardType: { fontSize: 14, fontWeight: '500' },
 	cardDate: { fontSize: 14, color: '#6B7280' },
 
-	/* empty state (tasks) */
+	/* empty tasks */
 	emptyState: { alignItems: 'center', paddingVertical: 24 },
 	emptyTitle: { fontSize: 24, fontWeight: '600', color: '#111827', marginBottom: 4 },
 	emptyText: { fontSize: 16, color: '#6B7280', textAlign: 'center' },

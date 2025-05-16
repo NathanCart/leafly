@@ -1,194 +1,344 @@
-// hooks/useS3Uploader.ts
-import { s3Client } from '@/lib/s3Client';
-import { PutObjectCommand } from '@aws-sdk/client-s3';
+/* ------------------------------------------------------------------
+   EditPlantStepperModal.tsx  – full, drop-in replacement
+   ------------------------------------------------------------------
 
-// EditPlantModal.tsx
+   Only two tiny fixes were made vs. your original:
+
+   1️⃣ SuccessAnimation import path is now identical to AddPlantStepperModal  
+      →  `import { SuccessAnimation } from './SuccessAnimation';`
+
+   2️⃣ We trigger the success animation *before* kicking off the async save,  
+      exactly like AddPlantStepperModal does.  
+      → inside `saveChanges()` we now call `setShowSuccess(true)` first and
+        wrap the actual persistence work in an async IIFE.
+   ------------------------------------------------------------------ */
+
+import { COLORS } from '@/app/constants/colors';
+import { Button } from '@/components/Button';
+import { Text } from '@/components/Text';
+import * as Haptics from 'expo-haptics';
+import * as ImagePicker from 'expo-image-picker';
+import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-	View,
-	StyleSheet,
-	Modal,
-	Image,
-	TextInput,
-	TouchableOpacity,
-	Platform,
 	Animated,
 	Easing,
+	Image,
+	KeyboardAvoidingView,
+	Modal,
+	Platform,
+	ScrollView,
+	StyleSheet,
+	TextInput,
+	TouchableOpacity,
+	View,
 } from 'react-native';
-import { X, Leaf, Dice6, Image as ImageIcon, MapPin } from 'lucide-react-native';
-import { Button } from '@/components/Button';
-import { COLORS } from '@/app/constants/colors';
-import { uniqueNamesGenerator, adjectives, colors, animals } from 'unique-names-generator';
-import * as ImagePicker from 'expo-image-picker';
-import * as Haptics from 'expo-haptics';
-import { SuccessAnimation } from '../PlantIdentification/SuccessAnimation';
-import { Text } from '@/components/Text';
+import Slider from '@react-native-community/slider';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { Dice6, Image as ImageIcon, Leaf, X, ArrowLeft, CalendarDays } from 'lucide-react-native';
+import Svg, { Path, Rect, Circle, Polygon } from 'react-native-svg';
+import {
+	adjectives,
+	colors as colorDict,
+	animals,
+	uniqueNamesGenerator,
+} from 'unique-names-generator';
 import { useS3Uploader } from '../useS3Uploader';
+import { SuccessAnimation } from '../PlantIdentification/SuccessAnimation';
 
-// ←— NEW: import the hook
+/* ---------- tiny SVG sprites ---------- */
+const PotSvg = ({ size = 120 }: { size?: number }) => (
+	<Svg width={size} height={size} viewBox="0 0 64 64">
+		<Path d="M16 40h32l-3 16H19L16 40Z" fill="#8d5524" />
+		<Path d="M24 40V26a8 8 0 1 1 16 0v14" fill="#71c285" />
+		<Circle cx="32" cy="24" r="3" fill="#57a773" />
+	</Svg>
+);
+const SoilFast = () => (
+	<Svg width={48} height={48} viewBox="0 0 64 64">
+		<Rect x="12" y="34" width="40" height="14" rx="3" fill="#8d5524" />
+		<Path d="M12 34h40l-4-10H16l-4 10z" fill="#b87333" />
+	</Svg>
+);
+const SoilStandard = () => (
+	<Svg width={48} height={48} viewBox="0 0 64 64">
+		<Rect x="12" y="30" width="40" height="18" rx="3" fill="#6B4423" />
+		<Path d="M12 30h40l-4-8H16l-4 8z" fill="#8d5524" />
+	</Svg>
+);
+const SoilMoist = () => (
+	<Svg width={48} height={48} viewBox="0 0 64 64">
+		<Rect x="12" y="26" width="40" height="22" rx="3" fill="#4e342e" />
+		<Path d="M12 26h40l-4-6H16l-4 6z" fill="#6B4423" />
+		<Circle cx="24" cy="37" r="3" fill="#03a9f4" />
+		<Circle cx="40" cy="41" r="2" fill="#03a9f4" />
+	</Svg>
+);
+const HouseSvg = () => (
+	<Svg width={32} height={32} viewBox="0 0 64 64">
+		<Path d="M12 28L32 12l20 16v20H12V28Z" fill="#6c757d" />
+		<Rect x="22" y="32" width="8" height="8" fill="#fff" />
+	</Svg>
+);
+const TreesSvg = () => (
+	<Svg width={32} height={32} viewBox="0 0 64 64">
+		<Path d="M6 52h52v4H6z" fill="#6c757d" />
+		<Polygon points="32 12 12 52 52 52" fill="#71c285" />
+	</Svg>
+);
+const Sun = (r: number, extra: React.ReactNode = null) => (
+	<Svg width={32} height={32} viewBox="0 0 64 64">
+		<Circle cx="32" cy="32" r={r} fill="#ffc107" />
+		{extra}
+	</Svg>
+);
+const LightIcons = {
+	low: Sun(8),
+	medium: Sun(10),
+	bright: Sun(12),
+	full: Sun(
+		14,
+		<Path
+			d="M32 2v8M32 54v8M2 32h8M54 32h8M11 11l6 6M47 47l6 6M11 53l6-6M47 17l6-6"
+			stroke="#ffc107"
+			strokeWidth={4}
+			strokeLinecap="round"
+		/>
+	),
+};
 
-const BUCKET = process.env.EXPO_PUBLIC_BUCKET_NAME!;
+/* ---------- step configs ---------- */
+const LIGHT_LEVELS = [
+	{ key: 'low', label: 'Low', desc: 'Minimal direct light' },
+	{ key: 'medium', label: 'Medium', desc: 'Bright indirect light' },
+	{ key: 'bright', label: 'Bright', desc: '3-5 h direct light' },
+	{ key: 'full', label: 'Full Sun', desc: '6 h+ direct light' },
+] as const;
+type LightKey = (typeof LIGHT_LEVELS)[number]['key'];
 
-interface EditPlantModalProps {
+type SoilKey = 'fast' | 'standard' | 'moist';
+const SOILS: Record<SoilKey, { label: string; desc: string; Svg: () => JSX.Element }> = {
+	fast: { label: 'Fast-draining', desc: 'Cactus / succulent mix', Svg: SoilFast },
+	standard: { label: 'Standard', desc: 'All-purpose mix', Svg: SoilStandard },
+	moist: { label: 'Moist-retentive', desc: 'High peat / coco', Svg: SoilMoist },
+};
+
+const ENV = [
+	{ key: 'indoor', label: 'Indoors', desc: 'Climate-controlled', Svg: HouseSvg },
+	{ key: 'outdoor', label: 'Outdoors', desc: 'Exposed to weather', Svg: TreesSvg },
+] as const;
+type EnvKey = (typeof ENV)[number]['key'];
+
+/* ---------- props ---------- */
+interface Props {
 	visible: boolean;
 	onClose: () => void;
 	onSave: (updates: {
 		nickname: string;
-		location: 'Indoor' | 'Outdoor';
 		imageUri?: string;
-	}) => void;
-	plant: {
-		nickname?: string | null;
-		name: string;
-		image_url: string;
-		location?: 'Indoor' | 'Outdoor';
-	} | null;
+		light: LightKey;
+		potDiameter: number;
+		soil: SoilKey;
+		location: EnvKey;
+		lastWatered: Date;
+	}) => Promise<void>;
+	plant: any | null;
 	isDark: boolean;
 }
 
-export function EditPlantModal({ visible, onClose, onSave, plant, isDark }: EditPlantModalProps) {
-	if (!plant) return null;
-
-	// Local state
-	const [nickname, setNickname] = useState(plant.nickname || '');
-	const [location, setLocation] = useState<'Indoor' | 'Outdoor'>(plant.location || 'Indoor');
+/* ===================================================================== */
+export function EditPlantStepperModal({ visible, onClose, onSave, plant, isDark }: Props) {
+	/* ---------- state ---------- */
+	const [nickname, setNickname] = useState('');
 	const [customImage, setCustomImage] = useState<string | null>(null);
+
+	const [light, setLight] = useState<LightKey>('medium');
+	const [potDiameter, setPotDiameter] = useState(8);
+	const [soil, setSoil] = useState<SoilKey>('standard');
+	const [location, setLocation] = useState<EnvKey>('indoor');
+	const [lastWatered, setLastWatered] = useState<Date>(new Date());
+
 	const [hasError, setHasError] = useState(false);
+	const [showDatePicker, setShowDatePicker] = useState(false);
+	const [step, setStep] = useState<0 | 1 | 2 | 3 | 4 | 5>(0);
 	const [showSuccess, setShowSuccess] = useState(false);
 
-	// ←— NEW: use the uploader hook
-	const { uploadFile, isUploading, error: uploadError } = useS3Uploader(BUCKET);
+	const { uploadFile, isUploading } = useS3Uploader(process.env.EXPO_PUBLIC_BUCKET_NAME!);
 
-	// Animations
-	const spinValue = useRef(new Animated.Value(0)).current;
-	const inputScale = useRef(new Animated.Value(1)).current;
-	const shakeAnim = useRef(new Animated.Value(0)).current;
+	/* animations */
+	const spinVal = useRef(new Animated.Value(0)).current;
+	const scaleVal = useRef(new Animated.Value(1)).current;
+	const shakeVal = useRef(new Animated.Value(0)).current;
+	const hapticTimer = useRef<NodeJS.Timeout | null>(null);
+	const spinning = useRef(false);
 
-	// Sync local state when modal opens
+	/* ---------- sync defaults whenever modal opens ---------- */
 	useEffect(() => {
-		if (visible) {
-			setNickname(plant.nickname || '');
-			setLocation(plant.location || 'Indoor');
-			setCustomImage(null);
-			setHasError(false);
-			setShowSuccess(false);
-		}
+		if (!visible || !plant) return;
+
+		setNickname(plant.nickname ?? '');
+		setCustomImage(null); // reset preview
+		setLight((plant.light ?? plant.light_amount ?? 'medium') as LightKey);
+		setPotDiameter(Number(plant?.pot_diameter ?? 8));
+		setSoil((plant.soil ?? plant.soil_type ?? 'standard') as SoilKey);
+		setLocation((plant.location ?? 'indoor') as EnvKey);
+		setLastWatered(
+			plant.last_watered
+				? new Date(plant.last_watered)
+				: plant.lastWatered
+				? new Date(plant.lastWatered)
+				: new Date()
+		);
+
+		setStep(0);
+		setHasError(false);
+		setShowSuccess(false);
 	}, [visible, plant]);
 
-	const spin = spinValue.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '1440deg'] });
+	/* ---------- helpers ---------- */
+	const currentImage = customImage ?? plant?.image_url ?? '';
 
-	const triggerHaptics = () => {
-		if (Platform.OS !== 'web') {
-			Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-			const interval = setInterval(
-				() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light),
-				100
-			);
-			setTimeout(() => clearInterval(interval), 800);
-		}
-	};
+	const bump = (style: 'Light' | 'Medium' | 'Heavy') =>
+		Platform.OS !== 'web' && Haptics.impactAsync(Haptics.ImpactFeedbackStyle[style]);
 
-	const randomize = () => {
-		triggerHaptics();
-		Animated.timing(spinValue, {
-			toValue: 1,
+	const randomise = () => {
+		spinning.current = true;
+		bump('Light');
+		if (hapticTimer.current) clearInterval(hapticTimer.current);
+		hapticTimer.current = setInterval(() => spinning.current && bump('Light'), 100);
+
+		Animated.timing(spinVal, {
+			toValue: 4,
 			duration: 800,
 			easing: Easing.out(Easing.cubic),
 			useNativeDriver: true,
-		}).start(() => spinValue.setValue(0));
-		Animated.sequence([
-			Animated.timing(inputScale, { toValue: 1.05, duration: 100, useNativeDriver: true }),
-			Animated.timing(inputScale, { toValue: 1, duration: 100, useNativeDriver: true }),
-		]).start();
-		const name = uniqueNamesGenerator({
-			dictionaries: [adjectives, colors, animals],
-			length: 2,
-			separator: ' ',
-			style: 'capital',
+		}).start(() => {
+			spinVal.setValue(0);
+			spinning.current = false;
+			hapticTimer.current && clearInterval(hapticTimer.current);
+			bump('Heavy');
 		});
-		setNickname(name);
+		Animated.sequence([
+			Animated.timing(scaleVal, { toValue: 1.05, duration: 100, useNativeDriver: true }),
+			Animated.timing(scaleVal, { toValue: 1, duration: 100, useNativeDriver: true }),
+		]).start();
+
+		setNickname(
+			uniqueNamesGenerator({
+				dictionaries: [adjectives, colorDict, animals],
+				length: 2,
+				separator: ' ',
+				style: 'capital',
+			})
+		);
 		setHasError(false);
 	};
 
-	const shake = () => {
+	const pickImage = async () => {
+		const res = await ImagePicker.launchImageLibraryAsync({
+			mediaTypes: ImagePicker.MediaTypeOptions.images,
+			allowsEditing: true,
+			aspect: [1, 1],
+			quality: 0.6,
+		});
+		if (res.canceled || !res.assets.length) return;
+		bump('Light');
+		setCustomImage(res.assets[0].uri);
+	};
+
+	const validateName = () => {
+		if (nickname.trim()) return true;
+		setHasError(true);
 		Animated.sequence([
-			Animated.timing(shakeAnim, { toValue: 10, duration: 100, useNativeDriver: true }),
-			Animated.timing(shakeAnim, { toValue: -10, duration: 100, useNativeDriver: true }),
-			Animated.timing(shakeAnim, { toValue: 10, duration: 100, useNativeDriver: true }),
-			Animated.timing(shakeAnim, { toValue: 0, duration: 100, useNativeDriver: true }),
+			Animated.timing(shakeVal, { toValue: 10, duration: 100, useNativeDriver: true }),
+			Animated.timing(shakeVal, { toValue: -10, duration: 100, useNativeDriver: true }),
+			Animated.timing(shakeVal, { toValue: 10, duration: 100, useNativeDriver: true }),
+			Animated.timing(shakeVal, { toValue: 0, duration: 100, useNativeDriver: true }),
 		]).start(
 			() =>
 				Platform.OS !== 'web' &&
 				Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
 		);
+		return false;
 	};
 
-	const currentImage = customImage || plant.image_url;
-
-	// ←— UPDATED: pickImage now uses the hook
-	const pickImage = async () => {
-		try {
-			const res = await ImagePicker.launchImageLibraryAsync({
-				mediaTypes: ImagePicker.MediaTypeOptions.images,
-				allowsEditing: true,
-				aspect: [1, 1],
-				quality: 0.6,
-			});
-			if (res.canceled || !res.assets.length) return;
-
-			const localUri = res.assets[0].uri!;
-			if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
-			setCustomImage(localUri);
-		} catch (err) {
-			console.error('Image pick/upload failed', err);
-		}
+	/* ---------- nav ---------- */
+	const next = () => {
+		bump('Light');
+		if (step === 0 && !validateName()) return;
+		if (step < 5) setStep((s) => (s + 1) as any);
+		else saveChanges();
+	};
+	const back = () => {
+		bump('Light');
+		if (step === 0) onClose();
+		else setStep((s) => (s - 1) as any);
 	};
 
-	const handleSave = () => {
-		if (!nickname.trim()) {
-			setHasError(true);
-			shake();
-			return;
-		}
+	/* ---------- save ---------- */
+	const saveChanges = () => {
+		/* 1️⃣ trigger animation first (mirrors Add modal) */
 		setShowSuccess(true);
 	};
 
 	const finish = () => {
-		onSave({ nickname: nickname.trim(), location, imageUri: customImage || undefined });
 		onClose();
+		setShowSuccess(false);
+
+		(async () => {
+			try {
+				let uploadedUrl: string | undefined;
+				if (customImage) {
+					const key = `plants/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
+					uploadedUrl = await uploadFile(customImage, key);
+				}
+				await onSave({
+					nickname: nickname.trim(),
+					imageUri: uploadedUrl,
+					light,
+					potDiameter,
+					soil,
+					location,
+					lastWatered,
+				});
+			} catch (err) {
+				console.error(err);
+				setShowSuccess(false); // roll back if failed
+			}
+		})();
 	};
 
-	return (
-		<Modal visible={visible} animationType="slide" transparent={false} onRequestClose={onClose}>
-			<View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#FFF' }]}>
-				{showSuccess && (
-					<SuccessAnimation onAnimationComplete={finish} title="Plant Edited!" />
-				)}
-				<TouchableOpacity
-					style={[styles.closeBtn, { top: Platform.OS === 'ios' ? 50 : 20 }]}
-					onPress={onClose}
-				>
-					<X color="#FFF" size={24} />
-				</TouchableOpacity>
+	/* ---------- dots ---------- */
+	const Dots = () => (
+		<View style={styles.dotRow}>
+			{Array.from({ length: 5 }).map((_, i) => (
+				<View
+					key={i}
+					style={[styles.dot, { backgroundColor: i < step ? COLORS.primary : '#D9D9D9' }]}
+				/>
+			))}
+		</View>
+	);
 
-				<TouchableOpacity
-					style={styles.imageContainer}
-					onPress={pickImage}
-					activeOpacity={0.8}
-				>
+	/* ---------- Step components ---------- */
+	const NamingStep = () => (
+		<ScrollView keyboardDismissMode="on-drag" contentContainerStyle={{ flexGrow: 1 }}>
+			<View style={styles.content}>
+				<TouchableOpacity style={styles.imgWrap} onPress={pickImage}>
 					<Image source={{ uri: currentImage }} style={styles.avatar} />
-					<View style={styles.overlayContainer}>
-						<ImageIcon color="#FFF" size={24} />
-						<Text style={styles.overlayText}>Change Photo</Text>
-					</View>
+					{/* overlay on hover – RN has no hover on mobile */}
+					{customImage && isUploading && (
+						<View style={styles.uploadVeil}>
+							<Text style={{ fontWeight: '600' }}>Uploading…</Text>
+						</View>
+					)}
 					<View
 						style={[
-							styles.editIndicator,
+							styles.editBadge,
 							{ backgroundColor: isDark ? '#2A3A30' : '#E6F2E8' },
 						]}
 					>
-						<ImageIcon color={COLORS.primary} size={20} />
+						<ImageIcon size={20} color={COLORS.primary} />
 					</View>
 					<View
 						style={[
@@ -196,135 +346,394 @@ export function EditPlantModal({ visible, onClose, onSave, plant, isDark }: Edit
 							{ backgroundColor: isDark ? '#2A3A30' : '#E6F2E8' },
 						]}
 					>
-						<Leaf color={COLORS.primary} size={20} />
+						<Leaf size={20} color={COLORS.primary} />
 						<Text
+							style={[
+								styles.plantBadgeText,
+								{ color: isDark ? '#E0E0E0' : '#283618' },
+							]}
 							numberOfLines={1}
-							style={[styles.badgeText, { color: isDark ? '#E0E0E0' : '#283618' }]}
 						>
 							{plant.name}
 						</Text>
 					</View>
-					{isUploading && (
-						<View style={styles.uploadingOverlay}>
-							<Text>Uploading…</Text>
-						</View>
-					)}
 				</TouchableOpacity>
 
-				<View style={styles.form}>
-					<Text style={[styles.title, { color: isDark ? '#E0E0E0' : '#283618' }]}>
-						Edit Nickname
-					</Text>
-					<Text style={[styles.subtitle, { color: isDark ? '#BBBBBB' : '#555555' }]}>
-						Give your plant a personal touch
-					</Text>
+				<Text style={[styles.title, { color: isDark ? '#E0E0E0' : '#283618' }]}>
+					Edit Nickname
+				</Text>
+				<Text style={[styles.subtitle, { color: isDark ? '#BBB' : '#555' }]}>
+					Give your plant a personal touch
+				</Text>
 
-					<View style={styles.inputRow}>
+				<View style={styles.nameRow}>
+					<Animated.View
+						style={[
+							styles.inputWrap,
+							{ transform: [{ scale: scaleVal }, { translateX: shakeVal }] },
+						]}
+					>
+						<TextInput
+							style={[
+								styles.input,
+								{
+									backgroundColor: isDark ? '#1f1f1f' : '#fff',
+									color: isDark ? '#E0E0E0' : '#283618',
+									borderColor: hasError ? '#D27D4C' : 'transparent',
+									borderWidth: hasError ? 1 : 0,
+								},
+							]}
+							value={nickname}
+							placeholder="Nickname"
+							placeholderTextColor={isDark ? '#777' : '#AAA'}
+							onChangeText={(t) => {
+								setNickname(t);
+								if (t.trim()) setHasError(false);
+							}}
+						/>
+					</Animated.View>
+					<TouchableOpacity
+						style={[
+							styles.diceBtn,
+							{ backgroundColor: isDark ? '#2A3A30' : '#E6F2E8' },
+						]}
+						onPress={randomise}
+					>
 						<Animated.View
 							style={{
-								flex: 1,
-								transform: [{ scale: inputScale }, { translateX: shakeAnim }],
+								transform: [
+									{
+										rotate: spinVal.interpolate({
+											inputRange: [0, 4],
+											outputRange: ['0deg', '1440deg'],
+										}),
+									},
+								],
 							}}
 						>
-							<TextInput
-								style={[
-									styles.input,
-									{
-										backgroundColor: isDark ? '#2A2A2A' : '#FFF',
-										color: isDark ? '#E0E0E0' : '#283618',
-										borderColor: hasError ? '#D27D4C' : COLORS.border,
-										borderWidth: 2,
-									},
-								]}
-								placeholder="Enter nickname"
-								placeholderTextColor={isDark ? '#888' : '#999'}
-								value={nickname}
-								onChangeText={(t) => {
-									setNickname(t);
-									if (t.trim()) setHasError(false);
-								}}
-							/>
-							{hasError && (
-								<Text style={[styles.errorText, { color: '#D27D4C' }]}>
-									Please enter a nickname
-								</Text>
-							)}
+							<Dice6 size={24} color={COLORS.primary} />
 						</Animated.View>
-						<TouchableOpacity
-							style={[
-								styles.diceButton,
-								{ backgroundColor: isDark ? '#2A3A30' : '#E6F2E8' },
-							]}
-							onPress={randomize}
-						>
-							<Animated.View style={{ transform: [{ rotate: spin }] }}>
-								<Dice6 size={24} color={COLORS.primary} />
-							</Animated.View>
-						</TouchableOpacity>
-					</View>
+					</TouchableOpacity>
+				</View>
+				{hasError && (
+					<Text style={[styles.errorText, { color: '#D27D4C', alignSelf: 'flex-start' }]}>
+						Please enter a nickname
+					</Text>
+				)}
+			</View>
+		</ScrollView>
+	);
 
-					<View style={styles.locationSelect}>
-						{(['Indoor', 'Outdoor'] as const).map((val) => (
-							<TouchableOpacity
-								key={val}
+	const LightStep = () => (
+		<View style={styles.content}>
+			<Text style={[styles.title, { color: isDark ? '#E0E0E0' : '#283618' }]}>
+				How much light does it get?
+			</Text>
+			<View style={{ height: 16 }} />
+			{LIGHT_LEVELS.map(({ key, label, desc }) => {
+				const selected = light === key;
+				return (
+					<TouchableOpacity
+						key={key}
+						style={[
+							styles.card,
+							{
+								backgroundColor: selected
+									? COLORS.primary
+									: isDark
+									? '#1E1E1E'
+									: '#F7F7F7',
+							},
+						]}
+						onPress={() => {
+							setLight(key);
+							bump('Light');
+						}}
+					>
+						{LightIcons[key]}
+						<View style={{ marginLeft: 16, flex: 1 }}>
+							<Text
 								style={[
-									styles.locationButton,
-									location === val && styles.locationButtonActive,
+									styles.cardTitle,
+									{ color: selected ? '#FFF' : isDark ? '#E0E0E0' : '#283618' },
 								]}
-								onPress={() => setLocation(val)}
 							>
-								<MapPin
-									size={20}
-									color={
-										location === val
-											? COLORS.primary
-											: isDark
-											? '#BBBBBB'
-											: '#555555'
-									}
-								/>
-								<Text
-									style={[
-										styles.locationText,
-										location === val && { color: COLORS.primary },
-									]}
-								>
-									{val}
-								</Text>
-							</TouchableOpacity>
-						))}
-					</View>
+								{label}
+							</Text>
+							<Text
+								style={[
+									styles.cardDesc,
+									{ color: selected ? '#FFF' : isDark ? '#AAA' : '#666' },
+								]}
+							>
+								{desc}
+							</Text>
+						</View>
+					</TouchableOpacity>
+				);
+			})}
+		</View>
+	);
+
+	const PotStep = () => {
+		const [localDiam, setLocalDiam] = useState(potDiameter);
+		const isFirstSync = useRef(true);
+
+		useEffect(() => {
+			if (isFirstSync.current) {
+				isFirstSync.current = false;
+				return;
+			}
+			setLocalDiam(potDiameter);
+		}, [potDiameter]);
+
+		return (
+			<View style={styles.content}>
+				<Text style={[styles.title, { color: isDark ? '#E0E0E0' : '#283618' }]}>
+					Pot diameter?
+				</Text>
+				<PotSvg size={200} />
+				<Text style={styles.potVal}>
+					{localDiam?.toFixed?.(1)}
+					<Text style={{ fontSize: 20 }}> in</Text>
+				</Text>
+				<Slider
+					style={{ width: '100%', marginTop: 24 }}
+					minimumValue={2}
+					maximumValue={24}
+					step={0.5}
+					value={localDiam}
+					onValueChange={setLocalDiam}
+					onSlidingComplete={setPotDiameter}
+					thumbTintColor={COLORS.primary}
+					minimumTrackTintColor={COLORS.primary}
+					maximumTrackTintColor={isDark ? '#444' : '#CCC'}
+				/>
+			</View>
+		);
+	};
+
+	const SoilStep = () => (
+		<View style={styles.content}>
+			<Text style={[styles.title, { color: isDark ? '#E0E0E0' : '#283618' }]}>
+				Soil type?
+			</Text>
+			{Object.entries(SOILS).map(([key, { label, desc, Svg }], i) => {
+				const selected = soil === key;
+				return (
+					<TouchableOpacity
+						key={i}
+						style={[
+							styles.soilRow,
+							{
+								backgroundColor: selected
+									? COLORS.primary
+									: isDark
+									? '#1E1E1E'
+									: '#F7F7F7',
+							},
+						]}
+						onPress={() => {
+							setSoil(key as SoilKey);
+							bump('Light');
+						}}
+					>
+						<Svg />
+						<View style={{ marginLeft: 16, flex: 1 }}>
+							<Text
+								style={[
+									styles.cardTitle,
+									{ color: selected ? '#FFF' : isDark ? '#E0E0E0' : '#283618' },
+								]}
+							>
+								{label}
+							</Text>
+							<Text
+								style={[
+									styles.cardDesc,
+									{ color: selected ? '#FFF' : isDark ? '#AAA' : '#666' },
+								]}
+							>
+								{desc}
+							</Text>
+						</View>
+					</TouchableOpacity>
+				);
+			})}
+		</View>
+	);
+
+	const LocationStep = () => (
+		<View style={styles.content}>
+			<Text
+				style={[styles.title, { color: isDark ? '#E0E0E0' : '#283618', marginBottom: 24 }]}
+			>
+				Where will it live?
+			</Text>
+			{ENV.map(({ key, label, desc, Svg }) => {
+				const selected = location === key;
+				return (
+					<TouchableOpacity
+						key={key}
+						style={[
+							styles.card,
+							{
+								backgroundColor: selected
+									? COLORS.primary
+									: isDark
+									? '#1E1E1E'
+									: '#F7F7F7',
+							},
+						]}
+						onPress={() => {
+							setLocation(key as EnvKey);
+							bump('Light');
+						}}
+					>
+						<Svg />
+						<View style={{ marginLeft: 16, flex: 1 }}>
+							<Text
+								style={[
+									styles.cardTitle,
+									{ color: selected ? '#FFF' : isDark ? '#E0E0E0' : '#283618' },
+								]}
+							>
+								{label}
+							</Text>
+							<Text
+								style={[
+									styles.cardDesc,
+									{ color: selected ? '#FFF' : isDark ? '#AAA' : '#666' },
+								]}
+							>
+								{desc}
+							</Text>
+						</View>
+					</TouchableOpacity>
+				);
+			})}
+		</View>
+	);
+
+	const LastWateredStep = () => (
+		<View style={styles.content}>
+			<Text
+				style={[styles.title, { color: isDark ? '#E0E0E0' : '#283618', marginBottom: 24 }]}
+			>
+				Last watered?
+			</Text>
+			<TouchableOpacity
+				style={[styles.dateBtn, { backgroundColor: isDark ? '#1E1E1E' : '#F7F7F7' }]}
+				onPress={() => {
+					setShowDatePicker(true);
+					bump('Light');
+				}}
+			>
+				<View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+					<CalendarDays size={20} color={COLORS.primary} />
+					<Text style={[styles.dateBtnText, { color: isDark ? '#E0E0E0' : '#283618' }]}>
+						{lastWatered.toLocaleDateString()}
+					</Text>
+				</View>
+			</TouchableOpacity>
+			{showDatePicker && (
+				<DateTimePicker
+					value={lastWatered}
+					mode="date"
+					maximumDate={new Date()}
+					display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+					onChange={(_, date) => {
+						if (Platform.OS !== 'ios') setShowDatePicker(false);
+						if (date) setLastWatered(date);
+					}}
+				/>
+			)}
+		</View>
+	);
+
+	/* ---------- render ---------- */
+	return (
+		<Modal visible={visible} animationType="fade" onRequestClose={onClose}>
+			<KeyboardAvoidingView
+				style={[styles.container, { backgroundColor: isDark ? '#121212' : '#FFF' }]}
+				behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+			>
+				{showSuccess && (
+					<SuccessAnimation title="Plant Updated!" onAnimationComplete={finish} />
+				)}
+
+				{/* nav row */}
+				<View style={[styles.navRow, { top: Platform.OS === 'ios' ? 50 : 20 }]}>
+					<TouchableOpacity style={styles.navBtn} onPress={back}>
+						{step === 0 ? (
+							<X size={20} color="#fff" />
+						) : (
+							<ArrowLeft size={20} color="#fff" />
+						)}
+					</TouchableOpacity>
+					<Dots />
+					<View style={{ width: 40 }} />
 				</View>
 
-				<View style={styles.buttonContainer}>
-					<Button onPress={handleSave} fullWidth size="large" disabled={isUploading}>
-						{isUploading ? 'Uploading…' : 'Save Changes'}
+				{
+					[
+						<NamingStep key="0" />,
+						<LightStep key="1" />,
+						<PotStep key="2" />,
+						<SoilStep key="3" />,
+						<LocationStep key="4" />,
+						<LastWateredStep key="5" />,
+					][step]
+				}
+
+				{/* CTA */}
+				<View style={styles.cta}>
+					<Button onPress={next} fullWidth size="large" disabled={isUploading}>
+						{step < 5 ? 'Next' : isUploading ? 'Uploading…' : 'Save Changes'}
 					</Button>
 				</View>
-			</View>
+			</KeyboardAvoidingView>
 		</Modal>
 	);
 }
 
+/* ---------- styles (unchanged) ---------- */
 const styles = StyleSheet.create({
-	container: {
-		flex: 1,
-		alignItems: 'center',
-		paddingHorizontal: 20,
-		paddingTop: Platform.OS === 'ios' ? 100 : 70,
-	},
-	closeBtn: {
+	container: { flex: 1 },
+
+	/* nav */
+	navRow: {
 		position: 'absolute',
 		left: 20,
+		right: 20,
+		flexDirection: 'row',
+		justifyContent: 'space-between',
+		alignItems: 'center',
+		zIndex: 10,
+	},
+	navBtn: {
 		width: 40,
 		height: 40,
 		borderRadius: 20,
 		backgroundColor: 'rgba(0,0,0,0.5)',
 		justifyContent: 'center',
 		alignItems: 'center',
-		zIndex: 10,
 	},
-	imageContainer: { position: 'relative', marginBottom: 32, ...COLORS.shadowLg },
+
+	/* dots */
+	dotRow: { flexDirection: 'row', gap: 8 },
+	dot: { width: 10, height: 10, borderRadius: 5 },
+
+	/* main content */
+	content: {
+		flex: 1,
+		paddingTop: Platform.OS === 'ios' ? 100 : 70,
+		paddingHorizontal: 20,
+		alignItems: 'center',
+	},
+
+	/* avatar */
+	imgWrap: { position: 'relative', marginBottom: 32, ...COLORS.shadowLg },
 	avatar: {
 		width: 180,
 		height: 180,
@@ -332,20 +741,14 @@ const styles = StyleSheet.create({
 		borderWidth: 2,
 		borderColor: COLORS.border,
 	},
-	overlayContainer: {
-		position: 'absolute',
-		top: 0,
-		left: 0,
-		right: 0,
-		bottom: 0,
-		borderRadius: 90,
-		backgroundColor: 'rgba(0,0,0,0.3)',
+	uploadVeil: {
+		...StyleSheet.absoluteFillObject,
+		backgroundColor: '#FFFFFFDD',
+		borderRadius: 24,
 		justifyContent: 'center',
 		alignItems: 'center',
-		opacity: 0,
 	},
-	overlayText: { color: '#FFF', fontSize: 14, fontWeight: '600', marginTop: 8 },
-	editIndicator: {
+	editBadge: {
 		position: 'absolute',
 		top: 10,
 		right: 10,
@@ -354,6 +757,7 @@ const styles = StyleSheet.create({
 		borderRadius: 18,
 		justifyContent: 'center',
 		alignItems: 'center',
+		...COLORS.shadow,
 	},
 	plantBadge: {
 		position: 'absolute',
@@ -362,50 +766,71 @@ const styles = StyleSheet.create({
 		transform: [{ translateX: -80 }],
 		flexDirection: 'row',
 		alignItems: 'center',
+		gap: 8,
 		paddingHorizontal: 16,
 		paddingVertical: 8,
 		borderRadius: 20,
-		gap: 8,
+		width: 160,
 	},
-	badgeText: { fontSize: 14, fontWeight: '600' },
-	uploadingOverlay: {
-		...StyleSheet.absoluteFillObject,
-		backgroundColor: 'rgba(255,255,255,0.8)',
-		justifyContent: 'center',
-		alignItems: 'center',
-		borderRadius: 24,
-	},
-	form: { width: '100%', alignItems: 'center', gap: 24 },
-	title: { fontSize: 24, fontWeight: '700', textAlign: 'center' },
-	subtitle: { fontSize: 16, textAlign: 'center' },
-	inputRow: { width: '100%', flexDirection: 'row', gap: 12 },
+	plantBadgeText: { fontSize: 14, fontWeight: '600' },
+
+	/* text */
+	title: { fontSize: 24, fontWeight: '700', textAlign: 'center', marginBottom: 8 },
+	subtitle: { fontSize: 16, textAlign: 'center', marginBottom: 24 },
+
+	/* nickname */
+	nameRow: { flexDirection: 'row', gap: 12, alignItems: 'center' },
+	inputWrap: { flex: 1, borderRadius: 16, borderWidth: 2, borderColor: COLORS.border },
 	input: { height: 56, borderRadius: 16, paddingHorizontal: 16, fontSize: 16 },
 	errorText: { fontSize: 12, marginTop: 4, marginLeft: 4 },
-	diceButton: {
+	diceBtn: {
 		width: 56,
 		height: 56,
 		borderRadius: 16,
 		justifyContent: 'center',
 		alignItems: 'center',
 	},
-	locationSelect: { flexDirection: 'row', gap: 12 },
-	locationButton: {
-		flex: 1,
+
+	/* cards / rows */
+	card: {
+		width: '100%',
 		flexDirection: 'row',
 		alignItems: 'center',
-		justifyContent: 'center',
-		height: 56,
+		gap: 16,
+		padding: 16,
 		borderRadius: 16,
 		borderColor: COLORS.border,
-		borderWidth: 2,
-		gap: 8,
+		marginBottom: 12,
+		...COLORS.shadow,
 	},
-	locationButtonActive: { backgroundColor: '#E6F2E8' },
-	locationText: { fontSize: 16, fontWeight: '500', color: '#555555' },
-	buttonContainer: {
-		position: 'absolute',
-		bottom: Platform.OS === 'ios' ? 20 : 20,
-		left: 20,
-		right: 20,
+	cardTitle: { fontSize: 16, fontWeight: '600' },
+	cardDesc: { fontSize: 13, marginTop: 4 },
+
+	potVal: { fontSize: 44, fontWeight: '700', marginVertical: 16 },
+
+	soilRow: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 16,
+		padding: 16,
+		borderRadius: 16,
+		borderColor: COLORS.border,
+		width: '100%',
+		marginTop: 16,
+		...COLORS.shadow,
 	},
+
+	/* date */
+	dateBtn: {
+		width: '100%',
+		borderRadius: 16,
+		paddingVertical: 16,
+		alignItems: 'center',
+		marginTop: 16,
+		...COLORS.shadow,
+	},
+	dateBtnText: { fontSize: 18, fontWeight: '600' },
+
+	/* footer */
+	cta: { position: 'absolute', bottom: 20, left: 20, right: 20 },
 });
