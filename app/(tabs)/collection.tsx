@@ -72,12 +72,16 @@ export default function CollectionScreen() {
 			(plant.nickname && plant.nickname.toLowerCase().includes(searchQuery.toLowerCase()));
 		const matchesFilter =
 			activeFilter === 'All' ||
-			(activeFilter === 'Indoor' && plant.location === 'Indoor') ||
-			(activeFilter === 'Outdoor' && plant.location === 'Outdoor') ||
+			(activeFilter === 'Indoor' &&
+				(plant.location === 'Indoor' || plant.location === 'indoor')) ||
+			(activeFilter === 'Outdoor' &&
+				(plant.location === 'Outdoor' || plant.location === 'outdoor')) ||
 			(activeFilter === 'Favorites' && plant.is_favorite);
 
 		return matchesSearch && matchesFilter;
 	});
+
+	console.log(activeFilter, 'active filter');
 
 	const renderPlantItem = ({ item }) => (
 		<ScalePressable
