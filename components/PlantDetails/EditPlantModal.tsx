@@ -42,6 +42,7 @@ import {
 	colors as colorDict,
 	animals,
 	uniqueNamesGenerator,
+	names,
 } from 'unique-names-generator';
 import { useS3Uploader } from '../useS3Uploader';
 import { SuccessAnimation } from '../PlantIdentification/SuccessAnimation';
@@ -225,7 +226,7 @@ export function EditPlantStepperModal({ visible, onClose, onSave, plant, isDark 
 
 		setNickname(
 			uniqueNamesGenerator({
-				dictionaries: [adjectives, colorDict, animals],
+				dictionaries: [colorDict, animals],
 				length: 2,
 				separator: ' ',
 				style: 'capital',

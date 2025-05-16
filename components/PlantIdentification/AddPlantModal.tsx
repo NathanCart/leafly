@@ -29,7 +29,12 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 /* ------------- vector icons ------------- */
 import { Dice6, Image as ImageIcon, Leaf, X, ArrowLeft, CalendarDays } from 'lucide-react-native';
 import Svg, { Path, Rect, Circle, Polygon } from 'react-native-svg';
-import { adjectives, animals, colors, uniqueNamesGenerator } from 'unique-names-generator';
+import {
+	adjectives,
+	animals,
+	colors as colorDict,
+	uniqueNamesGenerator,
+} from 'unique-names-generator';
 import { SuccessAnimation } from './SuccessAnimation';
 
 /* ---------- tiny SVG sprites ---------- */
@@ -210,7 +215,7 @@ export function AddPlantStepperModal({ visible, onClose, plant, onConfirm, isDar
 
 		setNickname(
 			uniqueNamesGenerator({
-				dictionaries: [adjectives, colors, animals],
+				dictionaries: [colorDict, animals],
 				length: 2,
 				separator: ' ',
 				style: 'capital',
