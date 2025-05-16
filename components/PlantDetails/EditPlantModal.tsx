@@ -487,6 +487,18 @@ export function EditPlantStepperModal({ visible, onClose, onSave, plant, isDark 
 			setLocalDiam(potDiameter);
 		}, [potDiameter]);
 
+		const fadeVal = useRef(new Animated.Value(-1)).current;
+
+		useEffect(() => {
+			// fade the slider in as soon as the component mounts
+			Animated.timing(fadeVal, {
+				toValue: 1,
+				duration: 400,
+				easing: Easing.out(Easing.quad),
+				useNativeDriver: true,
+			}).start();
+		}, []);
+
 		return (
 			<View style={styles.content}>
 				<Text style={[styles.title, { color: isDark ? '#E0E0E0' : '#283618' }]}>
@@ -497,18 +509,22 @@ export function EditPlantStepperModal({ visible, onClose, onSave, plant, isDark 
 					{localDiam?.toFixed?.(1)}
 					<Text style={{ fontSize: 20 }}> in</Text>
 				</Text>
-				<Slider
-					style={{ width: '100%', marginTop: 24 }}
-					minimumValue={2}
-					maximumValue={24}
-					step={0.5}
-					value={localDiam}
-					onValueChange={setLocalDiam}
-					onSlidingComplete={setPotDiameter}
-					thumbTintColor={COLORS.primary}
-					minimumTrackTintColor={COLORS.primary}
-					maximumTrackTintColor={isDark ? '#444' : '#CCC'}
-				/>
+				<Animated.View style={{ width: '100%', marginTop: 24, opacity: fadeVal }}>
+					<Slider
+						style={{ width: '100%' }}
+						minimumValue={2}
+						maximumValue={24}
+						step={0.5}
+						value={localDiam}
+						onValueChange={(v) => setLocalDiam(v)}
+						onSlidingComplete={(v) => {
+							setPotDiameter(v);
+						}}
+						thumbTintColor={COLORS.primary}
+						minimumTrackTintColor={COLORS.primary}
+						maximumTrackTintColor={isDark ? '#444' : '#CCC'}
+					/>
+				</Animated.View>
 			</View>
 		);
 	};
