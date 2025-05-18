@@ -25,6 +25,7 @@ import { usePlants } from '@/contexts/DatabaseContext';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/Button';
+import Constants from 'expo-constants';
 
 export default function ProfileScreen() {
 	const colorScheme = useColorScheme();
@@ -140,7 +141,7 @@ export default function ProfileScreen() {
 								Plants
 							</Text>
 						</View>
-						<View
+						{/* <View
 							style={[
 								styles.divider,
 								{ backgroundColor: isDark ? '#333333' : '#EEEEEE' },
@@ -187,7 +188,7 @@ export default function ProfileScreen() {
 							>
 								Level
 							</Text>
-						</View>
+						</View> */}
 					</View>
 				</View>
 
@@ -227,7 +228,7 @@ export default function ProfileScreen() {
 							{ color: isDark ? '#BBBBBB' : '#555555', marginTop: 12 },
 						]}
 					>
-						Version 1.0.0
+						Version {Constants.expoConfig?.version}
 					</Text>
 				</View>
 			</ScrollView>
@@ -319,5 +320,5 @@ const styles = StyleSheet.create({
 		color: COLORS.warning,
 	},
 	logoutText: { fontSize: 16, fontWeight: '600', marginLeft: 8 },
-	versionText: { textAlign: 'center', fontSize: 12, marginBottom: 16 },
+	versionText: { textAlign: 'center', fontSize: 12 },
 });
