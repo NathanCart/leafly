@@ -1,7 +1,6 @@
 import React from 'react';
 import {
 	TouchableOpacity,
-	Text,
 	StyleSheet,
 	ActivityIndicator,
 	View,
@@ -9,6 +8,7 @@ import {
 	useColorScheme,
 } from 'react-native';
 import { COLORS } from '../app/constants/colors';
+import { Text } from './Text';
 
 type ButtonVariant = 'primary' | 'secondary' | 'tertiary' | 'danger';
 type ButtonSize = 'small' | 'medium' | 'large';

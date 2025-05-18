@@ -18,6 +18,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 function RootLayoutNav() {
 	const { session, loading } = useAuth();
+
 	const segments = useSegments();
 	const router = useRouter();
 
@@ -25,12 +26,22 @@ function RootLayoutNav() {
 		if (loading) return;
 
 		const inAuthGroup = segments[0] === '(auth)';
+		const inOnboardingGroup = segments[0] === '(onboarding)';
 
-		if (!session && !inAuthGroup) {
-			router.replace('/login');
-		} else if (session && inAuthGroup) {
-			router.replace('/(tabs)');
-		}
+		(async () => {
+			const onboardingCompleted = await AsyncStorage.getItem('onboarding_completed');
+
+			// console.log('segments data', segments);
+			if (!onboardingCompleted?.length && !inOnboardingGroup) {
+				router.replace('/(onboarding)/get-started');
+			} else {
+				if (!session && !inAuthGroup && !!onboardingCompleted?.length) {
+					router.replace('/login');
+				} else if (session && inAuthGroup) {
+					router.replace('/(tabs)');
+				}
+			}
+		})();
 	}, [session, loading, segments]);
 
 	return (
