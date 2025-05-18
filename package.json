@@ -52,7 +52,6 @@
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "react-native": "0.76.6",
-    "react-native-fast-image": "^8.6.3",
     "react-native-gesture-handler": "^2.23.0",
     "react-native-get-random-values": "^1.11.0",
     "react-native-image-viewing": "^0.2.2",
@@ -66,7 +65,8 @@
     "react-native-web": "^0.19.13",
     "react-native-webview": "13.12.5",
     "unique-names-generator": "^4.7.1",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.0",
+    "expo-image": "~2.0.7"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

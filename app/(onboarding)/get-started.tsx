@@ -37,15 +37,15 @@ export default function GetStartedScreen() {
 
 			{/* ── Footer (below the video) ────────────────────────── */}
 			<View style={styles.footer}>
-				<Text style={styles.heading}>Effortless Plant Care at Home With Florai</Text>
+				<Text style={styles.heading}>Never let a plant die on your watch!</Text>
 
 				<Button
 					style={{ width: '100%' }}
 					size="large"
 					variant="primary"
-					onPress={() => router.push('/how-did-you-find')}
+					onPress={() => router.push('/features')}
 				>
-					Continue
+					Get Started
 				</Button>
 			</View>
 		</View>
@@ -72,6 +72,10 @@ const styles = StyleSheet.create({
 
 	/* Footer never overlaps video; it sits underneath */
 	footer: {
+		backgroundColor: '#fff',
+		borderTopRightRadius: 32,
+		borderTopLeftRadius: 32,
+		marginTop: -32, // overlaps the video
 		flex: 1,
 		justifyContent: 'center',
 		alignItems: 'center',

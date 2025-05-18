@@ -118,11 +118,11 @@ export default function HowDidYouFindScreen() {
 	useMixpanel('how_did_you_find');
 
 	const handleSelect = (key: string) => {
-		router.push('/next-screen'); // replace with your actual next route
+		router.push('/how-many-plants'); // replace with your actual next route
 	};
 
 	const handleSkip = () => {
-		router.push('/next-screen');
+		router.push('/how-many-plants');
 	};
 
 	const insets = useSafeAreaInsets();
@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
 	skipText: {
 		fontSize: 16,
 		fontWeight: '600',
-		color: COLORS.primary,
+		color: COLORS.muted,
 	},
 	title: {
 		fontSize: 24,
