@@ -45,7 +45,7 @@ const getRelativeDate = (date: Date) => {
 };
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const HEADER_HEIGHT = 220;
+const HEADER_HEIGHT = 240;
 const CARD_GAP = 8;
 const CARD_WIDTH = (SCREEN_WIDTH - 12 * 3) / 2.5;
 
@@ -425,7 +425,7 @@ export default function HomeScreen() {
 					styles.headerContainer,
 					{
 						backgroundColor: isDark ? COLORS.surface.dark : '#87CEEB',
-						paddingTop: insets.top + 32,
+						paddingTop: insets.top,
 					},
 					headerStyle,
 				]}
@@ -501,7 +501,10 @@ export default function HomeScreen() {
 			<AnimatedLib.ScrollView
 				onScroll={scrollHandler}
 				scrollEventThrottle={16}
-				contentContainerStyle={{ paddingTop: HEADER_HEIGHT - 20 }}
+				contentContainerStyle={{
+					paddingTop: HEADER_HEIGHT - 20,
+					paddingBottom: insets.bottom + 24, // room for the bottom edge / gesture area
+				}}
 			>
 				<AnimatedLib.View
 					style={[
@@ -895,7 +898,7 @@ const styles = StyleSheet.create({
 		borderTopLeftRadius: 32,
 		borderTopRightRadius: 32,
 		paddingTop: 20,
-		minHeight: SCREEN_HEIGHT,
+		minHeight: SCREEN_HEIGHT - HEADER_HEIGHT,
 		backgroundColor: 'transparent',
 		...Platform.select({
 			ios: {

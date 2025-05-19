@@ -29,8 +29,7 @@ function RootLayoutNav() {
 		const inOnboardingGroup = segments[0] === '(onboarding)';
 
 		(async () => {
-			// const onboardingCompleted = await AsyncStorage.getItem('onboarding_completed');
-			const onboardingCompleted = false;
+			const onboardingCompleted = await AsyncStorage.getItem('onboarding_completed');
 
 			// console.log('segments data', segments);
 			if (!onboardingCompleted?.length && !inOnboardingGroup) {

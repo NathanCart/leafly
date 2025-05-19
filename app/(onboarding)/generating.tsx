@@ -121,7 +121,7 @@ const GeneratingScreen: React.FC = () => {
 					clearInterval(id);
 					// Small timeout so the user sees 100 %
 					setTimeout(() => {
-						// router.replace('/(auth)/register');
+						router.replace('/(auth)/register');
 					}, 300);
 				}
 				return next;
