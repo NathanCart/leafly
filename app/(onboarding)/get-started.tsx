@@ -43,7 +43,7 @@ export default function GetStartedScreen() {
 					style={{ width: '100%' }}
 					size="large"
 					variant="primary"
-					onPress={() => router.push('/features')}
+					onPress={() => router.push('/how-did-you-find')}
 				>
 					Get Started
 				</Button>
@@ -66,6 +66,7 @@ const styles = StyleSheet.create({
 	},
 	video: {
 		objectFit: 'contain', // fills the video container
+		pointerEvents: 'none', // no touch events on the video
 		height: '100%',
 		...StyleSheet.absoluteFillObject, // pins to all edges *inside* videoContainer
 	},

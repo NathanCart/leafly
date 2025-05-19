@@ -60,24 +60,22 @@ export const SunSvg = (
 // Options configuration
 // ---------------------------------------------
 const FIND_OPTIONS: { key: string; label: string }[] = [
-	{ key: '1-5', label: '1-5' },
-	{ key: '6-10', label: '6-10' },
-	{ key: '11+', label: '11+' },
-	{ key: 'None', label: 'No plants' },
+	{ key: 'yes', label: 'Yes' },
+	{ key: 'no', label: 'No' },
 ];
 
-export default function HowManyPlants() {
-	useMixpanel('how_many_plants');
+export default function PlantHealth() {
+	useMixpanel('plant_health');
 
 	// Fire a light haptic before navigating
 	const handleSelect = async (key: string) => {
 		await Haptics.selectionAsync();
-		router.push('/always_forget'); // replace with your actual next route
+		router.push('/toxic_plants'); // replace with your actual next route
 	};
 
 	const handleSkip = async () => {
 		await Haptics.selectionAsync();
-		router.push('/always_forget');
+		router.push('/toxic_plants');
 	};
 
 	return (
@@ -87,7 +85,10 @@ export default function HowManyPlants() {
 				<SunSvg style={[styles.sunSvg]} />
 			</View>
 
-			<Text style={styles.title}>How many plants do you own?</Text>
+			<Text style={styles.title}>
+				"I often find it hard to to keep my plants{' '}
+				<Text style={{ color: COLORS.primary, fontWeight: 'black' }}>alive"</Text>
+			</Text>
 
 			<View style={styles.optionsContainer}>
 				{FIND_OPTIONS.map(({ key, label }) => (
@@ -147,6 +148,7 @@ const styles = StyleSheet.create({
 	},
 	title: {
 		fontSize: 24,
+		paddingHorizontal: 16,
 		fontWeight: '700',
 		textAlign: 'center',
 		marginVertical: 32,

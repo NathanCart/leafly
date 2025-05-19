@@ -8,6 +8,7 @@ import { Dimensions, StyleSheet, View } from 'react-native';
 import { FlatList } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '../constants/colors';
+import * as Haptics from 'expo-haptics'; // ← Import Haptics
 
 export default function GetStartedScreen() {
 	// Analytics
@@ -15,28 +16,34 @@ export default function GetStartedScreen() {
 
 	const FEATURE_CARDS = [
 		{
+			key: 'say-goodbye',
+			title: 'Say goodbye to your plant problems with Florai 👋',
+			description: '',
+			Illustration: 'https://leafly-app.s3.eu-west-2.amazonaws.com/identify-plant.svg',
+		},
+		{
 			key: 'instant-id',
 			title: 'Instant Identification 📸',
 			description: 'Snap a pic and get instant plant identification with 97% accuracy.',
-			Illustration: 'https://leafly-app.s3.eu-west-2.amazonaws.com/identify.svg',
+			Illustration: 'https://leafly-app.s3.eu-west-2.amazonaws.com/identify-plant.svg',
 		},
 		{
 			key: 'smart-care',
 			title: 'Smart Reminders 📅',
 			description: 'Get personalized care based on your plant’s individual needs.',
-			Illustration: 'https://leafly-app.s3.eu-west-2.amazonaws.com/plant-care.svg',
+			Illustration: 'https://leafly-app.s3.eu-west-2.amazonaws.com/smart-reminders.svg',
 		},
 		{
 			key: 'pet-safe',
 			title: 'Pet-Safe Alerts ‼️',
 			description: 'We warn you if Fluffy shouldn’t nibble it.',
-			Illustration: 'https://leafly-app.s3.eu-west-2.amazonaws.com/pet-safe.svg',
+			Illustration: 'https://leafly-app.s3.eu-west-2.amazonaws.com/pet-safe-new.svg',
 		},
 		{
 			key: 'plant-doctor',
 			title: 'Plant Doctor 🚑',
 			description: 'Get instant diagnosis and treatment for your plant’s ailments.',
-			Illustration: 'https://leafly-app.s3.eu-west-2.amazonaws.com/doctor.svg',
+			Illustration: 'https://leafly-app.s3.eu-west-2.amazonaws.com/plant-doctor.svg',
 		},
 	];
 
@@ -45,23 +52,25 @@ export default function GetStartedScreen() {
 	const insets = useSafeAreaInsets();
 	const { width } = Dimensions.get('window');
 
-	const handleNext = () => {
+	// Fire a light haptic before scrolling or navigating
+	const handleNext = async () => {
+		await Haptics.selectionAsync();
 		if (currentIndex < FEATURE_CARDS.length - 1) {
 			flatListRef.current?.scrollToIndex({ index: currentIndex + 1 });
 		} else {
-			router.push('/how-did-you-find');
+			router.push('/generating');
 		}
 	};
+
 	const blurhash =
 		'|rF?hV%2WCj[ayj[a|j[az_NaeWBj@ayfRayfQfQM{M|azj[azf6fQfQfQIpWXofj[ayj[j[fQayWCoeoeaya}j[ayfQa{oLj?j[WVj[ayayj[fQoff7azayj[ayj[j[ayofayayayj[fQj[ayayj[ayfjj[j[ayjuayj[';
-	const onViewableItemsChanged = useRef(({ viewableItems }) => {
+	const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
 		if (viewableItems.length > 0) {
 			setCurrentIndex(viewableItems[0].index);
 		}
 	}).current;
 
 	const viewConfigRef = useRef({ viewAreaCoveragePercentThreshold: 50 });
-
 	const current = FEATURE_CARDS[currentIndex];
 
 	return (
@@ -85,7 +94,6 @@ export default function GetStartedScreen() {
 								{
 									width,
 									position: 'relative',
-									backgroundColor: '#E6F2FF',
 									paddingTop: insets.top - 24,
 								},
 							]}
@@ -106,7 +114,7 @@ export default function GetStartedScreen() {
 			</View>
 
 			{/* ── Fixed Bottom Sheet ───────────────────────── */}
-			<View style={[styles.bottomSheet, { paddingBottom: insets.bottom || 16 }]}>
+			<View style={styles.bottomSheet}>
 				<Text style={styles.title}>{current.title}</Text>
 				<Text style={styles.description}>{current.description}</Text>
 
@@ -120,7 +128,7 @@ export default function GetStartedScreen() {
 				</View>
 
 				<Button onPress={handleNext} style={styles.ctaBtn} size="large">
-					{currentIndex === FEATURE_CARDS.length - 1 ? 'Continue' : 'Next'}
+					{currentIndex === FEATURE_CARDS.length - 1 ? 'Setup my profile' : 'Next'}
 				</Button>
 			</View>
 		</View>
@@ -134,32 +142,27 @@ const styles = StyleSheet.create({
 	},
 
 	sliderContainer: {
-		flex: 6, // 60% of vertical space
+		flex: 4, // 60% of vertical space
 		overflow: 'hidden',
+		backgroundColor: '#E6F2FF',
 	},
 
 	slide: {
 		flex: 1,
 		justifyContent: 'center',
 		alignItems: 'center',
-	},
-
-	illustrationContainer: {
-		flex: 1,
-		justifyContent: 'center',
-		alignItems: 'center',
-		paddingTop: 24,
+		paddingHorizontal: 16,
 	},
 
 	bottomSheet: {
 		flex: 4, // 40% of vertical space
 		backgroundColor: '#fff',
 		marginTop: -32, // overlaps the video
-		borderTopLeftRadius: 32,
-		borderTopRightRadius: 32,
+		borderTopLeftRadius: 40,
+		borderTopRightRadius: 40,
 		paddingHorizontal: 24,
-		paddingTop: 32,
 		alignItems: 'center',
+		justifyContent: 'center',
 	},
 
 	title: {
@@ -183,9 +186,9 @@ const styles = StyleSheet.create({
 	},
 
 	dot: {
-		width: 8,
-		height: 8,
-		borderRadius: 4,
+		width: 12,
+		height: 12,
+		borderRadius: 6,
 		backgroundColor: COLORS.primary ?? '#3DBE29',
 		marginHorizontal: 4,
 	},

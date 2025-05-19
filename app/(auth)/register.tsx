@@ -125,7 +125,7 @@ export default function RegisterScreen() {
 							{ backgroundColor: isDark ? '#2A3A30' : '#E6F2E8' },
 						]}
 					>
-						<Leaf color="#3A8349" size={40} />
+						<Leaf color={COLORS.primary} size={40} />
 					</View>
 					<Text style={[styles.title, { color: isDark ? '#E0E0E0' : '#283618' }]}>
 						Create Account
@@ -234,7 +234,7 @@ export default function RegisterScreen() {
 						Already have an account?
 					</Text>
 					<TouchableOpacity onPress={() => router.push('/login')}>
-						<Text style={[styles.footerLink, { color: '#3A8349' }]}>Sign In</Text>
+						<Text style={[styles.footerLink, { color: COLORS.primary }]}>Sign In</Text>
 					</TouchableOpacity>
 				</View>
 			</View>
@@ -313,7 +313,7 @@ const styles = StyleSheet.create({
 	},
 	button: {
 		height: 50,
-		backgroundColor: '#3A8349',
+		backgroundColor: COLORS.primary,
 		borderRadius: 12,
 		justifyContent: 'center',
 		alignItems: 'center',

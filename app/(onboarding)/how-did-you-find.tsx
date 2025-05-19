@@ -6,6 +6,8 @@ import { COLORS } from '../constants/colors';
 import React from 'react';
 import Svg, { Circle, Rect, Path, Defs, LinearGradient, Stop, G } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Button } from '@/components/Button';
+import * as Haptics from 'expo-haptics'; // ← Import Haptics
 
 // ---------------------------------------------
 // Decorative environment-based SVG illustrations
@@ -54,91 +56,37 @@ export const SunSvg = (
 	</Svg>
 );
 
-export const HillSvg = ({
-	width = '100%',
-	height = 180,
-	style,
-}: {
-	width?: number | string;
-	height?: number | string;
-	style?: object;
-}) => (
-	<Svg
-		width={width}
-		height={height}
-		viewBox="0 0 360 180"
-		preserveAspectRatio="xMidYMax slice"
-		style={style}
-		fill="none"
-	>
-		<Defs>
-			<LinearGradient id="hillGradientNear" x1="0%" y1="0%" x2="0%" y2="100%">
-				<Stop offset="0%" stopColor="#A5D6A7" />
-				<Stop offset="100%" stopColor="#81C784" />
-			</LinearGradient>
-			<LinearGradient id="hillGradientFar" x1="0%" y1="0%" x2="0%" y2="100%">
-				<Stop offset="0%" stopColor="#C8E6C9" />
-				<Stop offset="100%" stopColor="#A5D6A7" />
-			</LinearGradient>
-		</Defs>
-
-		{/* FAR HILL */}
-		<Path
-			d="M0 100 C60 40, 120 40, 180 100 S300 160, 360 100 V180 H0 Z"
-			fill="url(#hillGradientFar)"
-		/>
-
-		{/* NEAR HILL */}
-		<Path
-			d="M0 140 C80 80, 160 80, 240 140 S320 200, 360 140 V180 H0 Z"
-			fill="url(#hillGradientNear)"
-		/>
-
-		{/* OPTIONAL: Simple shadow to add depth */}
-		<G opacity={0.08}>
-			<Path d="M0 140 C80 80, 160 80, 240 140 S320 200, 360 140 V180 H0 Z" fill="#000" />
-		</G>
-	</Svg>
-);
-
 // ---------------------------------------------
 // Options configuration
 // ---------------------------------------------
 const FIND_OPTIONS: { key: string; label: string }[] = [
+	{ key: 'social-media', label: 'On Social Media' },
+	{ key: 'ad', label: 'I saw an ad' },
 	{ key: 'friend', label: 'A friend recommended it' },
 	{ key: 'search', label: 'Searching the App Store' },
-	{ key: 'tiktok', label: 'A TikTok short' },
-	{ key: 'youtube', label: 'A YouTube short' },
-	{ key: 'instagram', label: 'An Instagram Reel' },
-	{ key: 'ad', label: 'I saw an ad' },
 	{ key: 'other', label: 'Other' },
 ];
 
 export default function HowDidYouFindScreen() {
 	useMixpanel('how_did_you_find');
 
-	const handleSelect = (key: string) => {
+	// Fire a light haptic before navigating
+	const handleSelect = async (key: string) => {
+		await Haptics.selectionAsync();
 		router.push('/how-many-plants'); // replace with your actual next route
 	};
 
-	const handleSkip = () => {
+	const handleSkip = async () => {
+		await Haptics.selectionAsync();
 		router.push('/how-many-plants');
 	};
-
-	const insets = useSafeAreaInsets();
 
 	return (
 		<SafeAreaView style={styles.container}>
 			{/* Decorative background art (non-interactive) */}
 			<View style={styles.artwork} pointerEvents="none">
 				<SunSvg style={[styles.sunSvg]} />
-				<HillSvg style={[{ ...styles.hillSvg, bottom: -insets.bottom - insets.top }]} />
 			</View>
-
-			{/* Skip Button */}
-			<TouchableOpacity style={styles.skipBtn} onPress={handleSkip}>
-				<Text style={styles.skipText}>Skip</Text>
-			</TouchableOpacity>
 
 			<Text style={styles.title}>How did you find Florai?</Text>
 
@@ -154,6 +102,13 @@ export default function HowDidYouFindScreen() {
 					</TouchableOpacity>
 				))}
 			</View>
+
+			{/* Skip Button */}
+			<View style={{ paddingHorizontal: 16, marginTop: 'auto' }}>
+				<Button variant="secondary" onPress={handleSkip} size="large">
+					Skip
+				</Button>
+			</View>
 		</SafeAreaView>
 	);
 }
@@ -164,7 +119,7 @@ export default function HowDidYouFindScreen() {
 const styles = StyleSheet.create({
 	container: {
 		flex: 1,
-		backgroundColor: '#E3F2FD', // soft sky-blue backdrop
+		backgroundColor: '#E6F2FF',
 		justifyContent: 'flex-start',
 	},
 	artwork: {
@@ -185,13 +140,7 @@ const styles = StyleSheet.create({
 		width: '100%',
 		height: 180, // match the height you passed into HillSvg
 	},
-	skipBtn: {
-		position: 'absolute',
-		top: Platform.OS === 'ios' ? 50 : 20,
-		right: 20,
-		padding: 8,
-		zIndex: 1,
-	},
+	skipBtn: {},
 	skipText: {
 		fontSize: 16,
 		fontWeight: '600',
@@ -208,7 +157,7 @@ const styles = StyleSheet.create({
 	},
 	optionCard: {
 		backgroundColor: 'rgba(255,255,255,0.9)',
-		paddingVertical: 16,
+		paddingVertical: 20,
 		paddingHorizontal: 20,
 		borderRadius: 16,
 		marginBottom: 16,
