@@ -15,6 +15,7 @@ import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
+import { useMixpanel } from '@/hooks/useMixpanel';
 
 // ────────────────────────────────────────────────────────────────────────────────
 // MOCK ASSETS (swap these for local/remote URIs)
@@ -102,10 +103,11 @@ export const ProgressCircle: React.FC<{
 const LOADING_DURATION_MS = 5000; // total time until 100 %
 const NEXT_ROUTE = 'Home'; // customise to your route id
 
-const LaunchScreen: React.FC = () => {
+const GeneratingScreen: React.FC = () => {
 	const { width } = useWindowDimensions();
 	const [progress, setProgress] = useState<number>(0);
 	const navigation = useNavigation();
+	useMixpanel('generating');
 
 	// Increment % evenly over LOADING_DURATION_MS
 	useEffect(() => {
@@ -176,7 +178,7 @@ const LaunchScreen: React.FC = () => {
 	);
 };
 
-export default LaunchScreen;
+export default GeneratingScreen;
 
 // ────────────────────────────────────────────────────────────────────────────────
 // STYLES
