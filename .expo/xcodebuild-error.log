@@ -1,2 +1,2 @@
-2025-05-20 18:58:18.540 xcodebuild[88766:4191068] Writing error result bundle to /var/folders/cd/01q16srj0h7dzfvd2rblzv4m0000gn/T/ResultBundle_2025-20-05_18-58-0018.xcresult
+2025-05-20 19:01:35.204 xcodebuild[90312:4197133] Writing error result bundle to /var/folders/cd/01q16srj0h7dzfvd2rblzv4m0000gn/T/ResultBundle_2025-20-05_19-01-0035.xcresult
 xcodebuild: error: The workspace named "leafly" does not contain a scheme named "florai". The "-list" option can be used to find the names of the schemes in the workspace.
