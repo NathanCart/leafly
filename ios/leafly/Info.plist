@@ -28,7 +28,7 @@
         <key>CFBundleURLSchemes</key>
         <array>
           <string>myapp</string>
-          <string>com.viralreach.leafly</string>
+          <string>com.viralreach.florai</string>
         </array>
       </dict>
       <dict>

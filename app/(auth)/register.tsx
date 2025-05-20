@@ -228,15 +228,6 @@ export default function RegisterScreen() {
 						)}
 					</TouchableOpacity>
 				</View>
-
-				<View style={styles.footer}>
-					<Text style={[styles.footerText, { color: isDark ? '#BBBBBB' : '#555555' }]}>
-						Already have an account?
-					</Text>
-					<TouchableOpacity onPress={() => router.push('/login')}>
-						<Text style={[styles.footerLink, { color: COLORS.primary }]}>Sign In</Text>
-					</TouchableOpacity>
-				</View>
 			</View>
 		</KeyboardAvoidingView>
 	);

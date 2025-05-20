@@ -6,16 +6,17 @@ import {
 	useColorScheme,
 	KeyboardAvoidingView,
 	Platform,
+	TouchableOpacity,
 } from 'react-native';
 import { router } from 'expo-router';
-import { Leaf, Mail, Lock } from 'lucide-react-native';
+import { Leaf, Mail, Lock, ChevronLeft } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/Button';
 import { COLORS } from '@/app/constants/colors';
 import { Text } from '@/components/Text';
 import { Auth } from '@/components/auth';
 
-export default function LoginScreen() {
+export default function AlreadyRegistered() {
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
 	const [loading, setLoading] = useState(false);
@@ -48,6 +49,9 @@ export default function LoginScreen() {
 			behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
 		>
 			<View style={styles.content}>
+				<TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+					<ChevronLeft color={isDark ? '#E0E0E0' : '#283618'} size={24} />
+				</TouchableOpacity>
 				<View style={styles.header}>
 					<View
 						style={[
@@ -58,7 +62,7 @@ export default function LoginScreen() {
 						<Leaf color={COLORS.primary} size={40} />
 					</View>
 					<Text style={[styles.title, { color: isDark ? '#E0E0E0' : '#283618' }]}>
-						Welcome to Florai
+						Welcome
 					</Text>
 					<Text style={[styles.subtitle, { color: isDark ? '#BBBBBB' : '#555555' }]}>
 						Sign in to continue caring for your plants
@@ -78,22 +82,76 @@ export default function LoginScreen() {
 					</View>
 				)}
 
-				<View style={{ width: '100%', justifyContent: 'center', alignItems: 'center' }}>
-					<Auth />
+				<View style={styles.form}>
+					<View style={styles.inputContainer}>
+						<View
+							style={[
+								styles.input,
+								{ backgroundColor: isDark ? '#2A2A2A' : '#FFFFFF' },
+							]}
+						>
+							<Mail color={isDark ? '#BBBBBB' : '#999999'} size={20} />
+							<TextInput
+								style={[
+									styles.inputText,
+									{ color: isDark ? '#E0E0E0' : '#283618' },
+								]}
+								placeholder="Email"
+								placeholderTextColor={isDark ? '#BBBBBB' : '#999999'}
+								value={email}
+								onChangeText={setEmail}
+								autoCapitalize="none"
+								keyboardType="email-address"
+							/>
+						</View>
+					</View>
+
+					<View style={styles.inputContainer}>
+						<View
+							style={[
+								styles.input,
+								{ backgroundColor: isDark ? '#2A2A2A' : '#FFFFFF' },
+							]}
+						>
+							<Lock color={isDark ? '#BBBBBB' : '#999999'} size={20} />
+							<TextInput
+								style={[
+									styles.inputText,
+									{ color: isDark ? '#E0E0E0' : '#283618' },
+								]}
+								placeholder="Password"
+								placeholderTextColor={isDark ? '#BBBBBB' : '#999999'}
+								value={password}
+								onChangeText={setPassword}
+								secureTextEntry
+							/>
+						</View>
+					</View>
+
+					<Button
+						onPress={handleLogin}
+						loading={loading}
+						disabled={loading}
+						fullWidth
+						size="large"
+					>
+						Sign In
+					</Button>
 				</View>
-			</View>
-			<View style={styles.footer}>
-				<Text style={[styles.footerText, { color: isDark ? '#BBBBBB' : '#555555' }]}>
-					Registered on the web?
-				</Text>
-				<Button
-					style={{ paddingLeft: 0 }}
-					variant="tertiary"
-					onPress={() => router.push('/already-registered')}
-					size="small"
-				>
-					Login
-				</Button>
+
+				<View style={styles.footer}>
+					<Text style={[styles.footerText, { color: isDark ? '#BBBBBB' : '#555555' }]}>
+						Don't have an account?
+					</Text>
+					<Button
+						style={{ paddingLeft: 0 }}
+						variant="tertiary"
+						onPress={() => router.push('/register')}
+						size="small"
+					>
+						Sign Up
+					</Button>
+				</View>
 			</View>
 		</KeyboardAvoidingView>
 	);
@@ -108,9 +166,19 @@ const styles = StyleSheet.create({
 		padding: 20,
 		justifyContent: 'center',
 	},
+	backButton: {
+		position: 'absolute',
+		top: Platform.OS === 'ios' ? 60 : 20,
+		left: 20,
+		width: 40,
+		height: 40,
+		borderRadius: 20,
+		justifyContent: 'center',
+		alignItems: 'center',
+	},
 	header: {
 		alignItems: 'center',
-		marginBottom: 24,
+		marginBottom: 40,
 	},
 	logoContainer: {
 		width: 80,
@@ -159,11 +227,10 @@ const styles = StyleSheet.create({
 		fontSize: 16,
 	},
 	footer: {
-		paddingBottom: 20,
 		flexDirection: 'row',
 		justifyContent: 'center',
 		alignItems: 'center',
-		marginTop: 'auto',
+		marginTop: 32,
 		gap: 8,
 	},
 	footerText: {
