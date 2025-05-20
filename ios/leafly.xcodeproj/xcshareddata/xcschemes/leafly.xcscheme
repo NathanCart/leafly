@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-               BuildableName = "leafly.app"
-               BlueprintName = "leafly"
-               ReferencedContainer = "container:leafly.xcodeproj">
+               BuildableName = "florai.app"
+               BlueprintName = "florai"
+               ReferencedContainer = "container:florai.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -33,9 +33,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "00E356ED1AD99517003FC87E"
-               BuildableName = "leaflyTests.xctest"
-               BlueprintName = "leaflyTests"
-               ReferencedContainer = "container:leafly.xcodeproj">
+               BuildableName = "floraiTests.xctest"
+               BlueprintName = "floraiTests"
+               ReferencedContainer = "container:florai.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -55,9 +55,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "leafly.app"
-            BlueprintName = "leafly"
-            ReferencedContainer = "container:leafly.xcodeproj">
+            BuildableName = "florai.app"
+            BlueprintName = "florai"
+            ReferencedContainer = "container:florai.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -72,9 +72,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "leafly.app"
-            BlueprintName = "leafly"
-            ReferencedContainer = "container:leafly.xcodeproj">
+            BuildableName = "florai.app"
+            BlueprintName = "florai"
+            ReferencedContainer = "container:florai.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

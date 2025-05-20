@@ -26,7 +26,7 @@ const SLIDES = [
 		statLabel: 'Plants Thriving',
 		statSubText:
 			'Discover a wide variety of life forms, including houseplants, ornamentals, trees, and weeds.',
-		image: 'https://leafly-app.s3.eu-west-2.amazonaws.com/Taking+care+of+plants-02.svg',
+		image: 'https://florai-app.s3.eu-west-2.amazonaws.com/Taking+care+of+plants-02.svg',
 	},
 
 	{
@@ -34,7 +34,7 @@ const SLIDES = [
 		statNumber: '8 M+',
 		statLabel: 'Smart Reminders',
 		statSubText: 'Millions of tailored care reminders sent every month.',
-		image: 'https://leafly-app.s3.eu-west-2.amazonaws.com/smart-reminders.svg',
+		image: 'https://florai-app.s3.eu-west-2.amazonaws.com/smart-reminders.svg',
 	},
 	{
 		key: 'identified',
@@ -42,7 +42,7 @@ const SLIDES = [
 		statLabel: 'Plant Pests',
 		statSubText:
 			'Access almost a hundred carefully selected pests and diseases, caused by fungal, bacterial, viral and abiotic factors.',
-		image: 'https://leafly-app.s3.eu-west-2.amazonaws.com/identify-plant.svg',
+		image: 'https://florai-app.s3.eu-west-2.amazonaws.com/identify-plant.svg',
 	},
 ];
 

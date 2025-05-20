@@ -30,8 +30,8 @@ export default function ShareScreen() {
 		try {
 			await Share.share({
 				message:
-					'Join me on Leafly! Let’s grow our green family together: https://leafly.app',
-				title: 'Invite to Leafly',
+					'Join me on florai! Let’s grow our green family together: https://florai.app',
+				title: 'Invite to florai',
 			});
 		} catch (err) {
 			console.error(err);

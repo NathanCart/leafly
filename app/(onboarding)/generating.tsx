@@ -21,11 +21,11 @@ import { useMixpanel } from '@/hooks/useMixpanel';
 // MOCK ASSETS (swap these for local/remote URIs)
 // ────────────────────────────────────────────────────────────────────────────────
 const PLANT_IMAGES = [
-	'https://leafly-app.s3.eu-west-2.amazonaws.com/Taking+care+of+plants-02.svg',
-	'https://leafly-app.s3.eu-west-2.amazonaws.com/Taking+care+of+plants-02.svg',
-	'https://leafly-app.s3.eu-west-2.amazonaws.com/Taking+care+of+plants-02.svg',
-	'https://leafly-app.s3.eu-west-2.amazonaws.com/Taking+care+of+plants-02.svg',
-	'https://leafly-app.s3.eu-west-2.amazonaws.com/Taking+care+of+plants-02.svg',
+	'https://florai-app.s3.eu-west-2.amazonaws.com/Taking+care+of+plants-02.svg',
+	'https://florai-app.s3.eu-west-2.amazonaws.com/Taking+care+of+plants-02.svg',
+	'https://florai-app.s3.eu-west-2.amazonaws.com/Taking+care+of+plants-02.svg',
+	'https://florai-app.s3.eu-west-2.amazonaws.com/Taking+care+of+plants-02.svg',
+	'https://florai-app.s3.eu-west-2.amazonaws.com/Taking+care+of+plants-02.svg',
 ];
 
 // ────────────────────────────────────────────────────────────────────────────────

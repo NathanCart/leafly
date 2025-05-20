@@ -1,7 +1,7 @@
 {
 	"expo": {
-		"name": "leafly",
-		"slug": "leafly",
+		"name": "florai",
+		"slug": "florai",
 		"version": "1.0.0",
 		"orientation": "portrait",
 		"icon": "./assets/images/icon.png",
