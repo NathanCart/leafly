@@ -16,6 +16,7 @@ import {
 	Share2,
 	Sun,
 	Trash2,
+	AlertTriangle,
 } from 'lucide-react-native';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -46,6 +47,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { usePlants } from '@/contexts/DatabaseContext';
 import { COLORS } from './constants/colors';
 import { EditPlantStepperModal } from '@/components/PlantDetails/EditPlantModal';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 /* -------------------------------------------------
  * Constants & helpers
@@ -190,13 +192,14 @@ export default function PlantDetail() {
 	const [plant, setPlant] = useState<any>(null);
 	const [isFavorite, setIsFavorite] = useState(false);
 	const [loading, setLoading] = useState(true);
-
-	/* modal flags */
 	const [showEditModal, setShowEditModal] = useState(false);
 	const [showGalleryModal, setShowGalleryModal] = useState(false);
 	const [showScheduleModal, setShowScheduleModal] = useState(false);
 	const [deleting, setDeleting] = useState(false);
 	const [selectedTask, setSelectedTask] = useState<TaskEntry | null>(null);
+
+	// one-time toxicity alert
+	const [toxicityAlertShown, setToxicityAlertShown] = useState(false);
 
 	/* parallax */
 	const scrollY = useRef(new Animated.Value(0)).current;
@@ -226,6 +229,29 @@ export default function PlantDetail() {
 			}
 		})();
 	}, [plantId]);
+
+	/* ---------- show toxicity alert once ---------- */
+	useEffect(() => {
+		(async () => {
+			const alertShown = await AsyncStorage.getItem(`toxicityAlert-${plantId}`);
+			if (alertShown) return;
+
+			if (plant && plant.is_toxic_to_animals && !toxicityAlertShown) {
+				Alert.alert(
+					'Toxicity Warning',
+					'⚠️ This plant is marked as toxic and may be harmful to your pets.',
+					[
+						{
+							text: 'OK',
+							onPress: () => setToxicityAlertShown(true),
+						},
+					],
+					{ cancelable: false }
+				);
+				await AsyncStorage.setItem(`toxicityAlert-${plantId}`, 'true');
+			}
+		})();
+	}, [plant, toxicityAlertShown]);
 
 	/* ---------- tasks ---------- */
 	const tasks: TaskEntry[] = useMemo(() => {
@@ -331,8 +357,6 @@ export default function PlantDetail() {
 		if (!plant) return;
 
 		if (schedule?.fertilizing?.autoSchedule || schedule?.watering?.autoSchedule) {
-			// Call the NEW multi-workout plan function endpoint
-
 			const response = await fetch(
 				'https://kvjaxrtgtjbqopegbshw.supabase.co/functions/v1/get-plant-schedule',
 				{
@@ -629,6 +653,17 @@ export default function PlantDetail() {
 							icon={<Leaf fill="#4CAF50" size={32} color="#4CAF50" />}
 						/>
 					</Section>
+
+					{/* Toxicity section */}
+					{plant.toxicity_description && (
+						<Section title="Toxicity">
+							<ExpandableCard
+								title="Toxicity Details"
+								content={plant.toxicity_description}
+								icon={<AlertTriangle fill="#FF0000" size={32} color="#FF0000" />}
+							/>
+						</Section>
+					)}
 
 					{/* Delete */}
 					<TouchableOpacity

@@ -32,6 +32,8 @@ export interface Database {
 			};
 			plants: {
 				Row: {
+					is_toxic_to_animals: boolean;
+					toxicity_description: string | null;
 					watering_details: string;
 					soil_details: string;
 					light_details: string;
@@ -59,6 +61,8 @@ export interface Database {
 					light_amount: string;
 				};
 				Insert: {
+					is_toxic_to_animals: boolean;
+					toxicity_description: string | null;
 					id?: string;
 					user_id: string;
 					name: string;
@@ -85,6 +89,8 @@ export interface Database {
 					light_amount: string;
 				};
 				Update: {
+					is_toxic_to_animals: boolean;
+					toxicity_description: string | null;
 					id?: string;
 					user_id?: string;
 					name?: string;

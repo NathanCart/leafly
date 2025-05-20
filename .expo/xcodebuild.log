@@ -1,6 +1,0 @@
-Command line invocation:
-    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -workspace /Users/nathancarter/Projects/leafly/ios/leafly.xcworkspace -configuration Debug -scheme florai -destination id=55FBD898-02A9-4E2B-8FC7-E84DBA3E664F
-
-User defaults from command line:
-    IDEPackageSupportUseBuiltinSCM = YES
-

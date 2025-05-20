@@ -162,6 +162,8 @@ export function usePlants() {
 				.from('plants')
 				.insert([
 					{
+						is_toxic_to_animals: response?.isToxicToAnimals,
+						toxicity_description: response?.toxicityDescription,
 						raw: plant,
 						image_url: imageUrl,
 						name: plant.name,

@@ -10,7 +10,6 @@ import {
 	GoogleSigninButton,
 	statusCodes,
 } from '@react-native-google-signin/google-signin';
-
 export function Auth() {
 	// Configure Google Sign-In
 	GoogleSignin.configure({
@@ -26,9 +25,10 @@ export function Auth() {
 				buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
 				buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
 				cornerRadius={5}
-				style={{ width: 200, height: 64 }}
+				style={{ width: '100%', height: 48 }}
 				onPress={async () => {
 					// 4) Show paywall if needed (with “Sale” if user is over a day old)
+
 					try {
 						const credential = await AppleAuthentication.signInAsync({
 							requestedScopes: [
@@ -65,7 +65,8 @@ export function Auth() {
 	return (
 		<GoogleSigninButton
 			size={GoogleSigninButton.Size.Wide}
-			color={GoogleSigninButton.Color.Dark}
+			color={GoogleSigninButton.Color.Light}
+			style={{ width: '100%', height: 48 }}
 			onPress={async () => {
 				try {
 					await GoogleSignin.hasPlayServices();
