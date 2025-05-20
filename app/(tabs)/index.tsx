@@ -45,7 +45,6 @@ const getRelativeDate = (date: Date) => {
 };
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const HEADER_HEIGHT = 240;
 const CARD_GAP = 8;
 const CARD_WIDTH = (SCREEN_WIDTH - 12 * 3) / 2.5;
 
@@ -314,6 +313,9 @@ export default function HomeScreen() {
 
 	const [greeting, setGreeting] = useState('');
 	const [weather, setWeather] = useState<any>(null);
+
+	const HEADER_HEIGHT = weather ? 240 : 170;
+
 	const [loading, setLoading] = useState(true);
 
 	const scrollY = useSharedValue(0);
@@ -424,6 +426,7 @@ export default function HomeScreen() {
 				style={[
 					styles.headerContainer,
 					{
+						height: HEADER_HEIGHT,
 						backgroundColor: isDark ? COLORS.surface.dark : '#87CEEB',
 						paddingTop: insets.top,
 					},
@@ -510,6 +513,8 @@ export default function HomeScreen() {
 					style={[
 						styles.contentCard,
 						{
+							minHeight: SCREEN_HEIGHT - HEADER_HEIGHT,
+
 							backgroundColor: isDark ? '#121212' : '#fff',
 							transform: [{ translateY: scrollY.value }],
 						},
@@ -846,7 +851,6 @@ const styles = StyleSheet.create({
 		top: 0,
 		left: 0,
 		right: 0,
-		height: HEADER_HEIGHT,
 		borderBottomLeftRadius: 30,
 		borderBottomRightRadius: 30,
 		overflow: 'hidden',
@@ -898,7 +902,6 @@ const styles = StyleSheet.create({
 		borderTopLeftRadius: 32,
 		borderTopRightRadius: 32,
 		paddingTop: 20,
-		minHeight: SCREEN_HEIGHT - HEADER_HEIGHT,
 		backgroundColor: 'transparent',
 		...Platform.select({
 			ios: {
