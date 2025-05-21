@@ -9,13 +9,13 @@ import {
 } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { Text } from '@/components/Text';
-import { Image } from 'expo-image';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '../constants/colors';
 import { FlatList } from 'react-native-gesture-handler';
 import { useMixpanel } from '@/hooks/useMixpanel';
 import { router } from 'expo-router';
+import { Image } from 'expo-image';
 
 // ────────────────────────────────────────────────────────────────────────────────
 // SLIDER DATA
@@ -196,10 +196,9 @@ const GeneratingScreen: React.FC = () => {
 						{/* Illustration (original absolute styling) */}
 						<View style={styles.imageWrapper}>
 							<Image
-								style={styles.image}
-								source={item.image}
+								source={{ uri: item.image }}
+								style={{ width: '100%', height: '100%' }}
 								contentFit="cover"
-								transition={0}
 							/>
 						</View>
 					</View>

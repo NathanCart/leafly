@@ -68,7 +68,7 @@ export function Auth() {
 					await GoogleSignin.hasPlayServices();
 					const userInfo = await GoogleSignin.signIn();
 
-					console.log(userInfo, 'userInfo data');
+					console.log(userInfo, 'userInfo data google signin');
 
 					if (userInfo?.data?.idToken) {
 						const { data, error } = await supabase.auth.signInWithIdToken({

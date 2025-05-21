@@ -12,11 +12,19 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { View } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
-
+function LoadingScreen() {
+	return (
+		<View style={styles.loadingContainer}>
+			<ActivityIndicator size="large" />
+		</View>
+	);
+}
 function RootLayoutNav() {
 	GoogleSignin.configure({
 		scopes: ['https://www.googleapis.com/auth/drive.readonly'],
@@ -24,32 +32,46 @@ function RootLayoutNav() {
 		iosClientId: '735228876062-3a8p1vcg2oor41sfst425drfn420jvcr.apps.googleusercontent.com',
 	});
 
-	const { session, loading } = useAuth();
+	const { session, loading: authLoading } = useAuth();
 
 	const segments = useSegments();
 	const router = useRouter();
 
+	// ── track onboarding lookup ────────────────────────────────────────────
+	const [onboardingChecked, setOnboardingChecked] = useState(false);
+	const [onboardingCompleted, setOnboardingCompleted] = useState(false);
+
 	useEffect(() => {
-		if (loading) return;
+		AsyncStorage.getItem('onboarding_completed')
+			.then((val) => setOnboardingCompleted(!!val))
+			.catch(() => setOnboardingCompleted(false))
+			.finally(() => setOnboardingChecked(true));
+	}, []);
+
+	useEffect(() => {
+		if (authLoading) return;
 
 		const inAuthGroup = segments[0] === '(auth)';
 		const inOnboardingGroup = segments[0] === '(onboarding)';
 
 		(async () => {
-			const onboardingCompleted = await AsyncStorage.getItem('onboarding_completed');
-
 			// console.log('segments data', segments);
-			if (!onboardingCompleted?.length && !inOnboardingGroup) {
+			if (!onboardingCompleted && !inOnboardingGroup) {
 				router.replace('/(onboarding)/get-started');
 			} else {
-				if (!session && !inAuthGroup && !!onboardingCompleted?.length) {
+				if (!session && !inAuthGroup && !!onboardingCompleted) {
 					router.replace('/login');
 				} else if (session && inAuthGroup) {
 					router.replace('/(tabs)');
 				}
 			}
 		})();
-	}, [session, loading, segments]);
+	}, [session, authLoading, segments]);
+
+	// ── show loader until both ready ────────────────────────────────────────
+	if (authLoading || !onboardingChecked) {
+		return <LoadingScreen />;
+	}
 
 	return (
 		<Stack screenOptions={{ headerShown: false }}>
@@ -102,3 +124,10 @@ export default function RootLayout() {
 		</AuthProvider>
 	);
 }
+const styles = StyleSheet.create({
+	loadingContainer: {
+		flex: 1,
+		justifyContent: 'center',
+		alignItems: 'center',
+	},
+});
