@@ -42,42 +42,64 @@ function RootLayoutNav() {
 	const [onboardingCompleted, setOnboardingCompleted] = useState(false);
 
 	useEffect(() => {
-		AsyncStorage.getItem('onboarding_completed')
-			.then((val) => setOnboardingCompleted(!!val))
+		AsyncStorage.getItem('onboarding_completed14')
+			.then((val) => setOnboardingCompleted(val === 'true'))
 			.catch(() => setOnboardingCompleted(false))
 			.finally(() => setOnboardingChecked(true));
 	}, []);
 
+	console.log('onboardingChecked', onboardingChecked);
+
 	useEffect(() => {
-		if (authLoading) return;
+		if (authLoading || !onboardingChecked) return;
 
 		const inAuthGroup = segments[0] === '(auth)';
+		console.log(!session);
+		console.log(segments, 'segments data');
 		const inOnboardingGroup = segments[0] === '(onboarding)';
 
 		(async () => {
-			// console.log('segments data', segments);
-			if (!onboardingCompleted && !inOnboardingGroup) {
+			if (!onboardingCompleted && !inOnboardingGroup && !segments?.length) {
+				console.log('onboarding not completed');
 				router.replace('/(onboarding)/get-started');
 			} else {
 				if (!session && !inAuthGroup && !!onboardingCompleted) {
+					console.log('user not logged in');
 					router.replace('/login');
-				} else if (session && inAuthGroup) {
+				} else if (session && (inAuthGroup || !segments?.length)) {
+					console.log('user logged in');
 					router.replace('/(tabs)');
 				}
 			}
 		})();
-	}, [session, authLoading, segments]);
-
-	// ── show loader until both ready ────────────────────────────────────────
-	if (authLoading || !onboardingChecked) {
-		return <LoadingScreen />;
-	}
+	}, [session, authLoading, segments, onboardingChecked, onboardingCompleted]);
 
 	return (
 		<Stack screenOptions={{ headerShown: false }}>
-			<Stack.Screen name="(auth)" />
-			<Stack.Screen name="(tabs)" />
-			<Stack.Screen name="+not-found" />
+			<Stack.Screen
+				name="(auth)"
+				options={{
+					animation: 'fade',
+				}}
+			/>
+			<Stack.Screen
+				name="(tabs)"
+				options={{
+					animation: 'fade',
+				}}
+			/>
+			<Stack.Screen
+				name="(onboarding)"
+				options={{
+					animation: 'fade',
+				}}
+			/>
+			<Stack.Screen
+				name="+not-found"
+				options={{
+					animation: 'fade',
+				}}
+			/>
 		</Stack>
 	);
 }

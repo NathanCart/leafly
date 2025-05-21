@@ -521,32 +521,38 @@ export default function HomeScreen() {
 					]}
 				>
 					<View style={styles.section}>
-						<View style={styles.sectionHeader}>
-							<Text
-								style={[
-									COLORS.titleMd,
-									{
-										color: isDark
-											? COLORS.text.primary.dark
-											: COLORS.text.primary.light,
-									},
-								]}
-							>
-								Recently Added
-							</Text>
-							{recentlyIdentified?.length > 0 && (
-								<TouchableOpacity onPress={() => router.push('/collection')}>
-									<Text
-										style={[
-											styles.seeAll,
-											{ color: isDark ? COLORS.secondary : COLORS.primary },
-										]}
-									>
-										See all
-									</Text>
-								</TouchableOpacity>
-							)}
-						</View>
+						{!!recentlyIdentified?.length && (
+							<View style={styles.sectionHeader}>
+								<Text
+									style={[
+										COLORS.titleMd,
+										{
+											color: isDark
+												? COLORS.text.primary.dark
+												: COLORS.text.primary.light,
+										},
+									]}
+								>
+									Recently Added
+								</Text>
+								{recentlyIdentified?.length > 0 && (
+									<TouchableOpacity onPress={() => router.push('/collection')}>
+										<Text
+											style={[
+												styles.seeAll,
+												{
+													color: isDark
+														? COLORS.secondary
+														: COLORS.primary,
+												},
+											]}
+										>
+											See all
+										</Text>
+									</TouchableOpacity>
+								)}
+							</View>
+						)}
 
 						{recentlyIdentified?.length > 0 ? (
 							<AnimatedLib.FlatList

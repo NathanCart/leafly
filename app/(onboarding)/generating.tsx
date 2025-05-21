@@ -135,14 +135,14 @@ const GeneratingScreen: React.FC = () => {
 	useEffect(() => {
 		const step = 100 / (LOADING_DURATION_MS / 50); // update every 50 ms
 		const id = setInterval(async () => {
-			await AsyncStorage.setItem('onboarding_completed', 'true');
-
 			setProgress((p) => {
 				const next = Math.min(p + step, 100);
 				if (next >= 100) {
 					clearInterval(id);
 
-					setTimeout(() => {
+					setTimeout(async () => {
+						await AsyncStorage.setItem('onboarding_completed14', 'true');
+
 						router.replace('/(auth)/login');
 					}, 300);
 				}
