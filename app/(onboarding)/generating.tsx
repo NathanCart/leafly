@@ -153,19 +153,25 @@ const GeneratingScreen: React.FC = () => {
 					bottom: '22%',
 					left: 0,
 					zIndex: 20,
+					justifyContent: 'center',
+					alignItems: 'center',
 				}}
 			>
-				<Image
-					style={{
-						flex: 1,
-						width: '100%',
-						height: '100%',
-						...COLORS.shadow,
-					}}
-					source={PLANT_IMAGES[0]}
-					contentFit="cover"
-					transition={0}
-				/>
+				<View style={styles.pyramidWrapper}>
+					{[0, 1, 2].map((row) => (
+						<View key={row} style={styles.pyramidRow}>
+							{PLANT_IMAGES.slice(0, row + 3).map((img, idx) => (
+								<Image
+									key={idx}
+									style={styles.plantAvatar}
+									source={img}
+									contentFit="cover"
+									transition={0}
+								/>
+							))}
+						</View>
+					))}
+				</View>
 			</View>
 			{/* plant pyramid over pitch graphic */}
 
