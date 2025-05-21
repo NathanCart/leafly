@@ -1,13 +1,7 @@
 // android/build.gradle
 
 // ─── 1) Project-wide Android settings (MUST be BEFORE buildscript) ──────────
-ext {
-    compileSdkVersion = 35
-    buildToolsVersion = "35.0.0"
-    minSdkVersion     = 24
-    targetSdkVersion  = 34
-    ndkVersion        = "26.1.10909125"
-}
+
 
 // ─── 2) Gradle Plugin & Dependencies ────────────────────────────────────────
 buildscript {
@@ -30,6 +24,13 @@ apply plugin: "com.facebook.react.rootproject"
 
 // ─── 4) All-projects repositories ───────────────────────────────────────────
 allprojects {
+    ext {
+        compileSdkVersion = 35
+        buildToolsVersion = "35.0.0"
+        minSdkVersion     = 24
+        targetSdkVersion  = 34
+        ndkVersion        = "26.1.10909125"
+    }
     repositories {
         // React Native Android artifacts from node_modules
         maven {
