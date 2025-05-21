@@ -1,38 +1,37 @@
 // android/build.gradle
-// ──────────────────────────────────────────────────────────────────────────────
-// 1) PROJECT-WIDE EXT BLOCK (must be BEFORE buildscript)
+
+// ─── 1) Project-wide Android settings (must be ABOVE buildscript) ────────────
 ext {
     compileSdkVersion = 35
     buildToolsVersion = "35.0.0"
     minSdkVersion     = 24
     targetSdkVersion  = 34
     ndkVersion        = "26.1.10909125"
-    kotlinVersion     = "1.9.25"
 }
 
-// 2) GRADLE PLUGIN & DEPENDENCIES
+// ─── 2) Gradle Plugin & Dependencies ────────────────────────────────────────
 buildscript {
     repositories {
         google()
         mavenCentral()
     }
     dependencies {
-        // pin to a known Android Gradle Plugin
+        // Pin to a known-good AGP version
         classpath("com.android.tools.build:gradle:8.4.0")
         // React Native plugin
         classpath("com.facebook.react:react-native-gradle-plugin")
-        // Kotlin plugin, explicitly using the ext.kotlinVersion
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:${project.ext.kotlinVersion}")
+        // Kotlin plugin (hard-coded version, no ext reference)
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.25")
     }
 }
 
-// 3) APPLY RN ROOT PROJECT PLUGIN
+// ─── 3) Apply the RN rootproject plugin ─────────────────────────────────────
 apply plugin: "com.facebook.react.rootproject"
 
-// 4) ALL PROJECTS REPOSITORIES
+// ─── 4) All-projects repositories ──────────────────────────────────────────
 allprojects {
     repositories {
-        // React Native / JSC from npm
+        // RN Android artifacts from node_modules
         maven {
             url(new File(
               ['node', '--print', "require.resolve('react-native/package.json')"]
