@@ -81,7 +81,6 @@ def enableProguardInReleaseBuilds = (findProperty('android.enableProguardInRelea
 def jscFlavor = 'org.webkit:android-jsc:+'
 
 android {
-    
     ndkVersion rootProject.ext.ndkVersion
 
     buildToolsVersion rootProject.ext.buildToolsVersion
@@ -90,12 +89,11 @@ android {
     namespace 'com.viralreach.florai'
     defaultConfig {
         applicationId 'com.viralreach.florai'
-        minSdkVersion 34
-        targetSdkVersion 34
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0.0"
     }
-    
     signingConfigs {
         debug {
             storeFile file('debug.keystore')
