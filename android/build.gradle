@@ -1,6 +1,6 @@
 // android/build.gradle
 
-// ─── 1) Project-wide Android settings (must be ABOVE buildscript) ────────────
+// ─── 1) Project-wide Android settings (MUST be BEFORE buildscript) ──────────
 ext {
     compileSdkVersion = 35
     buildToolsVersion = "35.0.0"
@@ -16,38 +16,38 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        // Pin to a known-good AGP version
+        // pin AGP to something compatible with your Gradle wrapper
         classpath("com.android.tools.build:gradle:8.4.0")
         // React Native plugin
         classpath("com.facebook.react:react-native-gradle-plugin")
-        // Kotlin plugin (hard-coded version, no ext reference)
+        // Kotlin plugin (hard-coded)
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.25")
     }
 }
 
-// ─── 3) Apply the RN rootproject plugin ─────────────────────────────────────
+// ─── 3) Apply the React-Native rootproject plugin ────────────────────────────
 apply plugin: "com.facebook.react.rootproject"
 
-// ─── 4) All-projects repositories ──────────────────────────────────────────
+// ─── 4) All-projects repositories ───────────────────────────────────────────
 allprojects {
     repositories {
-        // RN Android artifacts from node_modules
+        // React Native Android artifacts from node_modules
         maven {
             url(new File(
               ['node', '--print', "require.resolve('react-native/package.json')"]
-                 .execute(null, rootDir).text.trim(),
-              '../android'
+                .execute(null, rootDir).text.trim(),
+              "../android"
             ))
         }
         maven {
             url(new File(
               ['node', '--print', "require.resolve('jsc-android/package.json', { paths: [require.resolve('react-native/package.json')] })"]
-                 .execute(null, rootDir).text.trim(),
-              '../dist'
+                .execute(null, rootDir).text.trim(),
+              "../dist"
             ))
         }
         google()
         mavenCentral()
-        maven { url 'https://www.jitpack.io' }
+        maven { url "https://www.jitpack.io" }
     }
 }
