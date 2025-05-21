@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
 	Animated,
 	Easing,
@@ -8,28 +8,47 @@ import {
 	View,
 } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
-import { useNavigation } from '@react-navigation/native';
-import { COLORS } from '../constants/colors';
 import { Text } from '@/components/Text';
-import { router } from 'expo-router';
+import { Image } from 'expo-image';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Image } from 'expo-image';
+import { COLORS } from '../constants/colors';
+import { FlatList } from 'react-native-gesture-handler';
 import { useMixpanel } from '@/hooks/useMixpanel';
+import { router } from 'expo-router';
 
 // ────────────────────────────────────────────────────────────────────────────────
-// MOCK ASSETS (swap these for local/remote URIs)
+// SLIDER DATA
 // ────────────────────────────────────────────────────────────────────────────────
-const PLANT_IMAGES = [
-	'https://florai-app.s3.eu-west-2.amazonaws.com/Taking+care+of+plants-02.svg',
-	'https://florai-app.s3.eu-west-2.amazonaws.com/Taking+care+of+plants-02.svg',
-	'https://florai-app.s3.eu-west-2.amazonaws.com/Taking+care+of+plants-02.svg',
-	'https://florai-app.s3.eu-west-2.amazonaws.com/Taking+care+of+plants-02.svg',
-	'https://florai-app.s3.eu-west-2.amazonaws.com/Taking+care+of+plants-02.svg',
+const SLIDES = [
+	{
+		key: 'thriving',
+		statNumber: '35,000+',
+		statLabel: 'Plants Thriving',
+		statSubText:
+			'Discover a wide variety of life forms, including houseplants, ornamentals, trees, and weeds.',
+		image: 'https://leafly-app.s3.eu-west-2.amazonaws.com/Taking+care+of+plants-02.svg',
+	},
+
+	{
+		key: 'reminders',
+		statNumber: '8 M+',
+		statLabel: 'Smart Reminders',
+		statSubText: 'Millions of tailored care reminders sent every month.',
+		image: 'https://leafly-app.s3.eu-west-2.amazonaws.com/smart-reminders.svg',
+	},
+	{
+		key: 'identified',
+		statNumber: '90+',
+		statLabel: 'Plant Pests',
+		statSubText:
+			'Access almost a hundred carefully selected pests and diseases, caused by fungal, bacterial, viral and abiotic factors.',
+		image: 'https://leafly-app.s3.eu-west-2.amazonaws.com/identify-plant.svg',
+	},
 ];
 
 // ────────────────────────────────────────────────────────────────────────────────
-// PROGRESS RING
+// PROGRESS RING COMPONENT (unchanged)
 // ────────────────────────────────────────────────────────────────────────────────
 export const ProgressCircle: React.FC<{
 	/** Percentage value (0-100). */ progress: number;
@@ -98,18 +117,21 @@ export const ProgressCircle: React.FC<{
 };
 
 // ────────────────────────────────────────────────────────────────────────────────
-// MAIN SCREEN
+// MAIN SCREEN WITH AUTOPLAY SLIDER
 // ────────────────────────────────────────────────────────────────────────────────
-const LOADING_DURATION_MS = 5000; // total time until 100 %
-const NEXT_ROUTE = 'Home'; // customise to your route id
+const LOADING_DURATION_MS = 7000; // total time until 100 %
+const AUTOPLAY_INTERVAL_MS = 3333; // slider autoplay
 
 const GeneratingScreen: React.FC = () => {
 	const { width } = useWindowDimensions();
+	const flatListRef = useRef<FlatList>(null);
+	const [currentIndex, setCurrentIndex] = useState(0);
 	const [progress, setProgress] = useState<number>(0);
-	const navigation = useNavigation();
+	const insets = useSafeAreaInsets();
+
 	useMixpanel('generating');
 
-	// Increment % evenly over LOADING_DURATION_MS
+	// ── Increment % evenly over LOADING_DURATION_MS ────────────────────────────
 	useEffect(() => {
 		const step = 100 / (LOADING_DURATION_MS / 50); // update every 50 ms
 		const id = setInterval(async () => {
@@ -119,63 +141,72 @@ const GeneratingScreen: React.FC = () => {
 				const next = Math.min(p + step, 100);
 				if (next >= 100) {
 					clearInterval(id);
-					// Small timeout so the user sees 100 %
+
 					setTimeout(() => {
-						router.replace('/(auth)/register');
+						router.replace('/(auth)/login');
 					}, 300);
 				}
 				return next;
 			});
 		}, 50);
 		return () => clearInterval(id);
-	}, [navigation]);
+	}, []);
 
-	const insets = useSafeAreaInsets();
+	// ── Slider Autoplay ────────────────────────────────────────────────────────
+	useEffect(() => {
+		const autoplayId = setInterval(() => {
+			const nextIndex = (currentIndex + 1) % SLIDES.length;
+			flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
+			setCurrentIndex(nextIndex);
+		}, AUTOPLAY_INTERVAL_MS);
+		return () => clearInterval(autoplayId);
+	}, [currentIndex]);
+
+	// Update index when user swipes (keeps autoplay in sync)
+	const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
+		if (viewableItems.length > 0) {
+			setCurrentIndex(viewableItems[0].index);
+		}
+	}).current;
+
+	const viewConfigRef = useRef({ viewAreaCoveragePercentThreshold: 50 });
 
 	return (
 		<SafeAreaView style={styles.root}>
-			{/* headline */}
-			<View style={[styles.headlineWrapper]}>
-				<Text style={styles.statNumber}>35 000+</Text>
-				<Text style={styles.statLabel}>Plants Thriving</Text>
-				<Text style={styles.statSubText}>
-					Discover a wide variety of life forms, including houseplants, ornamentals,
-					trees, and weeds.
-				</Text>
-			</View>
-
-			<View
-				style={{
-					flex: 1,
-					width: '100%',
-					height: '65%',
-					position: 'absolute',
-					bottom: '22%',
-					left: 0,
-					zIndex: 20,
-					justifyContent: 'center',
-					alignItems: 'center',
-				}}
-			>
-				<View style={styles.pyramidWrapper}>
-					{[0, 1, 2].map((row) => (
-						<View key={row} style={styles.pyramidRow}>
-							{PLANT_IMAGES.slice(0, row + 3).map((img, idx) => (
-								<Image
-									key={idx}
-									style={styles.plantAvatar}
-									source={img}
-									contentFit="cover"
-									transition={0}
-								/>
-							))}
+			{/* ── Slider ─────────────────────────────────────────────────────────── */}
+			<FlatList
+				ref={flatListRef}
+				data={SLIDES}
+				keyExtractor={(item) => item.key}
+				horizontal
+				pagingEnabled
+				showsHorizontalScrollIndicator={false}
+				bounces={false}
+				onViewableItemsChanged={onViewableItemsChanged}
+				viewabilityConfig={viewConfigRef.current}
+				renderItem={({ item }) => (
+					<View style={[styles.slide, { width }]}>
+						{/* Headline */}
+						<View style={styles.headlineWrapper}>
+							<Text style={styles.statNumber}>{item.statNumber}</Text>
+							<Text style={styles.statLabel}>{item.statLabel}</Text>
+							<Text style={styles.statSubText}>{item.statSubText}</Text>
 						</View>
-					))}
-				</View>
-			</View>
-			{/* plant pyramid over pitch graphic */}
 
-			{/* angled green footer with progress */}
+						{/* Illustration (original absolute styling) */}
+						<View style={styles.imageWrapper}>
+							<Image
+								style={styles.image}
+								source={item.image}
+								contentFit="cover"
+								transition={0}
+							/>
+						</View>
+					</View>
+				)}
+			/>
+
+			{/* ── Green Footer with Progress ─────────────────────────────────────── */}
 			<View style={[styles.greenSection, { width, marginBottom: -insets.bottom }]}>
 				<ProgressCircle progress={progress} size={120} />
 				<Text style={styles.loadingText}>Creating your personal journey…</Text>
@@ -195,11 +226,18 @@ const styles = StyleSheet.create({
 		position: 'relative',
 		backgroundColor: '#E6F2FF',
 	},
+	// slider slide container
+	slide: {
+		flex: 1,
+		position: 'relative',
+		alignItems: 'center',
+	},
 	// headline
 	headlineWrapper: {
 		alignItems: 'center',
 		zIndex: 30,
 		paddingHorizontal: 24,
+		marginTop: 24,
 	},
 	statNumber: {
 		fontSize: 60,
@@ -218,33 +256,27 @@ const styles = StyleSheet.create({
 		lineHeight: 24,
 		color: '#4B5563',
 	},
-	// plant pyramid
-	pitchWrapper: {
-		marginTop: 48,
-		alignItems: 'center',
+	// illustration (original styling)
+	imageWrapper: {
+		flex: 1,
+		width: '100%',
+		height: '65%',
+		paddingTop: 8,
+		bottom: '0%',
+		left: 0,
+		paddingHorizontal: 24,
+		zIndex: 40,
 	},
-	pyramidWrapper: {
-		width: 240,
-	},
-	pyramidRow: {
-		flexDirection: 'row',
-		justifyContent: 'center',
-	},
-	plantAvatar: {
-		width: 60,
-		height: 60,
-		borderRadius: 30,
-		borderWidth: 4,
-		borderColor: '#fff',
-		marginHorizontal: 4,
-		marginVertical: 4,
+	image: {
+		flex: 1,
+		width: '100%',
+		height: '100%',
+		...COLORS.shadow,
 	},
 	// green footer
 	greenSection: {
-		marginTop: 'auto',
 		alignItems: 'center',
 		justifyContent: 'center',
-		display: 'flex',
 		height: '37.45%',
 		borderTopLeftRadius: 40,
 		backgroundColor: COLORS.card.light,
