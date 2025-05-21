@@ -14,7 +14,7 @@ export function Auth() {
 	// Configure Google Sign-In
 	GoogleSignin.configure({
 		scopes: ['https://www.googleapis.com/auth/drive.readonly'],
-		webClientId: '422896157661-gp8trpklleiejq82tv2fgt430nvs1jbk.apps.googleusercontent.com',
+		webClientId: '735228876062-t147957uhp7glbfgsa0rb6ob9kuj11nf.apps.googleusercontent.com',
 		iosClientId: '',
 	});
 
