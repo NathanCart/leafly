@@ -27,7 +27,6 @@
 			}
 		},
 		"android": {
-			"googleServicesFile": "./google-services.json",
 			"adaptiveIcon": {
 				"foregroundImage": "./assets/adaptive-icon.png",
 				"backgroundColor": "#ffffff"
@@ -35,7 +34,6 @@
 			"package": "com.viralreach.florai"
 		},
 		"plugins": [
-			"./plugins/withGoogleServices.js",
 			"expo-router",
 			"expo-font",
 			"expo-apple-authentication",
