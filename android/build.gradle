@@ -1,51 +1,49 @@
 // android/build.gradle
 
-// ─── 1) Project-wide Android settings (MUST be BEFORE buildscript) ──────────
+// ──────────────────────────────────────────────────────────────────────────────
+// 1) PROJECT-WIDE EXT BLOCK (MUST be FIRST)
+ext {
+    compileSdkVersion = 35
+    buildToolsVersion = "35.0.0"
+    minSdkVersion     = 24
+    targetSdkVersion  = 34
+    ndkVersion        = "26.1.10909125"
+}
 
-
-// ─── 2) Gradle Plugin & Dependencies ────────────────────────────────────────
+// ──────────────────────────────────────────────────────────────────────────────
+// 2) Buildscript & Plugins
 buildscript {
     repositories {
         google()
         mavenCentral()
     }
     dependencies {
-        // pin AGP to something compatible with your Gradle wrapper
         classpath("com.android.tools.build:gradle:8.4.0")
-        // React Native plugin
         classpath("com.facebook.react:react-native-gradle-plugin")
-        // Kotlin plugin (hard-coded)
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.25")
     }
 }
 
-// ─── 3) Apply the React-Native rootproject plugin ────────────────────────────
 apply plugin: "com.facebook.react.rootproject"
 
-// ─── 4) All-projects repositories ───────────────────────────────────────────
+// ──────────────────────────────────────────────────────────────────────────────
+// 3) All-projects Repositories
 allprojects {
-    ext {
-        compileSdkVersion = 35
-        buildToolsVersion = "35.0.0"
-        minSdkVersion     = 24
-        targetSdkVersion  = 34
-        ndkVersion        = "26.1.10909125"
-    }
     repositories {
-        // React Native Android artifacts from node_modules
+        // RN artifacts from node_modules
         maven {
-            url(new File(
-              ['node', '--print', "require.resolve('react-native/package.json')"]
+            url new File(
+              ['node','--print',"require.resolve('react-native/package.json')"]
                 .execute(null, rootDir).text.trim(),
-              "../android"
-            ))
+              '../android'
+            )
         }
         maven {
-            url(new File(
-              ['node', '--print', "require.resolve('jsc-android/package.json', { paths: [require.resolve('react-native/package.json')] })"]
+            url new File(
+              ['node','--print',"require.resolve('jsc-android/package.json', { paths: [require.resolve('react-native/package.json')] })"]
                 .execute(null, rootDir).text.trim(),
-              "../dist"
-            ))
+              '../dist'
+            )
         }
         google()
         mavenCentral()

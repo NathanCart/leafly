@@ -38,19 +38,7 @@
 			"expo-font",
 			"expo-apple-authentication",
 			"expo-file-system",
-			"@react-native-google-signin/google-signin",
-			[
-				"expo-build-properties",
-				{
-					"android": {
-						"compileSdkVersion": 35,
-						"targetSdkVersion": 34,
-						"buildToolsVersion": "35.0.0",
-						"ndkVersion": "26.1.10909125",
-						"minSdkVersion": 24
-					}
-				}
-			]
+			"@react-native-google-signin/google-signin"
 		],
 		"experiments": {
 			"typedRoutes": true
