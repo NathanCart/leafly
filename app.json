@@ -35,11 +35,17 @@
 			"package": "com.viralreach.florai"
 		},
 		"plugins": [
+			"./plugins/withGoogleServices.js",
 			"expo-router",
 			"expo-font",
 			"expo-apple-authentication",
 			"expo-file-system",
-			"@react-native-google-signin/google-signin",
+			[
+				"@react-native-google-signin/google-signin",
+				{
+					"iosUrlScheme": "com.googleusercontent.apps.735228876062-3a8p1vcg2oor41sfst425drfn420jvcr"
+				}
+			],
 			"expo-video",
 			[
 				"expo-build-properties",

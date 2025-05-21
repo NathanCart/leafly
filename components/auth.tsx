@@ -12,11 +12,6 @@ import {
 } from '@react-native-google-signin/google-signin';
 export function Auth() {
 	// Configure Google Sign-In
-	GoogleSignin.configure({
-		scopes: ['https://www.googleapis.com/auth/drive.readonly'],
-		webClientId: '735228876062-t147957uhp7glbfgsa0rb6ob9kuj11nf.apps.googleusercontent.com',
-		iosClientId: '',
-	});
 
 	// iOS: Apple Sign-In
 	if (Platform.OS === 'ios')

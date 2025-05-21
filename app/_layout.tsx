@@ -9,6 +9,7 @@ import { Quicksand_600SemiBold } from '@expo-google-fonts/quicksand/600SemiBold'
 import { Quicksand_700Bold } from '@expo-google-fonts/quicksand/700Bold';
 import { useFonts } from '@expo-google-fonts/quicksand/useFonts';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
@@ -17,6 +18,12 @@ import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
 
 function RootLayoutNav() {
+	GoogleSignin.configure({
+		scopes: ['https://www.googleapis.com/auth/drive.readonly'],
+		webClientId: '735228876062-t147957uhp7glbfgsa0rb6ob9kuj11nf.apps.googleusercontent.com',
+		iosClientId: '735228876062-3a8p1vcg2oor41sfst425drfn420jvcr.apps.googleusercontent.com',
+	});
+
 	const { session, loading } = useAuth();
 
 	const segments = useSegments();
