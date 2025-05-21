@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "346164885523",
+    "project_id": "florai-328fc",
+    "storage_bucket": "florai-328fc.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:346164885523:android:31b4a63a0635bb163de7e6",
+        "android_client_info": {
+          "package_name": "com.viralreach.florai"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA-eZkS2n3hurrvttEKRZ19JsR17L4IvQg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -46,7 +46,7 @@ export function Auth() {
 								token: credential.identityToken,
 							});
 							console.log(JSON.stringify({ error, user }, null, 2));
-							router.push('/');
+							router.push('/(tabs)');
 						} else {
 							throw new Error('No identityToken.');
 						}
@@ -69,8 +69,11 @@ export function Auth() {
 			style={{ width: '100%', height: 48 }}
 			onPress={async () => {
 				try {
+					console.log('Google Sign-In button pressed');
 					await GoogleSignin.hasPlayServices();
 					const userInfo = await GoogleSignin.signIn();
+
+					console.log(userInfo, 'userInfo data');
 
 					if (userInfo?.data?.idToken) {
 						const { data, error } = await supabase.auth.signInWithIdToken({
@@ -81,7 +84,7 @@ export function Auth() {
 						console.log(error, 'error logging in');
 
 						if (!error) {
-							router.push('/');
+							router.push('/(tabs)');
 						}
 					} else {
 						throw new Error('no ID token present!');
