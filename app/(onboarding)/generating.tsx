@@ -141,7 +141,7 @@ const GeneratingScreen: React.FC = () => {
 					clearInterval(id);
 
 					setTimeout(async () => {
-						await AsyncStorage.setItem('onboarding_completed14', 'true');
+						await AsyncStorage.setItem('onboarding_completed', 'true');
 
 						router.replace('/(auth)/login');
 					}, 300);

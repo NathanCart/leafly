@@ -42,7 +42,7 @@ function RootLayoutNav() {
 	const [onboardingCompleted, setOnboardingCompleted] = useState(false);
 
 	useEffect(() => {
-		AsyncStorage.getItem('onboarding_completed14')
+		AsyncStorage.getItem('onboarding_completed')
 			.then((val) => setOnboardingCompleted(val === 'true'))
 			.catch(() => setOnboardingCompleted(false))
 			.finally(() => setOnboardingChecked(true));

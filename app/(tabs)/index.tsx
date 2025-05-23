@@ -32,6 +32,7 @@ import AnimatedLib, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '../constants/colors';
 import { usePlants } from '@/contexts/DatabaseContext';
+import { PlantAssistantChat } from '@/components/PlantAssistantChat';
 
 const getRelativeDate = (date: Date) => {
 	const now = new Date();
@@ -307,9 +308,7 @@ export default function HomeScreen() {
 	const insets = useSafeAreaInsets();
 	const colorScheme = useColorScheme();
 	const isDark = colorScheme === 'dark';
-	const { currentStep, setCurrentStep, completeTour } = useTour();
-
-	console.log('currentStep', currentStep);
+	const { currentStep, setCurrentStep, completeTour, isFirstTime } = useTour();
 
 	const [greeting, setGreeting] = useState('');
 	const [weather, setWeather] = useState<any>(null);
@@ -409,6 +408,23 @@ export default function HomeScreen() {
 		}
 	};
 
+	const tourConfig = {
+		title:
+			currentStep === 'add-plant'
+				? 'Add your first plant'
+				: currentStep === 'schedule'
+				? 'Plant care schedules'
+				: 'Check your plants’ health',
+		description:
+			currentStep === 'add-plant'
+				? 'Tap the + button in the tab bar to identify and add a new plant to your collection.'
+				: currentStep === 'schedule'
+				? 'After adding a plant, set up watering and care schedules to keep your plants healthy and thriving.'
+				: "Keep an eye on your plants' health. Tap on any plant and scan it to check its health status and get care tips.",
+	};
+
+	console.log(currentStep, 'currentStep');
+
 	if (plantsLoading || loading) {
 		return (
 			<View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#fff' }]}>
@@ -500,6 +516,8 @@ export default function HomeScreen() {
 					) : null}
 				</View>
 			</AnimatedLib.View>
+
+			<PlantAssistantChat />
 
 			<AnimatedLib.ScrollView
 				onScroll={scrollHandler}
@@ -742,14 +760,13 @@ export default function HomeScreen() {
 			</AnimatedLib.ScrollView>
 
 			<TourHighlight
-				visible={currentStep === 'add-plant'}
-				position="bottom"
-				title="Welcome to Your Garden!"
-				description="Start by adding your first plant. Tap the + button in the tab bar to identify and add a new plant to your collection."
+				visible={isFirstTime}
+				title={tourConfig.title}
+				description={tourConfig.description}
 				onNext={handleTourNext}
 			/>
 
-			<TourHighlight
+			{/* <TourHighlight
 				visible={currentStep === 'schedule'}
 				position="top"
 				title="Care Schedule"
@@ -762,7 +779,7 @@ export default function HomeScreen() {
 				title="Health Checks"
 				description="Keep an eye on your plants' health. Tap on any plant and scan it to check its health status and get care tips."
 				onNext={handleTourNext}
-			/>
+			/> */}
 		</View>
 	);
 }

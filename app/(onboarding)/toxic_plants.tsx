@@ -86,7 +86,7 @@ export default function ToxicPlants() {
 			</View>
 
 			<Text style={styles.title}>
-				"I'm get worried my plants may be{' '}
+				"I get worried my plants may be{' '}
 				<Text style={{ color: COLORS.primary, fontWeight: 'black' }}>toxic</Text> for my
 				pets"
 			</Text>
