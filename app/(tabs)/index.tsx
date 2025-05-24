@@ -33,6 +33,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '../constants/colors';
 import { usePlants } from '@/contexts/DatabaseContext';
 import { PlantAssistantChat } from '@/components/PlantAssistantChat';
+import { set } from 'date-fns';
 
 const getRelativeDate = (date: Date) => {
 	const now = new Date();
@@ -313,7 +314,9 @@ export default function HomeScreen() {
 	const [greeting, setGreeting] = useState('');
 	const [weather, setWeather] = useState<any>(null);
 
-	const HEADER_HEIGHT = weather ? 240 : 170;
+	const HEADER_HEIGHT = !weather ? 170 : 240;
+
+	console.log(weather, 'weather data');
 
 	const [loading, setLoading] = useState(true);
 
@@ -404,6 +407,8 @@ export default function HomeScreen() {
 		} else if (currentStep === 'schedule') {
 			setCurrentStep('health');
 		} else if (currentStep === 'health') {
+			setCurrentStep('plant-assistant');
+		} else if (currentStep === 'plant-assistant') {
 			completeTour();
 		}
 	};
@@ -414,13 +419,17 @@ export default function HomeScreen() {
 				? 'Add your first plant'
 				: currentStep === 'schedule'
 				? 'Plant care schedules'
-				: 'Check your plants’ health',
+				: currentStep === 'health'
+				? 'Check your plants’ health'
+				: 'Plant Chat Assistant',
 		description:
 			currentStep === 'add-plant'
 				? 'Tap the + button in the tab bar to identify and add a new plant to your collection.'
 				: currentStep === 'schedule'
 				? 'After adding a plant, set up watering and care schedules to keep your plants healthy and thriving.'
-				: "Keep an eye on your plants' health. Tap on any plant and scan it to check its health status and get care tips.",
+				: currentStep === 'health'
+				? "Keep an eye on your plants' health. Tap on any plant and scan it to check its health status and get care tips."
+				: 'Chat with your plant assistant by tapping the bottom right chat icon to get personalized care tips and advice for your plants.',
 	};
 
 	console.log(currentStep, 'currentStep');
@@ -437,13 +446,17 @@ export default function HomeScreen() {
 	}
 
 	return (
-		<View style={[styles.container, { backgroundColor: isDark ? '#121212' : '#fff' }]}>
+		<View
+			style={[
+				styles.container,
+				{ backgroundColor: isDark ? COLORS.surface.dark : '#87CEEB' },
+			]}
+		>
 			<AnimatedLib.View
 				style={[
 					styles.headerContainer,
 					{
 						height: HEADER_HEIGHT,
-						backgroundColor: isDark ? COLORS.surface.dark : '#87CEEB',
 						paddingTop: insets.top,
 					},
 					headerStyle,
@@ -657,6 +670,19 @@ export default function HomeScreen() {
 							>
 								Upcoming Care
 							</Text>
+
+							<TouchableOpacity onPress={() => router.push('/care')}>
+								<Text
+									style={[
+										styles.seeAll,
+										{
+											color: isDark ? COLORS.secondary : COLORS.primary,
+										},
+									]}
+								>
+									See all
+								</Text>
+							</TouchableOpacity>
 						</View>
 
 						{upcomingTasks?.length > 0 ? (
@@ -765,21 +791,6 @@ export default function HomeScreen() {
 				description={tourConfig.description}
 				onNext={handleTourNext}
 			/>
-
-			{/* <TourHighlight
-				visible={currentStep === 'schedule'}
-				position="top"
-				title="Care Schedule"
-				description="After adding a plant, set up watering and care schedules to keep your plants healthy and thriving."
-				onNext={handleTourNext}
-			/>
-			<TourHighlight
-				visible={currentStep === 'health'}
-				position="top"
-				title="Health Checks"
-				description="Keep an eye on your plants' health. Tap on any plant and scan it to check its health status and get care tips."
-				onNext={handleTourNext}
-			/> */}
 		</View>
 	);
 }

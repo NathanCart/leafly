@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-type TourStep = 'add-plant' | 'schedule' | 'health' | 'complete';
+type TourStep = 'add-plant' | 'schedule' | 'health' | 'plant-assistant' | 'complete';
 
 type TourContextType = {
 	currentStep: TourStep | null;
