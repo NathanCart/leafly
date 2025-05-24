@@ -49,6 +49,7 @@ import { COLORS } from './constants/colors';
 import { EditPlantStepperModal } from '@/components/PlantDetails/EditPlantModal';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PlantAssistantChat } from '@/components/PlantAssistantChat';
+import { useRevenuecat } from '@/hooks/useRevenuecat';
 
 /* -------------------------------------------------
  * Constants & helpers
@@ -183,6 +184,7 @@ const EmptyTasks = ({ hasSchedule, onSetup }: { hasSchedule: boolean; onSetup: (
 export default function PlantDetail() {
 	const { id: plantId } = useLocalSearchParams<{ id: string }>();
 	const { getPlantById, updatePlant, deletePlant, refreshPlants } = usePlants();
+	const { proAction } = useRevenuecat();
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
 	const { width: windowWidth } = useWindowDimensions();
@@ -302,32 +304,36 @@ export default function PlantDetail() {
 	};
 
 	const toggleFavorite = async () => {
-		if (!plant) return;
-		const updated = await updatePlant(plantId!, { is_favorite: !isFavorite });
-		refreshPlants();
-		setPlant(updated);
-		setIsFavorite(updated.is_favorite);
+		proAction(async () => {
+			if (!plant) return;
+			const updated = await updatePlant(plantId!, { is_favorite: !isFavorite });
+			refreshPlants();
+			setPlant(updated);
+			setIsFavorite(updated.is_favorite);
+		});
 	};
 
 	const confirmDelete = () => {
-		Alert.alert('Delete Plant', 'This action cannot be undone.', [
-			{ text: 'Cancel', style: 'cancel' },
-			{
-				text: 'Delete',
-				style: 'destructive',
-				onPress: async () => {
-					try {
-						setDeleting(true);
-						await deletePlant(plantId!);
-						router.back();
-					} catch {
-						Alert.alert('Error', 'Could not delete plant');
-					} finally {
-						setDeleting(false);
-					}
+		proAction(() => {
+			Alert.alert('Delete Plant', 'This action cannot be undone.', [
+				{ text: 'Cancel', style: 'cancel' },
+				{
+					text: 'Delete',
+					style: 'destructive',
+					onPress: async () => {
+						try {
+							setDeleting(true);
+							await deletePlant(plantId!);
+							router.back();
+						} catch {
+							Alert.alert('Error', 'Could not delete plant');
+						} finally {
+							setDeleting(false);
+						}
+					},
 				},
-			},
-		]);
+			]);
+		});
 	};
 
 	const handleSaveUpdates = async ({
@@ -503,7 +509,11 @@ export default function PlantDetail() {
 						</View>
 						<TouchableOpacity
 							style={styles.editBtn}
-							onPress={() => setShowEditModal(true)}
+							onPress={async () => {
+								proAction(() => {
+									setShowEditModal(true);
+								});
+							}}
 						>
 							<Pencil size={18} color="#fff" />
 						</TouchableOpacity>

@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '@/app/constants/colors';
 import { Text } from '@/components/Text';
 import { useS3Uploader } from '../useS3Uploader';
+import { useRevenuecat } from '@/hooks/useRevenuecat';
 
 interface GalleryModalProps {
 	visible: boolean;
@@ -33,6 +34,8 @@ export function GalleryModal({ visible, onClose, plantId, mainImage, isDark }: G
 	const insets = useSafeAreaInsets();
 	const { width, height } = useWindowDimensions();
 	const imageSize = (width - 44) / 2;
+
+	const { proAction } = useRevenuecat();
 
 	const [actionLoading, setActionLoading] = useState(false);
 	const [viewerVisible, setViewerVisible] = useState(false);
@@ -68,18 +71,24 @@ export function GalleryModal({ visible, onClose, plantId, mainImage, isDark }: G
 	};
 
 	const handleImagePick = () => {
-		pickAndUpload(() =>
-			ImagePicker.launchImageLibraryAsync({
-				mediaTypes: ImagePicker.MediaTypeOptions.images,
-				allowsEditing: true,
-				aspect: [1, 1],
-				quality: 0.6,
-			})
-		);
+		proAction(() => {
+			pickAndUpload(() =>
+				ImagePicker.launchImageLibraryAsync({
+					mediaTypes: ImagePicker.MediaTypeOptions.images,
+					allowsEditing: true,
+					aspect: [1, 1],
+					quality: 0.6,
+				})
+			);
+		});
 	};
 
 	const handleCameraCapture = () => {
-		pickAndUpload(() => ImagePicker.launchCameraAsync({ quality: 0.6, allowsEditing: true }));
+		proAction(() => {
+			pickAndUpload(() =>
+				ImagePicker.launchCameraAsync({ quality: 0.6, allowsEditing: true })
+			);
+		});
 	};
 
 	const handleShare = async (imageUrl: string) => {

@@ -14,6 +14,7 @@ import { Button } from '../Button';
 import { TaskSuccessAnimation } from './TaskSuccessAnimation';
 import { COLORS } from '@/app/constants/colors';
 import { Text } from '@/components/Text';
+import { useRevenuecat } from '@/hooks/useRevenuecat';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -38,9 +39,12 @@ export const TaskCompletionModal = ({
 	const [showSuccess, setShowSuccess] = useState(false);
 	const isWatering = taskType === 'Water';
 	const accentColor = isWatering ? '#33A1FF' : '#4CAF50';
+	const { proAction } = useRevenuecat();
 
 	const handleComplete = () => {
-		setShowSuccess(true);
+		proAction(() => {
+			setShowSuccess(true);
+		});
 	};
 
 	const handleAnimationComplete = async () => {
@@ -50,11 +54,13 @@ export const TaskCompletionModal = ({
 	};
 
 	const handleDismiss = () => {
-		onClose();
-		onComplete();
-		if (onDismissReminder) {
-			onDismissReminder();
-		}
+		proAction(() => {
+			onClose();
+			onComplete();
+			if (onDismissReminder) {
+				onDismissReminder();
+			}
+		});
 	};
 
 	return (

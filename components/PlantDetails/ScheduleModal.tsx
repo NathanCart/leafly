@@ -16,6 +16,7 @@ import { COLORS } from '@/app/constants/colors';
 import { Button } from '../Button';
 import { Plant } from '@/data/plants';
 import { Text } from '@/components/Text';
+import { useRevenuecat } from '@/hooks/useRevenuecat';
 
 /* ────────────────────────────────────────────────────────── */
 
@@ -42,6 +43,8 @@ export const ScheduleModal = ({
 	plant,
 }: Props) => {
 	/* ───────── state ───────── */
+
+	const { proAction } = useRevenuecat();
 
 	// default schedule values (falls back to 7/30 if the plant has none)
 	const defaultSettings: ScheduleSettings = {
@@ -167,21 +170,25 @@ export const ScheduleModal = ({
 					<Button
 						variant="primary"
 						onPress={() => {
-							onSave({
-								watering: {
-									enabled: settings.watering.enabled,
-									days: settings.watering.enabled ? settings.watering.days : null,
-									autoSchedule: settings.watering.autoSchedule,
-								},
-								fertilizing: {
-									enabled: settings.fertilizing.enabled,
-									days: settings.fertilizing.enabled
-										? settings.fertilizing.days
-										: null,
-									autoSchedule: settings.fertilizing.autoSchedule,
-								},
+							proAction(() => {
+								onSave({
+									watering: {
+										enabled: settings.watering.enabled,
+										days: settings.watering.enabled
+											? settings.watering.days
+											: null,
+										autoSchedule: settings.watering.autoSchedule,
+									},
+									fertilizing: {
+										enabled: settings.fertilizing.enabled,
+										days: settings.fertilizing.enabled
+											? settings.fertilizing.days
+											: null,
+										autoSchedule: settings.fertilizing.autoSchedule,
+									},
+								});
+								onClose();
 							});
-							onClose();
 						}}
 					>
 						Save

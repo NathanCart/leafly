@@ -20,11 +20,13 @@ import { COLORS } from './constants/colors';
 import { Text } from '@/components/Text';
 import { supabase } from '@/lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRevenuecat } from '@/hooks/useRevenuecat';
 
 export default function AccountSettingsScreen() {
 	const insets = useSafeAreaInsets();
 	const { profile, updateProfile, refreshProfile } = useProfile();
 	const { session } = useAuth();
+	const { proAction } = useRevenuecat();
 
 	const [username, setUsername] = useState(profile?.username || '');
 	const [email, setEmail] = useState(session?.user?.email || '');
@@ -50,21 +52,23 @@ export default function AccountSettingsScreen() {
 	};
 
 	const handleSave = async () => {
-		if (!username.trim()) {
-			setHasError(true);
-			shake();
-			return;
-		}
-		try {
-			setLoading(true);
-			await updateProfile({ username });
-			await refreshProfile();
-			router.back();
-		} catch {
-			Alert.alert('Error', 'Failed to update profile');
-		} finally {
-			setLoading(false);
-		}
+		proAction(async () => {
+			if (!username.trim()) {
+				setHasError(true);
+				shake();
+				return;
+			}
+			try {
+				setLoading(true);
+				await updateProfile({ username });
+				await refreshProfile();
+				router.back();
+			} catch {
+				Alert.alert('Error', 'Failed to update profile');
+			} finally {
+				setLoading(false);
+			}
+		});
 	};
 
 	const handleDeleteAccount = () => {

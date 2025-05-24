@@ -53,7 +53,7 @@ export function useRevenuecat(
 	}
 
 	/** Gate a premium action and return true if the user is allowed. */
-	async function requireProChat(sendChat: (t: string) => void, delay = 1000) {
+	async function requireProChat(sendChat: (t: string) => void, delay = 1500) {
 		if (await isSubscribed()) return true;
 
 		sendChat('🌿 That’s a sprout-level feature for Plant Pros! Ready to unlock it?');
@@ -63,10 +63,20 @@ export function useRevenuecat(
 		return res === PAYWALL_RESULT.PURCHASED || (await isSubscribed());
 	}
 
+	async function proAction(action: () => void) {
+		const isSubscribed = await useRevenuecat().isSubscribed();
+		if (!isSubscribed) {
+			await presentPaywallIfNeeded();
+		} else {
+			action();
+		}
+	}
+
 	return {
 		presentPaywallIfNeeded,
 		initializeRevenueCat,
 		isSubscribed,
 		requireProChat,
+		proAction,
 	};
 }
