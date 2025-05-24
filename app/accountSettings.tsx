@@ -26,7 +26,7 @@ export default function AccountSettingsScreen() {
 	const insets = useSafeAreaInsets();
 	const { profile, updateProfile, refreshProfile } = useProfile();
 	const { session } = useAuth();
-	const { proAction } = useRevenuecat();
+	const { proAction } = useRevenuecat({ offering: 'pips' });
 
 	const [username, setUsername] = useState(profile?.username || '');
 	const [email, setEmail] = useState(session?.user?.email || '');

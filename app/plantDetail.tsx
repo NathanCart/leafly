@@ -184,7 +184,7 @@ const EmptyTasks = ({ hasSchedule, onSetup }: { hasSchedule: boolean; onSetup: (
 export default function PlantDetail() {
 	const { id: plantId } = useLocalSearchParams<{ id: string }>();
 	const { getPlantById, updatePlant, deletePlant, refreshPlants } = usePlants();
-	const { proAction } = useRevenuecat();
+	const { proAction } = useRevenuecat({ offering: 'pips' });
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
 	const { width: windowWidth } = useWindowDimensions();

@@ -34,7 +34,7 @@ export default function IdentifyScreen() {
 		(PlantIdClassificationResponse[0] & { capturedImageUri?: string }) | null
 	>(null);
 
-	const { isSubscribed, presentPaywallIfNeeded } = useRevenuecat();
+	const { proAction } = useRevenuecat({ offering: 'pips' });
 	const [showPlantDetails, setShowPlantDetails] = useState(false);
 	const [showAddPlantModal, setShowAddPlantModal] = useState(false);
 	const colorScheme = useColorScheme();
@@ -119,20 +119,15 @@ export default function IdentifyScreen() {
 	};
 
 	const startIdentification = async () => {
-		(async () => {
-			const isSubscribed = await useRevenuecat().isSubscribed();
-			if (!isSubscribed) {
-				await presentPaywallIfNeeded();
-			} else {
-				if (!capturedImage) return;
-				try {
-					await identifyPlant(capturedImage);
-					setShowResults(true);
-				} catch (err) {
-					console.error('Identification error:', err);
-				}
+		proAction(async () => {
+			if (!capturedImage) return;
+			try {
+				await identifyPlant(capturedImage);
+				setShowResults(true);
+			} catch (err) {
+				console.error('Identification error:', err);
 			}
-		})();
+		});
 	};
 
 	const handleClose = () => {

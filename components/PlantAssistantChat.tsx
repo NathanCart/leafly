@@ -44,7 +44,7 @@ const TypingIndicator = () => {
 
 	return (
 		<View style={styles.typingWrap}>
-			<Text style={styles.typingLabel}>Sprouty is typing</Text>
+			<Text style={styles.typingLabel}>Pip is typing</Text>
 			{dots.map((o, idx) => (
 				<Animated.View key={idx} style={[styles.dot, { opacity: o }]} />
 			))}
@@ -77,7 +77,7 @@ export const PlantAssistantChat: React.FC<PlantAssistantChatProps> = ({ plant })
 	const flatRef = useRef<FlatList<ChatMessage>>(null);
 	const insets = useSafeAreaInsets();
 	const { messages, send, streaming, reset, setMessages } = usePlantChat();
-	const { requireProChat } = useRevenuecat();
+	const { requireProChat } = useRevenuecat({ offering: 'pips' });
 
 	const gatePremium = async (): Promise<boolean> => {
 		return requireProChat((text) =>
@@ -94,7 +94,7 @@ export const PlantAssistantChat: React.FC<PlantAssistantChatProps> = ({ plant })
 			// If plant exists, show its card first
 			if (plant) {
 				m.push({
-					id: 'sprouty-plant-info',
+					id: 'pip-plant-info',
 					role: 'assistant',
 					subtype: 'plantInfo',
 					image: plant.image_url ?? undefined,
@@ -102,9 +102,9 @@ export const PlantAssistantChat: React.FC<PlantAssistantChatProps> = ({ plant })
 				});
 			} else {
 				m.push({
-					id: 'sprouty-intro',
+					id: 'pip-intro',
 					role: 'assistant',
-					text: 'Hi! I’m Sprouty 🌿 — ask me anything about your plants.',
+					text: 'Hi! I’m Pip 🌿 — ask me anything about your plants.',
 				});
 			}
 
@@ -230,7 +230,7 @@ export const PlantAssistantChat: React.FC<PlantAssistantChatProps> = ({ plant })
 				>
 					{/* header */}
 					<View style={styles.header}>
-						<Text style={styles.headerTitle}>Sprouty – Plant Assistant 🌱</Text>
+						<Text style={styles.headerTitle}>Pip – Plant Assistant 🌱</Text>
 						<TouchableOpacity
 							onPress={() => {
 								setOpen(false);
@@ -257,7 +257,7 @@ export const PlantAssistantChat: React.FC<PlantAssistantChatProps> = ({ plant })
 						<TextInput
 							value={input}
 							onChangeText={setInput}
-							placeholder="Ask Sprouty anything..."
+							placeholder="Ask Pip anything..."
 							style={styles.input}
 							editable={!streaming}
 							onSubmitEditing={async () => {

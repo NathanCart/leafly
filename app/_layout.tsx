@@ -18,14 +18,10 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-get-random-values';
+import Purchases from 'react-native-purchases';
 import { v4 as uuidv4 } from 'uuid';
-function LoadingScreen() {
-	return (
-		<View style={styles.loadingContainer}>
-			<ActivityIndicator size="large" />
-		</View>
-	);
-}
+
+Purchases.setLogLevel(Purchases.LOG_LEVEL.DEBUG);
 function RootLayoutNav() {
 	GoogleSignin.configure({
 		scopes: ['https://www.googleapis.com/auth/drive.readonly'],

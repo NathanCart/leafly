@@ -44,7 +44,7 @@ export const ScheduleModal = ({
 }: Props) => {
 	/* ───────── state ───────── */
 
-	const { proAction } = useRevenuecat();
+	const { proAction } = useRevenuecat({ offering: 'pips' });
 
 	// default schedule values (falls back to 7/30 if the plant has none)
 	const defaultSettings: ScheduleSettings = {

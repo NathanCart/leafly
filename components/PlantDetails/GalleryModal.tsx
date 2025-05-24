@@ -35,7 +35,7 @@ export function GalleryModal({ visible, onClose, plantId, mainImage, isDark }: G
 	const { width, height } = useWindowDimensions();
 	const imageSize = (width - 44) / 2;
 
-	const { proAction } = useRevenuecat();
+	const { proAction } = useRevenuecat({ offering: 'pips' });
 
 	const [actionLoading, setActionLoading] = useState(false);
 	const [viewerVisible, setViewerVisible] = useState(false);

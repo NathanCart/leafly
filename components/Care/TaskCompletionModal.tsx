@@ -39,7 +39,7 @@ export const TaskCompletionModal = ({
 	const [showSuccess, setShowSuccess] = useState(false);
 	const isWatering = taskType === 'Water';
 	const accentColor = isWatering ? '#33A1FF' : '#4CAF50';
-	const { proAction } = useRevenuecat();
+	const { proAction } = useRevenuecat({ offering: 'pips' });
 
 	const handleComplete = () => {
 		proAction(() => {

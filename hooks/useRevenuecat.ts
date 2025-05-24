@@ -4,7 +4,7 @@ import Purchases from 'react-native-purchases';
 import { UIManager } from 'react-native';
 
 export function useRevenuecat(
-	{ offering }: { offering?: 'default' } = {
+	{ offering }: { offering?: 'default' | 'pips' } = {
 		offering: 'default',
 	}
 ) {
@@ -36,7 +36,7 @@ export function useRevenuecat(
 			requiredEntitlementIdentifier: 'pro',
 			offering: {
 				identifier: offering, // Replace with your offering identifier
-			} as any,
+			},
 		});
 
 		return paywallResult;

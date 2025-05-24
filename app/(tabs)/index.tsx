@@ -537,7 +537,7 @@ export default function HomeScreen() {
 				scrollEventThrottle={16}
 				contentContainerStyle={{
 					paddingTop: HEADER_HEIGHT - 20,
-					paddingBottom: insets.bottom + 24, // room for the bottom edge / gesture area
+					marginBottom: insets.bottom + 24, // room for the bottom edge / gesture area
 				}}
 			>
 				<AnimatedLib.View

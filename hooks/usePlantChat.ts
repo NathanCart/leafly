@@ -70,8 +70,8 @@ export function usePlantChat() {
 
 			if (!res.ok) {
 				const detail = await res.text();
-				console.error('Sprouty error', res.status, detail);
-				replaceAssistant(botId, '😵 Sprouty had a hiccup.');
+				console.error('Pip error', res.status, detail);
+				replaceAssistant(botId, '😵 Pip had a hiccup.');
 				return;
 			}
 

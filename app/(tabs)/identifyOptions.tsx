@@ -23,6 +23,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '../constants/colors';
+import { useRevenuecat } from '@/hooks/useRevenuecat';
 
 const categories = [
 	{ id: 'flower', name: 'Flower', icon: '🌺' },
@@ -262,11 +263,15 @@ export default function IdentifyScreen() {
 		await AsyncStorage.removeItem('@recent_searches');
 		setRecentSearches([]);
 	};
+	const { proAction } = useRevenuecat({ offering: 'pips' });
+
 	const handleScanPress = () => router.replace('/identify');
 	const onCategoryPress = (c) => setSearchQuery(c.name);
 	const handleSelectPlant = (plant) => {
-		setSelectedPlant(plant);
-		setShowAddPlantModal(true);
+		proAction(async () => {
+			setSelectedPlant(plant);
+			setShowAddPlantModal(true);
+		});
 	};
 
 	const { addPlant } = usePlants();

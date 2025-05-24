@@ -25,7 +25,7 @@ export default function HealthScreen() {
 	const [permission, requestPermission] = useCameraPermissions();
 	const [capturedImage, setCapturedImage] = useState<string | null>(null);
 	const [showResults, setShowResults] = useState(false);
-	const { identifyPlant, presentPaywallIfNeeded } = useRevenuecat();
+	const { proAction } = useRevenuecat({ offering: 'pips' });
 
 	const { id: plantId } = useLocalSearchParams<{ id: string }>();
 	const colorScheme = useColorScheme();
@@ -61,21 +61,16 @@ export default function HealthScreen() {
 	};
 
 	const startIdentification = async () => {
-		(async () => {
-			const isSubscribed = await useRevenuecat().isSubscribed();
-			if (!isSubscribed) {
-				await presentPaywallIfNeeded();
-			} else {
-				if (!capturedImage) return;
-				try {
-					console.log('Starting identification with image:', capturedImage);
-					await identifyPlantHealth(capturedImage);
-					setShowResults(true);
-				} catch (err) {
-					console.error('Identification error:', err);
-				}
+		proAction(async () => {
+			if (!capturedImage) return;
+			try {
+				console.log('Starting identification with image:', capturedImage);
+				await identifyPlantHealth(capturedImage);
+				setShowResults(true);
+			} catch (err) {
+				console.error('Identification error:', err);
 			}
-		})();
+		});
 	};
 
 	const handleClose = () => {
