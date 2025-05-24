@@ -29,6 +29,7 @@ import * as Haptics from 'expo-haptics';
 import { COLORS } from '../constants/colors';
 import { supabase } from '@/lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRevenuecat } from '@/hooks/useRevenuecat';
 
 function CustomTabBarButton(props: BottomTabBarButtonProps) {
 	const { children, onPress, accessibilityState, style, ...rest } = props;
@@ -80,9 +81,11 @@ function CustomTabBarButton(props: BottomTabBarButtonProps) {
 
 export default function TabLayout() {
 	const isDark = useColorScheme() === 'dark';
+	const { presentPaywallIfNeeded } = useRevenuecat();
 
 	useEffect(() => {
 		(async () => {
+			presentPaywallIfNeeded();
 			const installUUID = await AsyncStorage.getItem('install_uuid');
 			const { data: session } = await supabase.auth.getSession();
 

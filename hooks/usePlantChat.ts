@@ -90,5 +90,6 @@ export function usePlantChat() {
 		send,
 		reset: () => setMessages([]),
 		streaming,
+		setMessages,
 	};
 }

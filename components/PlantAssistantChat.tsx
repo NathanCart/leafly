@@ -22,6 +22,7 @@ import { COLORS } from '@/app/constants/colors';
 import { Text } from '@/components/Text';
 import { ChatMessage, usePlantChat } from '@/hooks/usePlantChat';
 import { Plant } from '@/data/plants';
+import { useRevenuecat } from '@/hooks/useRevenuecat';
 
 /* ──────────────────────────────────────────────── */
 /* Typing indicator                                 */
@@ -75,7 +76,14 @@ export const PlantAssistantChat: React.FC<PlantAssistantChatProps> = ({ plant })
 	const [input, setInput] = useState('');
 	const flatRef = useRef<FlatList<ChatMessage>>(null);
 	const insets = useSafeAreaInsets();
-	const { messages, send, streaming, reset } = usePlantChat();
+	const { messages, send, streaming, reset, setMessages } = usePlantChat();
+	const { requireProChat } = useRevenuecat();
+
+	const gatePremium = async (): Promise<boolean> => {
+		return requireProChat((text) =>
+			setMessages((prev) => [...prev, { id: `pro-${Date.now()}`, role: 'assistant', text }])
+		);
+	};
 
 	/* ───── intro greeting once ───── */
 	const [introDone, setIntroDone] = useState(false);
@@ -253,8 +261,10 @@ export const PlantAssistantChat: React.FC<PlantAssistantChatProps> = ({ plant })
 							style={styles.input}
 							editable={!streaming}
 							onSubmitEditing={async () => {
+								// 4️⃣ MOD
 								const q = input.trim();
 								if (!q) return;
+								if (!(await gatePremium())) return; // ← paywall gate
 								setInput('');
 								await send(q, buildContext());
 							}}
@@ -267,8 +277,10 @@ export const PlantAssistantChat: React.FC<PlantAssistantChatProps> = ({ plant })
 							]}
 							disabled={!input.trim() || streaming}
 							onPress={async () => {
+								// 4️⃣ MOD
 								const q = input.trim();
 								if (!q) return;
+								if (!(await gatePremium())) return; // ← paywall gate
 								setInput('');
 								await send(q, buildContext());
 							}}

@@ -1,0 +1,37 @@
+CREATE NEW BUILD // npx expo run ios 
+
+Then expo start and press I for emulator
+
+Create build for physical device // eas build --profile development --platform ios
+
+
+eas init
+
+eas build:configure
+
+eas build --profile development-device --platform ios
+eas build --profile development --platform android
+
+scan qr
+
+npx expo start
+
+
+
+SUPABBASE
+
+npx supabase db pull
+
+
+npx supabase gen types typescript --project-id "cvzlxhofbajslcgbtdvx" --schema public > utils/database.types.ts
+workout_exercise add sets?: z.infer<typeof WorkoutExerciseSchema>['sets'];
+
+
+/Users/nathancarter/Library/Android/sdk
+
+export ANDROID_HOME=/Users/nathancarter/Library/Android/sdk
+
+npx supabase functions serve
+
+DEPLOY EDGE FUNCTIONS
+https://supabase.com/docs/guides/functions/deploy

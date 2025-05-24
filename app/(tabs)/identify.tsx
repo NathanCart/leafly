@@ -8,6 +8,7 @@ import { ResultsView } from '@/components/PlantIdentification/ResultsView';
 import { Text } from '@/components/Text';
 import { usePlants } from '@/contexts/DatabaseContext';
 import { usePlantIdentification } from '@/hooks/usePlantIdentification';
+import { useRevenuecat } from '@/hooks/useRevenuecat';
 import { PlantIdClassificationResponse } from '@/types/plants';
 import { useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
@@ -32,6 +33,8 @@ export default function IdentifyScreen() {
 	const [selectedPlant, setSelectedPlant] = useState<
 		(PlantIdClassificationResponse[0] & { capturedImageUri?: string }) | null
 	>(null);
+
+	const { isSubscribed, presentPaywallIfNeeded } = useRevenuecat();
 	const [showPlantDetails, setShowPlantDetails] = useState(false);
 	const [showAddPlantModal, setShowAddPlantModal] = useState(false);
 	const colorScheme = useColorScheme();
@@ -116,13 +119,20 @@ export default function IdentifyScreen() {
 	};
 
 	const startIdentification = async () => {
-		if (!capturedImage) return;
-		try {
-			await identifyPlant(capturedImage);
-			setShowResults(true);
-		} catch (err) {
-			console.error('Identification error:', err);
-		}
+		(async () => {
+			const isSubscribed = await useRevenuecat().isSubscribed();
+			if (!isSubscribed) {
+				await presentPaywallIfNeeded();
+			} else {
+				if (!capturedImage) return;
+				try {
+					await identifyPlant(capturedImage);
+					setShowResults(true);
+				} catch (err) {
+					console.error('Identification error:', err);
+				}
+			}
+		})();
 	};
 
 	const handleClose = () => {

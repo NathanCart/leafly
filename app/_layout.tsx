@@ -2,6 +2,7 @@ import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { DatabaseProvider } from '@/contexts/DatabaseContext';
 import { TourProvider } from '@/contexts/TourContext';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
+import { useRevenuecat } from '@/hooks/useRevenuecat';
 import { Quicksand_300Light } from '@expo-google-fonts/quicksand/300Light';
 import { Quicksand_400Regular } from '@expo-google-fonts/quicksand/400Regular';
 import { Quicksand_500Medium } from '@expo-google-fonts/quicksand/500Medium';
@@ -36,12 +37,14 @@ function RootLayoutNav() {
 
 	const segments = useSegments();
 	const router = useRouter();
+	const { initializeRevenueCat } = useRevenuecat();
 
 	// ── track onboarding lookup ────────────────────────────────────────────
 	const [onboardingChecked, setOnboardingChecked] = useState(false);
 	const [onboardingCompleted, setOnboardingCompleted] = useState(false);
 
 	useEffect(() => {
+		initializeRevenueCat();
 		AsyncStorage.getItem('onboarding_completed')
 			.then((val) => setOnboardingCompleted(val === 'true'))
 			.catch(() => setOnboardingCompleted(false))

@@ -5,6 +5,7 @@ import { CameraViewComponent } from '@/components/PlantIdentification/CameraView
 import { PlantHealthResultsView } from '@/components/PlantIdentification/HealthResultsView';
 import { Text } from '@/components/Text';
 import { usePlantHealth } from '@/contexts/DatabaseContext';
+import { useRevenuecat } from '@/hooks/useRevenuecat';
 import { useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -24,6 +25,7 @@ export default function HealthScreen() {
 	const [permission, requestPermission] = useCameraPermissions();
 	const [capturedImage, setCapturedImage] = useState<string | null>(null);
 	const [showResults, setShowResults] = useState(false);
+	const { identifyPlant, presentPaywallIfNeeded } = useRevenuecat();
 
 	const { id: plantId } = useLocalSearchParams<{ id: string }>();
 	const colorScheme = useColorScheme();
@@ -59,14 +61,21 @@ export default function HealthScreen() {
 	};
 
 	const startIdentification = async () => {
-		if (!capturedImage) return;
-		try {
-			console.log('Starting identification with image:', capturedImage);
-			await identifyPlantHealth(capturedImage);
-			setShowResults(true);
-		} catch (err) {
-			console.error('Identification error:', err);
-		}
+		(async () => {
+			const isSubscribed = await useRevenuecat().isSubscribed();
+			if (!isSubscribed) {
+				await presentPaywallIfNeeded();
+			} else {
+				if (!capturedImage) return;
+				try {
+					console.log('Starting identification with image:', capturedImage);
+					await identifyPlantHealth(capturedImage);
+					setShowResults(true);
+				} catch (err) {
+					console.error('Identification error:', err);
+				}
+			}
+		})();
 	};
 
 	const handleClose = () => {
