@@ -2,8 +2,16 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useState } from 'react';
 
-export type ChatMessage = { id: string; role: 'user' | 'assistant'; text: string };
-type SendFn = (question: string) => Promise<void>;
+export type ChatMessage = {
+	id: string;
+	role: 'user' | 'assistant';
+	text: string;
+	/** optional richer content */
+	image?: string;
+	subtype?: 'plantInfo' | 'normal';
+};
+
+type SendFn = (question: string, extraContext?: unknown) => Promise<void>;
 
 const FUNCTION_URL = 'https://kvjaxrtgtjbqopegbshw.supabase.co/functions/v1/chat-completion';
 
@@ -12,28 +20,44 @@ export function usePlantChat() {
 	const [streaming, setStreaming] = useState(false);
 	const { session } = useAuth();
 
-	/* replace assistant text */
+	/* helper ------------------------------------------------------- */
 	const replaceAssistant = (id: string, text: string) =>
 		setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, text } : m)));
 
-	const send: SendFn = async (question) => {
+	/* main send ---------------------------------------------------- */
+	const send: SendFn = async (question, extraContext) => {
 		if (!question.trim()) return;
 
-		/* optimistic user bubble */
+		/* optimistic UI --------------------------------------------- */
 		const userId = Date.now().toString();
-		const userMsg: ChatMessage = { id: userId, role: 'user', text: question.trim() };
-
-		/* assistant placeholder (empty text!) */
+		const userMsg: ChatMessage = {
+			id: userId,
+			role: 'user',
+			text: question.trim(),
+		};
 		const botId = `${userId}-bot`;
-		const botStub: ChatMessage = { id: botId, role: 'assistant', text: '' };
-
-		/* push both at once */
+		const botStub: ChatMessage = {
+			id: botId,
+			role: 'assistant',
+			text: '', // shows typing indicator
+		};
 		setMessages((m) => [...m, userMsg, botStub]);
 		setStreaming(true);
 
-		/* history (last 10 turns BEFORE current question) */
+		/* last 10 turns of history BEFORE current question ----------- */
 		const history = [...messages, userMsg].slice(-10).map(({ role, text }) => ({ role, text }));
 
+		/* build body ------------------------------------------------- */
+		const body: Record<string, unknown> = {
+			question,
+			history,
+		};
+		if (extraContext) {
+			// EXACT property name as requested (spaces included)
+			body['important details to consider'] = extraContext;
+		}
+
+		/* call edge function ---------------------------------------- */
 		try {
 			const res = await fetch(FUNCTION_URL, {
 				method: 'POST',
@@ -41,7 +65,7 @@ export function usePlantChat() {
 					'Content-Type': 'application/json',
 					...(session && { Authorization: `Bearer ${session.access_token}` }),
 				},
-				body: JSON.stringify({ question, history }),
+				body: JSON.stringify(body),
 			});
 
 			if (!res.ok) {

@@ -48,6 +48,7 @@ import { usePlants } from '@/contexts/DatabaseContext';
 import { COLORS } from './constants/colors';
 import { EditPlantStepperModal } from '@/components/PlantDetails/EditPlantModal';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { PlantAssistantChat } from '@/components/PlantAssistantChat';
 
 /* -------------------------------------------------
  * Constants & helpers
@@ -421,9 +422,13 @@ export default function PlantDetail() {
 		);
 	}
 
+	console.log('Plant loaded:', plant);
+
 	/* ---------- render ---------- */
 	return (
 		<View style={styles.container}>
+			<PlantAssistantChat plant={plant} />
+
 			<StatusBar translucent barStyle="light-content" />
 
 			{/* Parallax header */}

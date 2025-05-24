@@ -1,21 +1,27 @@
+// components/PlantAssistantChat.tsx
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { Leaf, X } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-	View,
-	StyleSheet,
-	TouchableOpacity,
-	TextInput,
-	FlatList,
-	KeyboardAvoidingView,
-	Platform,
 	Animated,
+	FlatList,
+	Image,
+	KeyboardAvoidingView,
+	NativeScrollEvent,
+	NativeSyntheticEvent,
+	Platform,
+	StyleSheet,
+	TextInput,
+	TouchableOpacity,
+	View,
 } from 'react-native';
-import { MessageCircle, X, Leaf } from 'lucide-react-native';
 import RNModal from 'react-native-modal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Text } from '@/components/Text';
 import { COLORS } from '@/app/constants/colors';
-import { usePlantChat } from '@/hooks/usePlantChat';
+import { Text } from '@/components/Text';
+import { ChatMessage, usePlantChat } from '@/hooks/usePlantChat';
+import { Plant } from '@/data/plants';
 
 /* ──────────────────────────────────────────────── */
 /* Typing indicator                                 */
@@ -50,58 +56,82 @@ function Launcher({ onPress, unread }: { onPress: () => void; unread: boolean })
 	const insets = useSafeAreaInsets();
 	return (
 		<TouchableOpacity
-			style={[styles.launcher, { bottom: 24, right: insets.right + 16 }]}
+			style={[styles.launcher, { bottom: 16, right: insets.right + 14 }]}
 			onPress={onPress}
 		>
-			<MessageCircle size={28} color="#fff" />
-			{unread && <View style={styles.badge} />}
+			<MaterialCommunityIcons name="message" size={24} color="#fff" />
 		</TouchableOpacity>
 	);
 }
 
 /* ──────────────────────────────────────────────── */
-export const PlantAssistantChat: React.FC = () => {
+interface PlantAssistantChatProps {
+	/** If supplied, plant data will be forwarded to the backend and shown in chat */
+	plant?: Plant | null;
+}
+
+export const PlantAssistantChat: React.FC<PlantAssistantChatProps> = ({ plant }) => {
 	const [open, setOpen] = useState(false);
 	const [input, setInput] = useState('');
-	const flatRef = useRef<FlatList>(null);
+	const flatRef = useRef<FlatList<ChatMessage>>(null);
 	const insets = useSafeAreaInsets();
+	const { messages, send, streaming, reset } = usePlantChat();
 
-	const { messages, send, streaming } = usePlantChat();
-
-	/* intro greeting once */
+	/* ───── intro greeting once ───── */
 	const [introDone, setIntroDone] = useState(false);
 	useEffect(() => {
 		if (open && !introDone) {
-			messages.unshift({
-				id: 'sprouty-intro',
-				role: 'assistant',
-				text: 'Hi! I’m Sprouty 🌿 — ask me anything about your plants.',
-			});
+			const m: ChatMessage[] = [];
+
+			// If plant exists, show its card first
+			if (plant) {
+				m.push({
+					id: 'sprouty-plant-info',
+					role: 'assistant',
+					subtype: 'plantInfo',
+					image: plant.image_url ?? undefined,
+					text: `How can I help you with “${plant.nickname || plant.name}”? 🌿`,
+				});
+			} else {
+				m.push({
+					id: 'sprouty-intro',
+					role: 'assistant',
+					text: 'Hi! I’m Sprouty 🌿 — ask me anything about your plants.',
+				});
+			}
+
+			// prepend so that any persisted messages remain
+			messages.unshift(...m.reverse()); // reverse because we’re unshifting
 			setIntroDone(true);
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [open]);
 
-	/* auto-scroll */
+	/* ───── auto-scroll control ───── */
+	const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
 	useEffect(() => {
-		if (!open) return;
-		const t = setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 50);
-		return () => clearTimeout(t);
-	}, [messages.length, streaming, open]);
+		if (open && autoScrollEnabled) {
+			const t = setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 50);
+			return () => clearTimeout(t);
+		}
+	}, [messages.length, streaming, open, autoScrollEnabled]);
 
 	const unread = !open && messages.some((m) => m.role === 'assistant');
 
-	/* row renderer */
-	const renderItem = ({ item, index }: { item: any; index: number }) => {
-		/* USER */
-		if (item.role === 'user')
+	/* ─────────────────────────────── */
+	/*           RENDER ITEM           */
+	/* ─────────────────────────────── */
+	const renderItem = ({ item, index }: { item: ChatMessage; index: number }) => {
+		// user bubble --------------------------------------------------
+		if (item.role === 'user') {
 			return (
 				<View style={[styles.bubble, styles.userBubble]}>
 					<Text style={[styles.bubbleText, { color: '#fff' }]}>{item.text}</Text>
 				</View>
 			);
+		}
 
-		/* ASSISTANT placeholder (empty text) */
+		// assistant placeholder (typing) ------------------------------
 		const isLast = index === messages.length - 1;
 		if (isLast && item.text === '') {
 			return streaming ? (
@@ -116,7 +146,30 @@ export const PlantAssistantChat: React.FC = () => {
 			) : null;
 		}
 
-		/* ASSISTANT regular */
+		// plant info card ---------------------------------------------
+		if (item.subtype === 'plantInfo') {
+			return (
+				<View>
+					{item.image && (
+						<Image
+							source={{ uri: item.image }}
+							style={styles.plantImg}
+							resizeMode="cover"
+						/>
+					)}
+					<View style={styles.row}>
+						<View style={styles.avatar}>
+							<Leaf size={14} color="#fff" />
+						</View>
+						<View style={[styles.bubble, styles.botBubble]}>
+							<Text style={styles.bubbleText}>{item.text}</Text>
+						</View>
+					</View>
+				</View>
+			);
+		}
+
+		// normal assistant bubble -------------------------------------
 		return (
 			<View style={styles.row}>
 				<View style={styles.avatar}>
@@ -129,6 +182,29 @@ export const PlantAssistantChat: React.FC = () => {
 		);
 	};
 
+	/* ───── FlatList scroll helpers ───── */
+	const onScrollBeginDrag = () => setAutoScrollEnabled(false);
+
+	const onMomentumScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+		const {
+			contentOffset: { y: yOffset },
+			layoutMeasurement: { height: viewH },
+			contentSize: { height: contentH },
+		} = e.nativeEvent;
+		if (yOffset + viewH >= contentH - 20) setAutoScrollEnabled(true);
+	};
+
+	/* helper: build minimal context JSON --------------------------- */
+	const buildContext = () => {
+		if (!plant) return undefined;
+		// send only what’s useful
+		return {
+			plant: {
+				details: plant.raw,
+			},
+		};
+	};
+
 	return (
 		<>
 			<Launcher onPress={() => setOpen(true)} unread={unread} />
@@ -138,7 +214,6 @@ export const PlantAssistantChat: React.FC = () => {
 				onBackdropPress={() => setOpen(false)}
 				onBackButtonPress={() => setOpen(false)}
 				style={styles.modal}
-				swipeDirection="down"
 				propagateSwipe
 			>
 				<KeyboardAvoidingView
@@ -148,7 +223,12 @@ export const PlantAssistantChat: React.FC = () => {
 					{/* header */}
 					<View style={styles.header}>
 						<Text style={styles.headerTitle}>Sprouty – Plant Assistant 🌱</Text>
-						<TouchableOpacity onPress={() => setOpen(false)}>
+						<TouchableOpacity
+							onPress={() => {
+								setOpen(false);
+								if (!plant) reset(); // only reset when not on per-plant chat
+							}}
+						>
 							<X size={24} color={COLORS.text.primary.light} />
 						</TouchableOpacity>
 					</View>
@@ -159,6 +239,9 @@ export const PlantAssistantChat: React.FC = () => {
 						data={messages}
 						keyExtractor={(m) => m.id}
 						renderItem={renderItem}
+						onScrollBeginDrag={onScrollBeginDrag}
+						onMomentumScrollEnd={onMomentumScrollEnd}
+						contentContainerStyle={{ paddingHorizontal: 8 }}
 					/>
 
 					{/* input row */}
@@ -170,9 +253,10 @@ export const PlantAssistantChat: React.FC = () => {
 							style={styles.input}
 							editable={!streaming}
 							onSubmitEditing={async () => {
-								const q = input;
+								const q = input.trim();
+								if (!q) return;
 								setInput('');
-								await send(q);
+								await send(q, buildContext());
 							}}
 							returnKeyType="send"
 						/>
@@ -183,12 +267,13 @@ export const PlantAssistantChat: React.FC = () => {
 							]}
 							disabled={!input.trim() || streaming}
 							onPress={async () => {
-								const q = input;
+								const q = input.trim();
+								if (!q) return;
 								setInput('');
-								await send(q);
+								await send(q, buildContext());
 							}}
 						>
-							<MessageCircle size={20} color="#fff" />
+							<MaterialCommunityIcons name="message" size={20} color="#fff" />
 						</TouchableOpacity>
 					</View>
 				</KeyboardAvoidingView>
@@ -201,10 +286,11 @@ export const PlantAssistantChat: React.FC = () => {
 /* Styles                                           */
 /* ──────────────────────────────────────────────── */
 const styles = StyleSheet.create({
+	/* existing styles ... (unchanged) */
 	launcher: {
 		position: 'absolute',
-		width: 56,
-		height: 56,
+		width: 48,
+		height: 48,
 		borderRadius: 28,
 		backgroundColor: COLORS.primary,
 		alignItems: 'center',
@@ -238,12 +324,10 @@ const styles = StyleSheet.create({
 		borderColor: COLORS.border,
 	},
 	headerTitle: { fontSize: 16, fontWeight: '700' },
-
-	/* rows & avatar */
+	/* bubbles */
 	row: {
 		flexDirection: 'row',
 		alignItems: 'flex-end',
-		marginLeft: 8,
 		marginVertical: 4,
 	},
 	avatar: {
@@ -255,12 +339,9 @@ const styles = StyleSheet.create({
 		justifyContent: 'center',
 		marginRight: 6,
 	},
-
-	/* bubbles */
 	bubble: {
 		maxWidth: '75%',
 		borderRadius: 16,
-
 		paddingVertical: 8,
 		paddingHorizontal: 6,
 	},
@@ -272,9 +353,7 @@ const styles = StyleSheet.create({
 		marginVertical: 4,
 	},
 	bubbleText: { fontSize: 14 },
-
 	/* typing */
-
 	typingWrap: {
 		flexDirection: 'row',
 		alignItems: 'center',
@@ -290,8 +369,7 @@ const styles = StyleSheet.create({
 		backgroundColor: COLORS.text.primary.light,
 		marginHorizontal: 1,
 	},
-
-	/* input */
+	/* input row */
 	inputRow: {
 		flexDirection: 'row',
 		alignItems: 'center',
@@ -317,5 +395,14 @@ const styles = StyleSheet.create({
 		backgroundColor: COLORS.primary,
 		alignItems: 'center',
 		justifyContent: 'center',
+	},
+	/* NEW: plant preview image */
+	plantImg: {
+		width: 154,
+		height: 120,
+		borderRadius: 12,
+		marginBottom: 8,
+		paddingLeft: 34,
+		alignSelf: 'flex-start',
 	},
 });
