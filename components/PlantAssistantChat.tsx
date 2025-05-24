@@ -56,7 +56,7 @@ function Launcher({ onPress, unread }: { onPress: () => void; unread: boolean })
 	const insets = useSafeAreaInsets();
 	return (
 		<TouchableOpacity
-			style={[styles.launcher, { bottom: 16, right: insets.right + 14 }]}
+			style={[styles.launcher, { bottom: 24, right: insets.right + 20 }]}
 			onPress={onPress}
 		>
 			<MaterialCommunityIcons name="message" size={24} color="#fff" />
