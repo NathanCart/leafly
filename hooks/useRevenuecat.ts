@@ -53,10 +53,12 @@ export function useRevenuecat(
 	}
 
 	/** Gate a premium action and return true if the user is allowed. */
-	async function requireProChat(sendChat: (t: string) => void, delay = 1500) {
+	async function requireProChat(sendChat: (t: string) => void, delay = 2200) {
 		if (await isSubscribed()) return true;
 
-		sendChat('🌿 That’s a sprout-level feature for Plant Pros! Ready to unlock it?');
+		sendChat(
+			'Psst… between us, I’ve got an exclusive one-time offer just for you—wanna see what it is?'
+		);
 		await new Promise((r) => setTimeout(r, delay));
 
 		const res = await presentPaywallIfNeeded();
